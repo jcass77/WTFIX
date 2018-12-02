@@ -21,15 +21,15 @@ class TestGenericMessage:
         assert sdr_message.target_id == "TARGET"
 
     def test_raw(self):
-        m = GenericMessage((35, b"a"), (2, b"bb"))
+        m = GenericMessage((35, "a"), (2, "bb"))
         assert m.raw == b"8=FIX.4.4\x019=5\x0135=a\x012=bb\x0110=8\x01"
 
     def test_raw_invalid(self):
         with pytest.raises(ValidationError):
-            GenericMessage((1, b"a"), (2, b"b")).raw
+            GenericMessage((1, "a"), (2, "b")).raw
 
     def test_raw_nested_group(self, nested_parties_group):
-        m = GenericMessage((35, b"a"), (2, b"bb"))
+        m = GenericMessage((35, "a"), (2, "bb"))
         m.set_group(nested_parties_group)
 
         assert (
@@ -48,7 +48,7 @@ class TestGenericMessage:
 
     def test_validate_no_msgtype_raises_exception(self, sdr_message):
         with pytest.raises(ValidationError):
-            m = GenericMessage((1, b"a"), (2, b"bb"))
+            m = GenericMessage((1, "a"), (2, "bb"))
             m.validate()
 
     def test_checksum(self):

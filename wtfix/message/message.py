@@ -47,15 +47,15 @@ class GenericMessage(FieldSet):
         """
         :return: Message sequence number
         """
-        return int(self.MsgSeqNum.decode())
+        return int(self.MsgSeqNum)
 
     @property
     def sender_id(self):
-        return self.SenderCompID.decode()
+        return self.SenderCompID
 
     @property
     def target_id(self):
-        return self.TargetCompID.decode()
+        return self.TargetCompID
 
     @property
     def raw(self):

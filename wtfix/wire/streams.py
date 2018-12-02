@@ -1,5 +1,6 @@
 from abc import ABCMeta
 
+from ..protocol.base import DEFAULT_ENCODING
 from ..message.field import Field
 from ..message.fieldset import DuplicateTags, InvalidGroup, Group
 from ..message.message import GenericMessage
@@ -112,15 +113,14 @@ class MessageParser(metaclass=ABCMeta):
 
         while point < len(data):
             if in_tag and data[point] == equals_byte:
-                tag_string = data[start:point]
+                tag = int(data[start:point])
                 point += 1
 
-                tag = int(tag_string)
                 in_tag = False
                 start = point
 
             elif data[point] == soh_byte:
-                value = data[start:point]
+                value = data[start:point].decode(DEFAULT_ENCODING, errors="replace")
                 pairs.append((tag, value))
                 data = data[point + 1:]
                 point = 0

@@ -115,14 +115,6 @@ class Field:
                     "be a tuple of type (tag, value).".format(*elements)
                 )
 
-        if type(value) is not bytes:
-            raise InvalidField(f"({tag_}, {value}): value not a binary string.")
-
-        if base.SOH in value:
-            raise InvalidField(
-                f"({tag_}, {value}): value contains {base.SOH!r}, which is a reserved FIX delimiter."
-            )
-
         return utils.int_val(tag_), value
 
 

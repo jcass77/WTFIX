@@ -19,7 +19,7 @@ class TestMessageParser:
     def test_parse(self, sdr_message):
         m = MessageParser.parse(sdr_message.raw)
         assert m.name == "SecurityDefinitionRequest"
-        assert m.get(8) == b"FIX.4.4"
+        assert m.get(8) == "FIX.4.4"
 
     def test_parse_incomplete_fix_message(self):
         data = b"8=FIX.4.4\x019="
@@ -30,10 +30,10 @@ class TestMessageParser:
         m = MessageParser.parse(data)
 
         assert m is not None
-        assert m.get(8) == b"FIX.4.4"
-        assert m.get(9) == b"5"
-        assert m.get(35) == b"0"
-        assert m.get(10) == b"161"
+        assert m.get(8) == "FIX.4.4"
+        assert m.get(9) == "5"
+        assert m.get(35) == "0"
+        assert m.get(10) == "161"
 
     def test_parse_ignores_leading_junk_pairs(self):
         m = MessageParser.parse(b"1=2\x013=4\x018=FIX.4.4\x019=5\x0135=0\x0110=161\x01")
@@ -45,31 +45,31 @@ class TestMessageParser:
         with pytest.raises(TagNotFound):
             assert m.get(3) is None
 
-        assert m.get(8) == b"FIX.4.4"
+        assert m.get(8) == "FIX.4.4"
 
     def test_parse_ignores_junk_pairs(self):
         m = MessageParser.parse(b"1=2\x013=4\x015=6\x01")
         assert m is None
 
     def test_parse_repeating_group(self, routing_id_group):
-        m = GenericMessage((35, b"a"))
+        m = GenericMessage((35, "a"))
         m.set_group(routing_id_group)
-        m += Field(1, b"a")
+        m += Field(1, "a")
 
         m = MessageParser.parse(m.raw)
 
         assert m is not None
         assert m.get_group(215) is not None
-        assert m.get(1) == b"a"
+        assert m.get(1) == "a"
 
     @pytest.mark.skip("Nested repeating groups are not currently supported :(")
     def test_parse_nested_repeating_group(self, nested_parties_group):
-        m = GenericMessage((35, b"a"))
+        m = GenericMessage((35, "a"))
         m.set_group(nested_parties_group)
-        m += Field(1, b"a")
+        m += Field(1, "a")
 
         m = MessageParser.parse(m.raw)
 
         assert m is not None
         assert m.get_group(539) is not None
-        assert m.get(1) == b"a"
+        assert m.get(1) == "a"

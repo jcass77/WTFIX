@@ -5,14 +5,14 @@ from ..base import MsgType, UnknownType, Tag, UnknownTag
 
 class TestMsgType:
     def test_get_name(self):
-        assert MsgType.get_name(b"7") == "Advertisement"
+        assert MsgType.get_name("7") == "Advertisement"
 
     def test_get_name_unknown_raises_exception(self):
         with pytest.raises(UnknownType):
-            MsgType.get_name(b"1234567890")
+            MsgType.get_name("1234567890")
 
     def test_get_type(self):
-        assert MsgType.get_type("Advertisement") == b"7"
+        assert MsgType.get_type("Advertisement") == "7"
 
     def test_get_type_unknown_raises_exception(self):
         with pytest.raises(UnknownType):
