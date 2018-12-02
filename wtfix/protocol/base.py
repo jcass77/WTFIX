@@ -1,4 +1,4 @@
-DEFAULT_ENCODING = "iso8859-1"
+DEFAULT_ENCODING = "iso8859-1"  # Covers more code points than ASCII while still only using 1 byte per character.
 SOH = b"\x01"  # Start of header / field delimiter
 
 

@@ -6,6 +6,7 @@ from ..fieldset import (
     DuplicateTags,
     FieldSet,
     GroupInstance,
+    Group,
     TagNotFound,
     UnknownTag,
     InvalidGroup,
@@ -177,8 +178,8 @@ class TestFieldSet:
 
         # Ensure we have the correct group with the right (tag, value) pairs.
         assert len(ng[0]) == 2
-        assert ng[0].get(545) == b"d"
-        assert ng[0].get(805) == b"e"
+        assert ng[0].get(545) == b"c"
+        assert ng[0].get(805) == b"cc"
 
 
 class TestGroupInstance:
@@ -188,20 +189,30 @@ class TestGroupInstance:
 
 
 class TestGroup:
+    def test_invalid_groupd(self):
+        with pytest.raises(InvalidGroup):
+            Group((215, b"2"), (216, b"a"), (217, b"b"), (216, b"c"))
+
+    def test_len(self, routing_id_group):
+        assert len(routing_id_group) == 5
+
+    def test_len_nested_group(self, nested_parties_group):
+        assert len(nested_parties_group) == 17
+
     def test_repr(self, routing_id_group):
         assert (
             repr(routing_id_group)
-            == "(215, b'2'):((216, b'a'), (217, b'b')), ((216, b'a'), (217, b'b'))"
+            == "(215, b'2'):((216, b'a'), (217, b'b')), ((216, b'c'), (217, b'd'))"
         )
 
     def test_str(self, routing_id_group):
         assert (
             str(routing_id_group)
-            == "(NoRoutingIDs, b'2'):((RoutingType, b'a'), (RoutingID, b'b')), ((RoutingType, b'a'), (RoutingID, b'b'))"
+            == "(NoRoutingIDs, b'2'):((RoutingType, b'a'), (RoutingID, b'b')), ((RoutingType, b'c'), (RoutingID, b'd'))"
         )
 
     def test_raw(self, routing_id_group):
-        assert routing_id_group.raw == b"215=2\x01216=a\x01217=b\x01216=a\x01217=b\x01"
+        assert routing_id_group.raw == b"215=2\x01216=a\x01217=b\x01216=c\x01217=d\x01"
 
     def test_tag_getter(self, routing_id_group):
         assert routing_id_group.tag == 215
@@ -211,4 +222,3 @@ class TestGroup:
 
     def test_size_getter(self, routing_id_group):
         assert routing_id_group.size == 2
-        assert len(routing_id_group) == routing_id_group.size

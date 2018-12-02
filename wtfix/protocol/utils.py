@@ -12,6 +12,17 @@ def fix_val(value):
         return bytes(str(value), base.DEFAULT_ENCODING)
 
 
+def int_val(value):
+    """Make an int value from string, bytes, or FIX tag value."""
+    if type(value) == int:
+        return value
+
+    elif type(value) == str:
+        return int(value)
+
+    return int(value.decode(base.DEFAULT_ENCODING))
+
+
 def fix_tag(value):
     """Make a FIX tag value from string, bytes, or integer."""
     if type(value) == bytes:
@@ -21,14 +32,3 @@ def fix_tag(value):
         return value.encode(base.DEFAULT_ENCODING)
 
     return str(value).encode(base.DEFAULT_ENCODING)
-
-
-def int_tag(value):
-    """Make an int tag value from string, bytes, or FIX tag value."""
-    if type(value) == int:
-        return value
-
-    elif type(value) == str:
-        return int(value)
-
-    return int(value.decode(base.DEFAULT_ENCODING))

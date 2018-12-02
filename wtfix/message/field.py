@@ -123,7 +123,7 @@ class Field:
                 f"({tag_}, {value}): value contains {base.SOH!r}, which is a reserved FIX delimiter."
             )
 
-        return utils.int_tag(tag_), value
+        return utils.int_val(tag_), value
 
 
 class GroupIdentifier(Field):

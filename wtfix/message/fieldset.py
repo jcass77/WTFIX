@@ -3,6 +3,7 @@ import itertools
 
 from .field import Field, GroupIdentifier
 from ..protocol.base import Tag, UnknownTag
+from ..protocol import utils
 
 
 class _FieldSetException(Exception):
@@ -36,8 +37,7 @@ class InvalidGroup(_FieldSetException):
         super().__init__(tag, fieldset, message)
 
 
-class FieldSet(object):
-
+class FieldSet:
     def __init__(self, *fields):
         """
         A FieldSet is a container for a one or more Fields.
@@ -50,13 +50,13 @@ class FieldSet(object):
         """
         Concatenate two FieldSets, add a Field to a Fieldset, or add a (tag, value) tuple to the FieldSet
 
-        :returns: A new FieldSet, which contains the concatenation of the FieldSet with other.
+        :return: A new FieldSet, which contains the concatenation of the FieldSet with other.
         """
         if isinstance(other, self.__class__):
-            return FieldSet(*itertools.chain(self.fields, other.fields))
+            return self.__class__(*itertools.chain(self.fields, other.fields))
 
         if type(other) is tuple or isinstance(other, Field):
-            return FieldSet(*self.fields, other)
+            return self.__class__(*self.fields, other)
 
     def __eq__(self, other):
         """
@@ -80,25 +80,26 @@ class FieldSet(object):
         Return the (tag, value) in key position.
 
         :param key: position to be extracted.
-        :returns: a Field consisting of the (key, value) pair if single position, or a new message object
+        :return: a Field consisting of the (key, value) pair if single position, or a new message object
         if a range is given.
         """
         if type(key) is slice:
-            return FieldSet(*list(self.fields)[key])
+            return self.__class__(*list(self.fields)[key])
 
         return list(self.fields)[key]
 
     def __len__(self):
         """
-        :returns: Number of fields in message.
+        :return: Number of fields in message.
         """
-        fieldset_length = len(self._fields)
-        # TODO: Include group fields in length calculation?
-        # group_fields = [self._fields[tag] for tag in self.group_tags]
-        # for routing_id_group in group_fields:
-        #     fieldset_length += len(routing_id_group) - 1  # Exclude routing_id_group indicator
+        length = 0
+        for value in self._fields.values():
+            length += 1
+            if isinstance(value, Group):
+                length += len(value)
+                length -= 1  # Deduct group identifier field already counted
 
-        return fieldset_length
+        return length
 
     def __getattr__(self, name):
         """
@@ -126,7 +127,7 @@ class FieldSet(object):
 
     def __repr__(self):
         """
-        :returns: ((tag_1, value_1), (tag_2, value_2))
+        :return: ((tag_1, value_1), (tag_2, value_2))
         """
         fields_repr = ""
         for field in self.fields:
@@ -138,7 +139,7 @@ class FieldSet(object):
 
     def __str__(self):
         """
-        :returns: ((tag_name_1, value_1), (tag_name_2, value_2))
+        :return: ((tag_name_1, value_1), (tag_name_2, value_2))
         """
         fields_str = ""
         for field in self.fields:
@@ -181,6 +182,11 @@ class FieldSet(object):
 
         for field in fields:
             # For each field in the fieldset
+            if isinstance(field, Group):
+                # TODO: find a better way of dealing with this. Use singleentry?
+                parsed_fields[field.tag] = field
+                continue
+
             field = Field(field)  # Make sure that this is an actual, well-formed Field.
 
             if field.tag in parsed_fields:
@@ -197,13 +203,13 @@ class FieldSet(object):
 
         :param tag: tag number.
         :param default: Value to be returned if tag is not found. Must be a binary string.
-        :returns: The value of the Field in the FieldSet.
+        :return: The value of the Field in the FieldSet.
         :raises TagNotFound: if not found and default not set.
         """
         try:
             return self._fields[tag].value
         except KeyError:
-            # Not a routing_id_group field either, apply default?
+            # Tag not found, apply default?
             if default is None:
                 raise TagNotFound(tag, self)
 
@@ -216,7 +222,6 @@ class FieldSet(object):
         Overwrites any previous groups with the same tag number.
         :param group: a Group instance.
         :param group: a Group instance.
-        :return:
         """
         self._fields[group.identifier.tag] = group
 
@@ -225,8 +230,8 @@ class FieldSet(object):
         Tries to retrieve the Group at the given tag number.
         :param tag: The tag number of the repeating Group's identifier.
         :return: The repeating Group for tag.
-        :raises TagNotFound if the Group does not exist.
-        :raises InvalidGroup if the Field at tag is not a Group instance.
+        :raises TagNotFound: if the Group does not exist.
+        :raises InvalidGroup: if the Field at tag is not a Group instance.
         """
         try:
             group = self._fields[tag]
@@ -248,7 +253,7 @@ class GroupInstance(FieldSet):
     pass
 
 
-class Group(list):
+class Group(collections.UserList):
     """
     A repeating group of GroupInstances that form the Group.
     """
@@ -262,8 +267,24 @@ class Group(list):
         super().__init__()
         self.identifier = GroupIdentifier(identifier)
 
-        for idx in range(self.size):
-            self.append(GroupInstance(*fields))
+        instance_length = len(fields) / self.size  # The number of fields in each group instance
+
+        if not instance_length.is_integer():
+            # Not enough fields to construct the required number of group instances
+            raise InvalidGroup(self.identifier.tag, fields, f"Not enough fields in {fields} to make {self.size} "
+                                                            f"instances that are each {instance_length} fields long.")
+
+        instance_length = int(instance_length)
+        for idx in range(0, len(fields), instance_length):  # Loop over group instances
+            self.append(GroupInstance(*fields[idx:idx + instance_length]))
+
+    def __len__(self):
+        length = 1  # Count identifier field
+        for instance in self:
+            # Count all fields in each group instance
+            length += len(instance)
+
+        return length
 
     def __repr__(self):
         """
@@ -319,4 +340,4 @@ class Group(list):
         """
         :return: The number of GroupInstances in this group.
         """
-        return int(self.value.decode())
+        return utils.int_val(self.value)

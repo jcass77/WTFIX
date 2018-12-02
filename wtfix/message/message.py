@@ -1,4 +1,3 @@
-from abc import ABCMeta
 import collections
 
 from ..protocol import base, utils
@@ -9,7 +8,7 @@ class ValidationError(Exception):
     pass
 
 
-class BaseMessage(FieldSet, metaclass=ABCMeta):
+class GenericMessage(FieldSet):
     """
     The most basic type of FIX Message, consisting of one or more Fields in a FieldSet.
 
@@ -61,7 +60,7 @@ class BaseMessage(FieldSet, metaclass=ABCMeta):
     @property
     def raw(self):
         """
-        :returns: The FIX-compliant, raw binary string representation for this message.
+        :return: The FIX-compliant, raw binary string representation for this message.
         """
         self.validate()  # Make sure the message is valid before attempting to encode.
 
