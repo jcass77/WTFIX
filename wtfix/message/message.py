@@ -71,10 +71,10 @@ class GenericMessage(FieldSet):
             body += field.raw
 
         header = b"8=" + self.begin_string + common.SOH \
-                 + b"9=" + utils.fix_val(len(body)) + common.SOH \
-                 + b"35=" + utils.fix_val(self.type) + common.SOH
+                 + b"9=" + utils.encode(len(body)) + common.SOH \
+                 + b"35=" + utils.encode(self.type) + common.SOH
 
-        trailer = b"10=" + utils.fix_val(self._checksum(header + body)) + common.SOH
+        trailer = b"10=" + utils.encode(self._checksum(header + body)) + common.SOH
 
         return header + body + trailer
 

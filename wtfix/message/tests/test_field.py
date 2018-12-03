@@ -30,6 +30,11 @@ class TestField:
         f = Field(t)
         assert t == f
 
+    def test_not_eq_tuple_length(self):
+        f = Field(1, "a")
+        t = (1, "a", "b")
+        assert f != t
+
     def test_repr(self):
         assert repr(Field((35, "k"))) == "(35, k)"
 
@@ -48,6 +53,21 @@ class TestField:
     def test_tag_getter_byte(self):
         assert Field("1", "a").tag == 1
 
+    def test_tag_setter_int(self):
+        f = Field(1, "a")
+        f.tag = 2
+        assert f.tag == 2
+
+    def test_tag_setter_byte(self):
+        f = Field(1, "a")
+        f.tag = b"2"
+        assert f.tag == 2
+
+    def test_tag_setter_str(self):
+        f = Field(1, "a")
+        f.tag = "2"
+        assert f.tag == 2
+
     def test_name_getter(self):
         f = Field((35, "k"))
         assert f.name == "MsgType"
@@ -55,6 +75,11 @@ class TestField:
     def test_name_getter_custom(self):
         f = Field((1234567890, "k"))
         assert f.name == "Unknown"
+
+    def test_value_setter_not_str(self):
+        f = Field(1, "a")
+        f.value = b"b"
+        assert f.value == "b"
 
     def test_raw_getter(self):
         f = Field((35, "k"))

@@ -340,4 +340,4 @@ class Group(collections.UserList):
         """
         :return: The number of GroupInstances in this group.
         """
-        return utils.int_val(self.value)
+        return int(self.value)

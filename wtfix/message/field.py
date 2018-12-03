@@ -18,11 +18,11 @@ class Field:
         :param elements: Can be a (tag, value) tuple, another Field instance, or tag and value arguments.
         NOTE: tags are always stored internally as integers.
         """
-        self._tag, self.value = Field.validate(*elements)
+        self.tag, self.value = Field.validate(*elements)
 
     def __iter__(self):
         """
-        Iterator over (tag, value) pairs.
+        Iterator over (tag, value) pairs. Makes it possible for Fields to be handled just like a tuple.
         :return: Iterator for the (tag, value) list.
         """
         return iter([self.tag, self.value])
@@ -41,7 +41,7 @@ class Field:
         if type(other) is tuple:
             content = list(other)
             return (
-                len(content) == 2
+                len(content) == 2  # Must be a (tag, value) tuple.
                 and content[0] == self.tag
                 and content[1] == self.value
             )
@@ -68,7 +68,8 @@ class Field:
 
     @tag.setter
     def tag(self, value):
-        self._tag = value
+        """Ensures that tag values are always set as integers"""
+        self._tag = int(utils.decode(value))
 
     @property
     def name(self):
@@ -86,14 +87,15 @@ class Field:
 
     @value.setter
     def value(self, val):
-        self._value = val
+        """Ensures that field values are always set as strings"""
+        self._value = utils.decode(val)
 
     @property
     def raw(self):
         """
         :return: The FIX-compliant, raw binary string representation for this Field.
         """
-        return utils.fix_tag(self.tag) + b"=" + utils.fix_val(self.value) + common.SOH
+        return utils.encode(self.tag) + b"=" + utils.encode(self.value) + common.SOH
 
     @classmethod
     def validate(cls, *elements):
@@ -115,7 +117,7 @@ class Field:
                     "be a tuple of type (tag, value).".format(*elements)
                 )
 
-        return utils.int_val(tag_), value
+        return tag_, value
 
 
 class GroupIdentifier(Field):

@@ -1,34 +1,46 @@
+import numbers
+from functools import singledispatch
+
 from . import common
 
 
-def fix_val(value):
-    """Make a FIX value from a string, bytes, or number."""
-    if type(value) == bytes:
-        return value
-
-    if type(value) == str:
-        return bytes(value, common.ENCODING, errors=common.ENCODING_ERRORS)
-    else:
-        return bytes(str(value), common.ENCODING, errors=common.ENCODING_ERRORS)
+@singledispatch
+def encode(value):
+    """Encode a string value"""
+    return value.encode(common.ENCODING, errors=common.ENCODING_ERRORS)
 
 
-def int_val(value):
-    """Make an int value from string, bytes, or FIX tag value."""
-    if type(value) == int:
-        return value
-
-    elif type(value) == str:
-        return int(value)
-
-    return int(value.decode(common.ENCODING, errors=common.ENCODING_ERRORS))
+@encode.register(numbers.Integral)
+def _(n):
+    """Encode an numeric value"""
+    return encode(str(n))
 
 
-def fix_tag(value):
-    """Make a FIX tag value from string, bytes, or integer."""
-    if type(value) == bytes:
-        return value
+@encode.register(bytes)
+def _(b):
+    """Bytes are already encoded"""
+    return b
 
-    elif type(value) == str:
-        return value.encode(common.ENCODING, errors=common.ENCODING_ERRORS)
 
-    return str(value).encode(common.ENCODING, errors=common.ENCODING_ERRORS)
+@encode.register(bytearray)
+def _(ba):
+    """Encode a bytearray"""
+    return encode(bytes(ba))
+
+
+@singledispatch
+def decode(value):
+    """Decode bytes to string"""
+    return value.decode(common.ENCODING, errors=common.ENCODING_ERRORS)
+
+
+@decode.register(str)
+def _(text):
+    """Strings do not need to be decoded"""
+    return text
+
+
+@decode.register(numbers.Integral)
+def _(n):
+    """Numbers do not need to be decoded"""
+    return n

@@ -40,7 +40,7 @@ class MessageParser(metaclass=ABCMeta):
 
         # Everything between identifier_tag and duplicate_tag should form one GroupInstance
         instance_length = dup_idx - first_instance_idx
-        group_end = first_instance_idx + (instance_length * utils.int_val(identifier.value))
+        group_end = first_instance_idx + (instance_length * int(identifier.value))
 
         return Group(identifier, *pairs[first_instance_idx:group_end])
 
