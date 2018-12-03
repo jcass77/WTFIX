@@ -3,7 +3,6 @@ import itertools
 
 from .field import Field, GroupIdentifier
 from ..protocol.common import Tag, UnknownTag
-from ..protocol import utils
 
 
 class _FieldSetException(Exception):
