@@ -1,7 +1,7 @@
 import pytest
 
 from ..message import GenericMessage, ValidationError
-from ...protocol.base import MsgType
+from ...protocol.common import MsgType
 
 
 class TestGenericMessage:

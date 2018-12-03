@@ -1,6 +1,6 @@
 import collections
 
-from ..protocol import base, utils
+from ..protocol import common, utils
 from .fieldset import FieldSet
 
 
@@ -32,7 +32,7 @@ class GenericMessage(FieldSet):
         The type of this Message, as denoted by tag 35.
         :return: Bytestring for tag 35.
         """
-        return self._fields[base.Tag.MsgType].value
+        return self._fields[common.Tag.MsgType].value
 
     @property
     def name(self):
@@ -40,7 +40,7 @@ class GenericMessage(FieldSet):
         Human friendly name of this type of Message, based on tag 35.
         :return:
         """
-        return base.MsgType.get_name(self.type)
+        return common.MsgType.get_name(self.type)
 
     @property
     def seq_num(self):
@@ -70,11 +70,11 @@ class GenericMessage(FieldSet):
                 continue
             body += field.raw
 
-        header = b"8=" + self.begin_string + base.SOH \
-                 + b"9=" + utils.fix_val(len(body)) + base.SOH \
-                 + b"35=" + utils.fix_val(self.type) + base.SOH
+        header = b"8=" + self.begin_string + common.SOH \
+                 + b"9=" + utils.fix_val(len(body)) + common.SOH \
+                 + b"35=" + utils.fix_val(self.type) + common.SOH
 
-        trailer = b"10=" + utils.fix_val(self._checksum(header + body)) + base.SOH
+        trailer = b"10=" + utils.fix_val(self._checksum(header + body)) + common.SOH
 
         return header + body + trailer
 
@@ -86,7 +86,7 @@ class GenericMessage(FieldSet):
         :raises: ValidationError if the message is not valid.
         """
         try:
-            self._fields[base.Tag.MsgType]
+            self._fields[common.Tag.MsgType]
         except KeyError:
             raise ValidationError("No 'MsgType (35)' specified.")
 

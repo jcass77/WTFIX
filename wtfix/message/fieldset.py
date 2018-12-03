@@ -2,7 +2,7 @@ import collections
 import itertools
 
 from .field import Field, GroupIdentifier
-from ..protocol.base import Tag, UnknownTag
+from ..protocol.common import Tag, UnknownTag
 from ..protocol import utils
 
 

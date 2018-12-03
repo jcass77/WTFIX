@@ -1,6 +1,6 @@
 import pytest
 
-from ..base import MsgType, UnknownType, Tag, UnknownTag
+from ..common import MsgType, UnknownType, Tag, UnknownTag
 
 
 class TestMsgType:

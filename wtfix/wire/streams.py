@@ -1,10 +1,9 @@
 from abc import ABCMeta
 
-from ..protocol.base import DEFAULT_ENCODING
 from ..message.field import Field
 from ..message.fieldset import DuplicateTags, InvalidGroup, Group
 from ..message.message import GenericMessage
-from ..protocol import base, utils
+from ..protocol import common, utils
 
 
 class MessageParser(metaclass=ABCMeta):
@@ -106,7 +105,7 @@ class MessageParser(metaclass=ABCMeta):
         in_tag = True
         tag = 0
 
-        soh_byte = ord(base.SOH)
+        soh_byte = ord(common.SOH)
         equals_byte = ord(b"=")
         
         pairs = []
@@ -120,7 +119,7 @@ class MessageParser(metaclass=ABCMeta):
                 start = point
 
             elif data[point] == soh_byte:
-                value = data[start:point].decode(DEFAULT_ENCODING, errors="replace")
+                value = data[start:point].decode(common.ENCODING, errors=common.ENCODING_ERRORS)
                 pairs.append((tag, value))
                 data = data[point + 1:]
                 point = 0

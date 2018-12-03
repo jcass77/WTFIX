@@ -1,6 +1,6 @@
 import pytest
 
-from ...protocol import base
+from ...protocol import common
 from ..field import Field
 from ..fieldset import (
     DuplicateTags,
@@ -106,7 +106,7 @@ class TestFieldSet:
         assert list(fieldset_a_b.fields) == [(1, "a"), (2, "bb")]
 
     def test_raw(self, fieldset_a_b):
-        assert fieldset_a_b.raw == b"1=a" + base.SOH + b"2=bb" + base.SOH
+        assert fieldset_a_b.raw == b"1=a" + common.SOH + b"2=bb" + common.SOH
 
     def test_parse_fields_tuple(self):
         fs = FieldSet((1, "a"), (2, "b"))

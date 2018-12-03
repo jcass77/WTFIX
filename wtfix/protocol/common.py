@@ -1,5 +1,15 @@
-# Another encoding option might be iso8859-1 - covers more code points than ASCII while still only using 1 byte per character.
-DEFAULT_ENCODING = "UTF-8"
+# Constants related to the FIX protocol.
+# TODO: Divide into different FIX versions?
+
+# The FIX standard relies on ASCII encoding. Well-behaving FIX counter parties should use the 'Encoded' range of
+# fields for providing non-ASCII data, and specify the exact encoding in the MessageEncoding (347) field.
+
+# Using cp1252 (a.k.a ANSI) here might be the most forgiving option while still ensuring that (a) the encoding is
+# ASCII-compatible and (b) code points will always be encoded into a single byte. cp1252 is latin-1 (a.k.a. iso8859-1)
+# superset defined by Microsoft that adds useful symbols like curly quotes and the euro symbol. Both cp1252 and
+# iso8859-1 are ASCII-compatible. If you want to enforce strict adherence to the FIX protocol, then set this to 'ascii'.
+ENCODING = "ascii"
+ENCODING_ERRORS = "strict"  # Valid options are 'strict', 'ignore', 'replace', and any other
 SOH = b"\x01"  # Start of header / field delimiter
 
 

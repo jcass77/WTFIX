@@ -1,6 +1,6 @@
 import pytest
 
-from ...protocol import base
+from ...protocol import common
 from ..field import Field, InvalidField
 
 
@@ -58,7 +58,7 @@ class TestField:
 
     def test_raw_getter(self):
         f = Field((35, "k"))
-        assert f.raw == b"35=k" + base.SOH
+        assert f.raw == b"35=k" + common.SOH
 
     def test_validate_tuple(self):
         tag, value = Field.validate((1, "a"))

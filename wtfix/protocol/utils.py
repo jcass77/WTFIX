@@ -1,4 +1,4 @@
-from . import base
+from . import common
 
 
 def fix_val(value):
@@ -7,9 +7,9 @@ def fix_val(value):
         return value
 
     if type(value) == str:
-        return bytes(value, base.DEFAULT_ENCODING)
+        return bytes(value, common.ENCODING, errors=common.ENCODING_ERRORS)
     else:
-        return bytes(str(value), base.DEFAULT_ENCODING)
+        return bytes(str(value), common.ENCODING, errors=common.ENCODING_ERRORS)
 
 
 def int_val(value):
@@ -20,7 +20,7 @@ def int_val(value):
     elif type(value) == str:
         return int(value)
 
-    return int(value.decode(base.DEFAULT_ENCODING))
+    return int(value.decode(common.ENCODING, errors=common.ENCODING_ERRORS))
 
 
 def fix_tag(value):
@@ -29,6 +29,6 @@ def fix_tag(value):
         return value
 
     elif type(value) == str:
-        return value.encode(base.DEFAULT_ENCODING)
+        return value.encode(common.ENCODING, errors=common.ENCODING_ERRORS)
 
-    return str(value).encode(base.DEFAULT_ENCODING)
+    return str(value).encode(common.ENCODING, errors=common.ENCODING_ERRORS)

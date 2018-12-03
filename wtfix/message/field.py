@@ -1,4 +1,4 @@
-from ..protocol import base, utils
+from ..protocol import common, utils
 
 
 class InvalidField(Exception):
@@ -76,8 +76,8 @@ class Field:
         :return: The name of the tag as defined in one of the supported specifications, or 'Unknown' otherwise.
         """
         try:
-            return base.Tag.get_name(self.tag)
-        except base.UnknownTag:
+            return common.Tag.get_name(self.tag)
+        except common.UnknownTag:
             return self.UNKNOWN_TAG
 
     @property
@@ -93,7 +93,7 @@ class Field:
         """
         :return: The FIX-compliant, raw binary string representation for this Field.
         """
-        return utils.fix_tag(self.tag) + b"=" + utils.fix_val(self.value) + base.SOH
+        return utils.fix_tag(self.tag) + b"=" + utils.fix_val(self.value) + common.SOH
 
     @classmethod
     def validate(cls, *elements):
