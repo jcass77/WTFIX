@@ -5,9 +5,9 @@ from . import common
 
 
 @singledispatch
-def encode(value):
-    """Encode a string value"""
-    return value.encode(common.ENCODING, errors=common.ENCODING_ERRORS)
+def encode(obj):
+    """Encode an object to bytes"""
+    return obj.encode(common.ENCODING, errors=common.ENCODING_ERRORS)
 
 
 @encode.register(numbers.Integral)
@@ -29,15 +29,15 @@ def _(ba):
 
 
 @singledispatch
-def decode(value):
-    """Decode bytes to string"""
-    return value.decode(common.ENCODING, errors=common.ENCODING_ERRORS)
+def decode(obj):
+    """Decode a bytes-like object to string"""
+    return obj.decode(common.ENCODING, errors=common.ENCODING_ERRORS)
 
 
 @decode.register(str)
-def _(text):
+def _(string):
     """Strings do not need to be decoded"""
-    return text
+    return string
 
 
 @decode.register(numbers.Integral)
