@@ -23,60 +23,64 @@ class MessageParser:
     def __init__(self):
         self._group_templates = {}
 
-    def _parse_group(self, identifier_tag, identifier_value, idx, raw_fields):
-        identifier = Field(identifier_tag, identifier_value)
-        template = self._group_templates[identifier_tag]
-        template_tags = iter(template)
+    def _parse_fields(self, raw_pairs, group_index=None):
+        """
+        Parses the raw list of field pairs recursively into Field instances.
 
-        fields = []
-
-        idx += 1  # Skip over identifier tag
-        while idx < len(raw_fields):
-            tag, value = raw_fields[idx].split(b"=")
-            tag = int(tag)
-
-            if tag in self._group_templates:
-                group = self._parse_group(tag, value, idx, raw_fields)
-                fields.append(group)
-
-                # Skip over group fields
-                idx += len(group)
-                continue
-
-            if tag == next(template_tags):
-                fields.append(Field(tag, value))
-                if tag == template[-1]:
-                    # We've reached the last tag in the template, reset iterator
-                    template_tags = iter(template)
-            else:
-                # No more template tags available
-                break
-
-            idx += 1
-
-        return Group(identifier, *fields)
-
-    def _parse_fields(self, raw_fields):
+        :param raw_pairs: A string of bytes in format b'tag=value'
+        :param group_index: The index at which the previous repeating group was detected.
+        :return: A list of parsed Field objects.
+        """
         fields = []
         tags_seen = set()
-
         idx = 0
-        while idx < len(raw_fields):
-            tag, value = raw_fields[idx].split(b"=")
+        template = []
+
+        if group_index is not None:
+            # Parsing a repeating group - skip over previously parsed pairs.
+            idx = group_index
+            group_identifier = Field(*raw_pairs[idx].split(b"="))
+
+            # Retrieve the template for this repeating group
+            template = self._group_templates[group_identifier.tag]
+
+            # Add the group identifier as the first field in the list.
+            fields.append(group_identifier)
+            idx += 1  # Skip over identifier tag that was just processed.
+
+        template_tags = iter(template)
+
+        while idx < len(raw_pairs):
+            tag, value = raw_pairs[idx].split(b"=")
             tag = int(tag)
-            if tag in tags_seen and not self.is_template_tag(tag):
+            if tag in tags_seen and tag not in template:
                 raise ParsingError(f"No repeating group template for duplicate tag {tag}.")
 
             if tag in self._group_templates:
-                group = self._parse_group(tag, value, idx, raw_fields )
-                fields.append(group)
+                # Tag denotes the start of a new repeating group.
+                group_fields = self._parse_fields(raw_pairs, group_index=idx)
+                group = Group(group_fields[0], *group_fields[1:])
 
-                # Skip over group fields
+                fields.append(group)
+                # Skip over all of the fields that were processed as part of the group.
                 idx += len(group)
                 continue
 
-            fields.append(Field(tag, value))
-            tags_seen.add(tag)
+            if group_index is not None:
+                # Busy parsing a template, see if the current tag forms part of it.
+                if tag == next(template_tags):
+                    fields.append(Field(tag, value))
+                    if tag == template[-1]:
+                        # We've reached the last tag in the template, reset iterator
+                        # so that it is ready to parse next group instance (if any).
+                        template_tags = iter(template)
+                else:
+                    # All group fields processed - done.
+                    break
+            else:
+                # Busy parsing a non-group tag.
+                fields.append(Field(tag, value))
+                tags_seen.add(tag)
 
             idx += 1
 
@@ -137,6 +141,7 @@ class MessageParser:
             )
             data = data[message_start:]
 
-        fields = self._parse_fields(data.rstrip(common.SOH).split(common.SOH))
+        data = data.rstrip(common.SOH).split(common.SOH)  # Remove last SOH at end of byte stream and split into fields
+        fields = self._parse_fields(data)
 
         return GenericMessage(*fields)
