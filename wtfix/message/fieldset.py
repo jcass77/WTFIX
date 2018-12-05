@@ -1,7 +1,7 @@
 import collections
 import itertools
 
-from .field import Field, GroupIdentifier
+from .field import Field
 from ..protocol import common
 
 
@@ -102,7 +102,7 @@ class FieldSet(collections.OrderedDict):
 
         try:
             # Then, see if a Field with that tag number is available in this FieldSet.
-            return self[tag].value
+            return self[tag].value_ref
         except KeyError:
             raise TagNotFound(
                 tag,
@@ -167,8 +167,8 @@ class FieldSet(collections.OrderedDict):
 
             # Add new field
             parsed_fields.append(
-                Field(*field)
-            )  # Make sure that this is an actual, well-formed Field.
+                Field(*field)  # Make sure that this is an actual, well-formed Field.
+            )
 
         return parsed_fields
 
@@ -226,7 +226,7 @@ class Group(collections.UserList):
         :param fields: A GroupInstance or list of (tag, value) tuples.
         """
         super().__init__()
-        self.identifier = GroupIdentifier(*identifier)
+        self.identifier = Field(*identifier)
 
         instance_length = (
             len(fields) / self.size
@@ -300,11 +300,11 @@ class Group(collections.UserList):
         """
         :return: The value of the identifier Field for this group.
         """
-        return self.identifier.value
+        return self.identifier.value_ref.value
 
     @property
     def size(self):
         """
         :return: The number of GroupInstances in this group.
         """
-        return int(str(self.value))
+        return int(str((self.identifier.value_ref.value)))

@@ -1,7 +1,8 @@
 import logging
 
+from ..message.fieldset import Group
 from ..message.field import Field
-from ..message.message import GenericMessage
+from ..message.message import GenericMessage, ValidationError
 from ..protocol import common, utils
 
 
@@ -19,8 +20,85 @@ class MessageParser:
     Translates FIX application messages in raw (wire) format to GenericMessage instances.
     """
 
+    def __init__(self):
+        self._group_templates = {}
+
+    def _parse_group(self, identifier_tag, identifier_value, idx, raw_fields):
+        identifier = Field(identifier_tag, identifier_value)
+        template = self._group_templates[identifier_tag]
+        template_tags = iter(template)
+
+        fields = []
+
+        idx += 1  # Skip over identifier tag
+        while idx < len(raw_fields):
+            tag, value = raw_fields[idx].split(b"=")
+            tag = int(tag)
+
+            if tag in self._group_templates:
+                group = self._parse_group(tag, value, idx, raw_fields)
+                fields.append(group)
+
+                # Skip over group fields
+                idx += len(group)
+                continue
+
+            if tag == next(template_tags):
+                fields.append(Field(tag, value))
+                if tag == template[-1]:
+                    # We've reached the last tag in the template, reset iterator
+                    template_tags = iter(template)
+            else:
+                # No more template tags available
+                break
+
+            idx += 1
+
+        return Group(identifier, *fields)
+
+    def _parse_fields(self, raw_fields):
+        fields = []
+        tags_seen = set()
+
+        idx = 0
+        while idx < len(raw_fields):
+            tag, value = raw_fields[idx].split(b"=")
+            tag = int(tag)
+            if tag in tags_seen and not self.is_template_tag(tag):
+                raise ParsingError(f"No repeating group template for duplicate tag {tag}.")
+
+            if tag in self._group_templates:
+                group = self._parse_group(tag, value, idx, raw_fields )
+                fields.append(group)
+
+                # Skip over group fields
+                idx += len(group)
+                continue
+
+            fields.append(Field(tag, value))
+            tags_seen.add(tag)
+
+            idx += 1
+
+        return fields
+
+    def add_group_template(self, identifier_tag, *args):
+        if len(args) == 0:
+            raise ValidationError(f"At least one group instance tag needs to be defined for group {identifier_tag}.")
+
+        self._group_templates[identifier_tag] = args
+
+    def remove_group_template(self, identifier_tag):
+        del self._group_templates[identifier_tag]
+
+    def is_template_tag(self, tag):
+        if tag in self._group_templates:
+            return True
+
+        for template in self._group_templates.values():
+            return tag in template
+
     def parse(self, data: bytes):
-        # TODO: Cater for nested repeating groups
         """
         Constructs a GenericMessage from the provided data.
 
@@ -59,10 +137,6 @@ class MessageParser:
             )
             data = data[message_start:]
 
-        fields = []
-
-        for raw_field in data.rstrip(common.SOH).split(common.SOH):
-            tag, value = raw_field.split(b"=")
-            fields.append(Field(tag, value))
+        fields = self._parse_fields(data.rstrip(common.SOH).split(common.SOH))
 
         return GenericMessage(*fields)

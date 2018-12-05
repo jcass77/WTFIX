@@ -30,7 +30,7 @@ class GenericMessage(FieldSet):
         The type of this Message, as denoted by tag 35.
         :return: Value of tag 35.
         """
-        return str(self[common.Tag.MsgType].value)
+        return str(self[common.Tag.MsgType].value_ref)
 
     @property
     def name(self):

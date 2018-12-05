@@ -68,7 +68,7 @@ class FieldValue(Sequence):
         return utils.encode(self.value)
 
 
-class Field(collections.namedtuple("Field", ["tag", "value"])):
+class Field(collections.namedtuple("Field", ["tag", "value_ref"])):
     """
     A FIX field implemented as a simple (tag, value) namedtuple for use in FieldSets and Messages.
     """
@@ -94,13 +94,13 @@ class Field(collections.namedtuple("Field", ["tag", "value"])):
         return _tuple.__new__(_cls, (tag, FieldValue(value)))
 
     def __eq__(self, other):
-        return self.value == other
+        return self.value_ref == other
 
     def __repr__(self):
         """
         :return: (tag number, value)
         """
-        return f"({self.tag}, {self.value})"
+        return f"({self.tag}, {self.value_ref})"
 
     def __str__(self):
         """
@@ -108,9 +108,9 @@ class Field(collections.namedtuple("Field", ["tag", "value"])):
         (tag_number, value) otherwise.
         """
         if self.name == self.UNKNOWN_TAG:
-            return f"({self.tag}, {self.value})"
+            return f"({self.tag}, {self.value_ref})"
 
-        return f"({self.name} ({self.tag}), {self.value})"
+        return f"({self.name} ({self.tag}), {self.value_ref})"
 
     @property
     def name(self):
@@ -127,12 +127,4 @@ class Field(collections.namedtuple("Field", ["tag", "value"])):
         """
         :return: The FIX-compliant, raw binary string representation for this Field.
         """
-        return utils.encode(self.tag) + b"=" + self.value.raw + common.SOH
-
-
-class GroupIdentifier(Field):
-    """
-    A special type of Field that is used to identify repeating groups.
-    """
-
-    pass
+        return utils.encode(self.tag) + b"=" + self.value_ref.raw + common.SOH
