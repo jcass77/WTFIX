@@ -11,29 +11,29 @@ class TestFieldSet:
 
         assert len(fs) == 4
         assert all(tag in fs for tag in [3, 4])
-        assert fs[3].value == "ccc"
-        assert fs[4].value == "dddd"
+        assert fs[3] == "ccc"
+        assert fs[4] == "dddd"
 
     def test_add_field(self, fieldset_a_b):
         fs = fieldset_a_b + Field(3, "ccc")
         assert len(fs) == 3
-        assert fs[3].value == "ccc"
+        assert fs[3] == "ccc"
 
     def test_add_list_of_fields(self, fieldset_a_b):
         fs = fieldset_a_b + [Field(3, "ccc"), Field(4, "dddd")]
         assert len(fs) == 4
-        assert fs[3].value == "ccc"
-        assert fs[4].value == "dddd"
+        assert fs[3] == "ccc"
+        assert fs[4] == "dddd"
 
     def test_add_tuple(self, fieldset_a_b):
         fs = fieldset_a_b + (3, "ccc")
         assert len(fs) == 3
-        assert fs[3].value == "ccc"
+        assert fs[3] == "ccc"
 
     def test_add_list_of_tuples(self, fieldset_a_b):
         fs = fieldset_a_b + [(3, "ccc"), (4, "dddd")]
         assert len(fs) == 4
-        assert fs[4].value == "dddd"
+        assert fs[4] == "dddd"
 
     def test_len(self, fieldset_a_b):
         assert len(fieldset_a_b) == 2
@@ -45,7 +45,7 @@ class TestFieldSet:
         assert len(fs) == 19
 
     def test_getitem(self, fieldset_a_b):
-        assert fieldset_a_b[1].value == "a"
+        assert fieldset_a_b[1] == "a"
 
     def test_getitem_unknown(self, fieldset_a_b):
         with pytest.raises(TagNotFound):
@@ -87,7 +87,7 @@ class TestFieldSet:
 
         assert len(fs) == 2
         assert all([tag in fs for tag in [1, 2]])
-        assert all([value in fs.values() for value in [(1, "a"), (2, "b")]])
+        assert all([value in fs.items() for value in [(1, "a"), (2, "b")]])
         assert type(fs[1] is Field)
 
     def test_parse_fields_fields(self):
@@ -95,7 +95,7 @@ class TestFieldSet:
 
         assert len(fs) == 2
         assert all([tag in fs for tag in [1, 2]])
-        assert all([value in fs.values() for value in [(1, "a"), (2, "b")]])
+        assert all([value in fs.items() for value in [(1, "a"), (2, "b")]])
         assert type(fs[1] is Field)
 
     def test_parse_fields_fields_mixed(self):
@@ -103,7 +103,7 @@ class TestFieldSet:
 
         assert len(fs) == 2
         assert all([tag in fs for tag in [1, 2]])
-        assert all([value in fs.values() for value in [(1, "a"), (2, "b")]])
+        assert all([value in fs.items() for value in [(1, "a"), (2, "b")]])
         assert type(fs[1] is Field)
 
     @pytest.mark.skip("Raise exception instead of just doing __setitem__?")
@@ -142,8 +142,8 @@ class TestFieldSet:
 
         # Ensure we have the correct group with the right (tag, value) pairs.
         assert len(ng[0]) == 2
-        assert ng[0][545].value == "c"
-        assert ng[0][805].value == "cc"
+        assert ng[0][545] == "c"
+        assert ng[0][805] == "cc"
 
 
 class TestGroupInstance:

@@ -93,6 +93,9 @@ class Field(collections.namedtuple("Field", ["tag", "value"])):
 
         return _tuple.__new__(_cls, (tag, FieldValue(value)))
 
+    def __eq__(self, other):
+        return self.value == other
+
     def __repr__(self):
         """
         :return: (tag number, value)

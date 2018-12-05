@@ -55,7 +55,15 @@ class TestField:
             Field("abc", "k")
 
     def test_int_value(self):
-        assert Field(1, 2).value == 2
+        assert Field(1, 2) == 2
+
+    def test_eq_value(self):
+        assert Field(1, "a") == "a"
+        assert Field(1, 2) == 2
+        assert Field(1, b"a") == b"a"
+
+    def test_eq_field(self):
+        assert Field(1, "a") == Field(1, "a")
 
     def test_repr(self):
         assert repr(Field(35, "k")) == "(35, k)"
