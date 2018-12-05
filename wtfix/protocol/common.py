@@ -11,6 +11,7 @@
 ENCODING = "ascii"
 ENCODING_ERRORS = "strict"  # Valid options are 'strict', 'ignore', 'replace', and any other
 SOH = b"\x01"  # Start of header / field delimiter
+SOH_BYTE = ord(SOH)
 
 
 class Side(object):

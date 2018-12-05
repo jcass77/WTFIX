@@ -1,7 +1,5 @@
-import collections
-
 from ..protocol import common, utils
-from .fieldset import FieldSet
+from .fieldset import FieldSet, TagNotFound
 
 
 class ValidationError(Exception):
@@ -14,7 +12,6 @@ class GenericMessage(FieldSet):
 
     We think of FIX messages as lists of (tag, value) pairs, where tag is a number and value is a bytestring.
     """
-
     def __init__(self, *fields, begin_string=b"FIX.4.4"):
         """
         Constructor.
@@ -30,9 +27,9 @@ class GenericMessage(FieldSet):
     def type(self):
         """
         The type of this Message, as denoted by tag 35.
-        :return: Bytestring for tag 35.
+        :return: Value of tag 35.
         """
-        return self._fields[common.Tag.MsgType].value
+        return str(self[common.Tag.MsgType].value)
 
     @property
     def name(self):
@@ -47,15 +44,15 @@ class GenericMessage(FieldSet):
         """
         :return: Message sequence number
         """
-        return int(self.MsgSeqNum)
+        return int(self.MsgSeqNum.value)
 
     @property
     def sender_id(self):
-        return self.SenderCompID
+        return self.SenderCompID.value
 
     @property
     def target_id(self):
-        return self.TargetCompID
+        return self.TargetCompID.value
 
     @property
     def raw(self):
@@ -65,12 +62,12 @@ class GenericMessage(FieldSet):
         self.validate()  # Make sure the message is valid before attempting to encode.
 
         body = b""
-        for field in self.fields:
+        for field in self.values():
             if field.tag in (8, 9, 35, 10):  # Standard header and trailer fields will be handled separately - ignore.
                 continue
             body += field.raw
 
-        header = b"8=" + self.begin_string + common.SOH \
+        header = b"8=" + utils.encode(self.begin_string) + common.SOH \
                  + b"9=" + utils.encode(len(body)) + common.SOH \
                  + b"35=" + utils.encode(self.type) + common.SOH
 
@@ -78,7 +75,7 @@ class GenericMessage(FieldSet):
 
         return header + body + trailer
 
-    def validate(self):
+    def validate(self, begin_string=False, length=False, checksum=False):
         """
         A well-formed message should, at minimum, contain tag 35.
 
@@ -86,18 +83,12 @@ class GenericMessage(FieldSet):
         :raises: ValidationError if the message is not valid.
         """
         try:
-            self._fields[common.Tag.MsgType]
-        except KeyError:
-            raise ValidationError("No 'MsgType (35)' specified.")
+            self[common.Tag.MsgType]
+        except TagNotFound:
+            raise ValidationError(f"No 'MsgType (35)' specified for {self}.")
 
         return self
 
     @staticmethod
     def _checksum(*args):
         return sum(sum(byte for byte in iter(field)) for field in args) % 256
-
-    def clear(self):
-        """
-        Clears all Fields from this Message.
-        """
-        self._fields = collections.OrderedDict()

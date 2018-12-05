@@ -1,10 +1,17 @@
 import pytest
 
+from ..field import Field
 from ..message import GenericMessage, ValidationError
 from ...protocol.common import MsgType
 
 
 class TestGenericMessage:
+    def test_add_returns_message_instance(self):
+        m = GenericMessage((35, "a"), (2, "bb"))
+        m += Field(3, "ccc")
+
+        assert isinstance(m, GenericMessage)
+
     def test_type_getter(self, sdr_message):
         assert sdr_message.type == MsgType.SecurityDefinitionRequest
 

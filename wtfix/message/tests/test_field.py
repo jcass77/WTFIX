@@ -1,108 +1,79 @@
 import pytest
 
 from ...protocol import common
-from ..field import Field, InvalidField
+from ..field import Field, FieldValue, InvalidField
+
+
+class TestFieldValue:
+    def test_getitem(self):
+        assert FieldValue("abc")[1] == "b"
+
+    def test_len(self):
+        assert len(FieldValue("abc")) == 3
+
+    def test_eq_str(self):
+        assert FieldValue("abc") == "abc"
+
+    def test_eq_bytes(self):
+        assert FieldValue(b"abc") == b"abc"
+
+    def test_eq_int(self):
+        assert FieldValue(1) == 1
+
+    def test_eq_boolean(self):
+        assert FieldValue("Y") == True
+
+    def test_eq_str_string(self):
+        assert str(FieldValue("abc")) == "abc"
+
+    def test_eq_bytes_str(self):
+        assert FieldValue(b"abc") == "abc"
+
+    def test_eq_str_bytes(self):
+        assert FieldValue("abc") == b"abc"
+
+    def test_str_bytes(self):
+        assert str(FieldValue(b"abc")) == "abc"
+
+    def test_str_int(self):
+        assert str(FieldValue(1)) == "1"
+
+    def test_contains(self):
+        assert "a" in FieldValue("abc")
+        assert b"a" in FieldValue(b"abc")
+
+    def test_iter(self):
+        assert [i for i in iter(FieldValue("abc"))] == ["a", "b", "c"]
+
+    def test_raw(self):
+        assert FieldValue("abc").raw == b"abc"
 
 
 class TestField:
-    def test_iter(self):
-        f = Field((1, "a"))
+    def test_new_validates_tag_is_int(self):
+        with pytest.raises(InvalidField):
+            Field("abc", "k")
 
-        fi = iter(f)
-        assert next(fi) == 1
-        assert next(fi) == "a"
-
-        with pytest.raises(StopIteration):
-            next(fi)
-
-    def test_eq_field(self):
-        f1 = f2 = Field((1, "a"))
-        assert f1 == f2
-
-    def test_not_eq_field(self):
-        f1 = Field((1, "a"))
-        f2 = Field((1, "b"))
-
-        assert f1 != f2
-
-    def test_eq_tuple(self):
-        t = (1, "a")
-        f = Field(t)
-        assert t == f
-
-    def test_not_eq_tuple_length(self):
-        f = Field(1, "a")
-        t = (1, "a", "b")
-        assert f != t
+    def test_int_value(self):
+        assert Field(1, 2).value == 2
 
     def test_repr(self):
-        assert repr(Field((35, "k"))) == "(35, k)"
+        assert repr(Field(35, "k")) == "(35, k)"
 
     def test_str(self):
-        assert str(Field((35, "k"))) == "(MsgType, k)"
+        assert str(Field(35, "k")) == "(MsgType (35), k)"
 
     def test_str_unknown_tag(self):
-        assert str(Field((1234567890, "k"))) == "(1234567890, k)"
-
-    def test_tag_getter_int(self):
-        assert Field(1, "a").tag == 1
-
-    def test_tag_getter_str(self):
-        assert Field("1", "a").tag == 1
-
-    def test_tag_getter_byte(self):
-        assert Field("1", "a").tag == 1
-
-    def test_tag_setter_int(self):
-        f = Field(1, "a")
-        f.tag = 2
-        assert f.tag == 2
-
-    def test_tag_setter_byte(self):
-        f = Field(1, "a")
-        f.tag = b"2"
-        assert f.tag == 2
-
-    def test_tag_setter_str(self):
-        f = Field(1, "a")
-        f.tag = "2"
-        assert f.tag == 2
+        assert str(Field(1234567890, "k")) == "(1234567890, k)"
 
     def test_name_getter(self):
-        f = Field((35, "k"))
+        f = Field(35, "k")
         assert f.name == "MsgType"
 
     def test_name_getter_custom(self):
-        f = Field((1234567890, "k"))
+        f = Field(1234567890, "k")
         assert f.name == "Unknown"
 
-    def test_value_setter_not_str(self):
-        f = Field(1, "a")
-        f.value = b"b"
-        assert f.value == "b"
-
     def test_raw_getter(self):
-        f = Field((35, "k"))
+        f = Field(35, "k")
         assert f.raw == b"35=k" + common.SOH
-
-    def test_validate_tuple(self):
-        tag, value = Field.validate((1, "a"))
-        assert tag == 1
-        assert value == "a"
-
-    def test_validate_args(self):
-        tag, value = Field.validate(1, "a")
-        assert tag == 1
-        assert value == "a"
-
-    def test_validate_field(self):
-        tag, value = Field.validate(Field(1, "a"))
-        assert tag == 1
-        assert value == "a"
-
-    def test_validate_invalid(self):
-        with pytest.raises(InvalidField):
-            Field.validate("Not a tuple")  # Invalid
-
-        with pytest.raises(InvalidField):
-            Field.validate(1, "a", "b")  # Tuple too long

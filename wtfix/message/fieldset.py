@@ -2,12 +2,12 @@ import collections
 import itertools
 
 from .field import Field, GroupIdentifier
-from ..protocol.common import Tag, UnknownTag
+from ..protocol import common
 
 
 class _FieldSetException(Exception):
     """
-    Base class for exceptions related issues with the tags in a FieldSet.
+    Base class for exceptions that are related to issues with the tags in a FieldSet.
     """
     def __init__(self, tag, fieldset, message):
         self.tag = tag
@@ -36,69 +36,49 @@ class InvalidGroup(_FieldSetException):
         super().__init__(tag, fieldset, message)
 
 
-class FieldSet:
+class FieldSet(collections.OrderedDict):
     def __init__(self, *fields):
         """
         A FieldSet is a container for a one or more Fields.
 
         :param fields: List of Field or (tag, value) tuples.
         """
-        self._fields = self._parse_fields(fields)
+        super().__init__((field.tag, field) for field in self._parse_fields(fields))
 
     def __add__(self, other):
         """
-        Concatenate two FieldSets, add a Field to a Fieldset, or add a (tag, value) tuple to the FieldSet
+        Concatenate two FieldSets, add a Field to a Fieldset, or add a (tag, value) tuple to the FieldSet.
 
+        :param other: Another FieldSet, Field, (tag, value) tuple, or list of these.
         :return: A new FieldSet, which contains the concatenation of the FieldSet with other.
         """
-        if isinstance(other, self.__class__):
-            return self.__class__(*itertools.chain(self.fields, other.fields))
+        try:
+            return self.__class__(*itertools.chain(self.values(), other.values()))
+        except AttributeError:
+            # Other is not a valid Fieldset, explode list of fields to construct
+            if isinstance(other, tuple):
+                other = [other]
 
-        if type(other) is tuple or isinstance(other, Field):
-            return self.__class__(*self.fields, other)
-
-    def __eq__(self, other):
-        """
-        Compares this FieldSet with another FieldSet, or this FieldSet with a list of (tag, value) tuples,
-        to see if they are equivalent.
-
-        :param other: The object to compare this FieldSet to. Supported values include FieldSet or a list
-        of (tag, value) tuples.
-        :return: True if equivalent, False otherwise.
-        """
-        if type(other) is self.__class__:
-            return other._fields == self._fields
-        if isinstance(other, list):
-            return list(self.fields) == other
-
-    def __iter__(self):
-        return iter(self.fields)
-
-    def __getitem__(self, key):
-        """
-        Return the (tag, value) in key position.
-
-        :param key: position to be extracted.
-        :return: a Field consisting of the (key, value) pair if single position, or a new message object
-        if a range is given.
-        """
-        if type(key) is slice:
-            return self.__class__(*list(self.fields)[key])
-
-        return list(self.fields)[key]
+            fields = list(self.values()) + other
+            return self.__class__(*fields)
 
     def __len__(self):
         """
-        :return: Number of fields in message.
+        :return: Number of fields in this FieldSet, including all fields in repeating groups.
         """
         length = 0
-        for value in self._fields.values():
+        for field in self.values():
             length += 1
-            if isinstance(value, Group):
-                length += len(value)
-                length -= 1  # Deduct group identifier field already counted
+            if isinstance(field, Group):
+                length += len(field) - 1  # Deduct group identifier field already counted
 
         return length
+
+    def __getitem__(self, item):
+        try:
+            return super().__getitem__(item)
+        except KeyError:
+            raise TagNotFound(item, self)
 
     def __getattr__(self, name):
         """
@@ -112,14 +92,14 @@ class FieldSet:
         """
         try:
             # First, try to get the tag number associated with 'name'.
-            tag = Tag.get_tag(name)
+            tag = common.Tag.get_tag(name)
         except KeyError:
             # Not a known tag, abort
-            raise UnknownTag(name)
+            raise common.UnknownTag(name)
 
         try:
             # Then, see if a Field with that tag number is available in this FieldSet.
-            return self._fields[tag].value
+            return self[tag].value
         except KeyError:
             raise TagNotFound(tag, self, f"Tag {tag} not found in {self!r}. Perhaps you are looking"
                                          f"for a group tag? If so, use 'get_group' instead.")
@@ -129,7 +109,7 @@ class FieldSet:
         :return: ((tag_1, value_1), (tag_2, value_2))
         """
         fields_repr = ""
-        for field in self.fields:
+        for field in self.values():
             fields_repr += f"{repr(field)}, "
         else:
             fields_repr = fields_repr[:-2]
@@ -141,7 +121,7 @@ class FieldSet:
         :return: ((tag_name_1, value_1), (tag_name_2, value_2))
         """
         fields_str = ""
-        for field in self.fields:
+        for field in self.values():
             fields_str += f"{str(field)}, "
 
         else:
@@ -150,20 +130,12 @@ class FieldSet:
         return f"({fields_str})"
 
     @property
-    def fields(self):
-        """
-        Get all Fields that form part of this FieldSet
-        :return: A generator object for Fields.
-        """
-        return self._fields.values()
-
-    @property
     def raw(self):
         """
         :return: The FIX-compliant, raw binary string representation for this FieldSet.
         """
         buf = b""
-        for field in self.fields:
+        for field in self.values():
             buf += field.raw
 
         return buf
@@ -171,48 +143,28 @@ class FieldSet:
     @classmethod
     def _parse_fields(cls, fields):
         """
-        Turns fields into an ordered dictionary of Fields.
+        Creates a list of Fields from the provided (tag, value) pairs.
 
-        :param fields: The Fields, or (tag, value) pairs.
-        :return: An ordered dictionary of Fields for fields.
+        :param fields: Any combination of (tag, value) pairs or other Field objects.
+        :return: An list of Fields.
         :raises DuplicateTags if a Field for that tag already exists in the FieldSet.
         """
-        parsed_fields = collections.OrderedDict()
+        parsed_fields = []
 
         for field in fields:
             # For each field in the fieldset
-            if isinstance(field, Group):
-                # TODO: find a better way of dealing with this. Use singleentry?
-                parsed_fields[field.tag] = field
+            if isinstance(field, Field) or isinstance(field, Group):
+                # Add field as-is
+                parsed_fields.append(field)
                 continue
 
-            field = Field(field)  # Make sure that this is an actual, well-formed Field.
-
-            if field.tag in parsed_fields:
-                # Can't have repeating fields outside of a repeating group!
-                raise DuplicateTags(field.tag, fields)
-
-            parsed_fields[field.tag] = field
+            # Add new field
+            parsed_fields.append(Field(*field))  # Make sure that this is an actual, well-formed Field.
 
         return parsed_fields
 
-    def get(self, tag, default=None):
-        """
-        Get the value of the Field with tag number.
-
-        :param tag: tag number.
-        :param default: Value to be returned if tag is not found. Must be a binary string.
-        :return: The value of the Field in the FieldSet.
-        :raises TagNotFound: if not found and default not set.
-        """
-        try:
-            return self._fields[tag].value
-        except KeyError:
-            # Tag not found, apply default?
-            if default is None:
-                raise TagNotFound(tag, self)
-
-            return default
+    def get_field(self, item):
+        return
 
     def set_group(self, group):
         """
@@ -222,7 +174,7 @@ class FieldSet:
         :param group: a Group instance.
         :param group: a Group instance.
         """
-        self._fields[group.identifier.tag] = group
+        self[group.identifier.tag] = group
 
     def get_group(self, tag):
         """
@@ -233,7 +185,7 @@ class FieldSet:
         :raises InvalidGroup: if the Field at tag is not a Group instance.
         """
         try:
-            group = self._fields[tag]
+            group = self[tag]
         except KeyError:
             raise TagNotFound(tag, self)
 
@@ -258,13 +210,12 @@ class Group(collections.UserList):
     """
     def __init__(self, identifier, *fields):
         """
-
         :param identifier: A Field that identifies the repeating Group. The value of the 'identifier' Field
         indicates the number of times that GroupInstance repeats in this Group.
         :param fields: A GroupInstance or list of (tag, value) tuples.
         """
         super().__init__()
-        self.identifier = GroupIdentifier(identifier)
+        self.identifier = GroupIdentifier(*identifier)
 
         instance_length = len(fields) / self.size  # The number of fields in each group instance
 
@@ -287,7 +238,7 @@ class Group(collections.UserList):
 
     def __repr__(self):
         """
-        :return: (identifier_tag, b'num_instances'):((tag_1, value_1), (tag_2, value_2)), ((tag_1, value_1), (tag_2, value_2))
+        :return: (identifier tag, num instances):((tag_1, value_1), (tag_2, value_2)), ((tag_1, value_1), (tag_2, value_2))
         """
         group_instances_repr = ""
         for instance in self:
@@ -330,7 +281,7 @@ class Group(collections.UserList):
     @property
     def value(self):
         """
-        :return: The bytestring value of the identifier Field for this group.
+        :return: The value of the identifier Field for this group.
         """
         return self.identifier.value
 
@@ -339,4 +290,4 @@ class Group(collections.UserList):
         """
         :return: The number of GroupInstances in this group.
         """
-        return int(self.value)
+        return int(str(self.value))

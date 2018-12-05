@@ -9,6 +9,6 @@ def routing_id_group_pairs(routing_id_group):
     group = routing_id_group
     pairs = [(utils.encode(routing_id_group.tag), routing_id_group.value)]
     for instance in group:
-        pairs += [(utils.encode(tag), value) for tag, value in instance.fields]
+        pairs += [(utils.encode(tag), value) for tag, value in instance.values()]
 
     return pairs

@@ -1,3 +1,9 @@
+import numbers
+from builtins import tuple as _tuple
+import collections
+from collections import Sequence
+from distutils.util import strtobool
+
 from ..protocol import common, utils
 
 
@@ -5,71 +11,102 @@ class InvalidField(Exception):
     pass
 
 
-class Field:
+class FieldValue(Sequence):
     """
-    Convenience class for dealing with (tag, value) pairs in FieldSets and Messages.
-
-    Performs basic type validation to ensure that fields are well formed.
+    Used to store Field values (i.e. strings or bytes). Adds some convenience methods for making comparison
+    checks easier.
     """
-    UNKNOWN_TAG = "Unknown"
+    def __init__(self, value):
+        self.value = value
 
-    def __init__(self, *elements):
-        """
-        :param elements: Can be a (tag, value) tuple, another Field instance, or tag and value arguments.
-        NOTE: tags are always stored internally as integers.
-        """
-        self.tag, self.value = Field.validate(*elements)
+    def __getitem__(self, i: int):
+        return self.value[i]
 
-    def __iter__(self):
-        """
-        Iterator over (tag, value) pairs. Makes it possible for Fields to be handled just like a tuple.
-        :return: Iterator for the (tag, value) list.
-        """
-        return iter([self.tag, self.value])
+    def __len__(self) -> int:
+        return len(self.value)
 
     def __eq__(self, other):
         """
-        A Field can be compared to other Fields or to (tag, value) tuples.
+        Allows comparison against a wide range of other types.
 
-        :param other: A Field or (tag, value) tuple
-        :return: True if Fields are identical, or if the tuple being compared is equivalent to the Field's
-        (tag, value) pair.
+        :param other: The object to compare to.
+        :return: If other is a boolean: True values are 'y', 'yes', 't', 'true', 'on', and '1'; false values
+        are 'n', 'no', 'f', 'false', 'off', and '0'. If other is bytes: compares this FieldValue's decoded
+        value with other. If other is str: compares this FieldValues's encoded value with other. Does standard
+        comparison of this FieldValue's value against other in all other instances.
+        :raises ValueError: if comparison cannot be made.
         """
-        if isinstance(other, self.__class__):
-            return self.tag == other.tag and self.value == other.value
+        if isinstance(other, bool):
+            return strtobool(self.value) == other
 
-        if type(other) is tuple:
-            content = list(other)
-            return (
-                len(content) == 2  # Must be a (tag, value) tuple.
-                and content[0] == self.tag
-                and content[1] == self.value
-            )
+        if isinstance(other, bytes):
+            return utils.encode(self.value) == other
+
+        if isinstance(other, str) and not isinstance(self.value, str):
+            return str(self) == other
+
+        return self.value == other
+
+    def __str__(self):
+        """
+        :return: The decoded string representation of this FieldValue.
+        """
+        return str(utils.decode(self.value))
+
+    def __contains__(self, item):
+        return item in self.value
+
+    def __iter__(self):
+        return iter(self.value)
+
+    @property
+    def raw(self):
+        """
+        :return: The byte encoded value of this FieldValue
+        """
+        return utils.encode(self.value)
+
+
+class Field(collections.namedtuple("Field", ["tag", "value"])):
+    """
+    A FIX field implemented as a simple (tag, value) namedtuple for use in FieldSets and Messages.
+    """
+
+    UNKNOWN_TAG = "Unknown"
+
+    def __new__(_cls, tag: numbers.Integral, value):
+        """
+        Create new instance of Field(tag, value)
+
+        :param tag: The tag number of the Field. Must be an integer-like number.
+        :param value: The tag value.
+        :raises InvalidField if the tag is not an integer.
+        """
+        if not isinstance(tag, numbers.Integral):
+            # Tag is not an integer. We might be able to convert it to one if it is
+            # a str or bytes.
+            try:
+                tag = int(tag)
+            except ValueError:
+                raise InvalidField(f"Tag '{tag}' must be an integer.")
+
+        return _tuple.__new__(_cls, (tag, FieldValue(value)))
 
     def __repr__(self):
         """
-        :return: (tag_number, value)
+        :return: (tag number, value)
         """
         return f"({self.tag}, {self.value})"
 
     def __str__(self):
         """
-        :return: (tag_name, value) if the tag has been defined in one of the specifications,
+        :return: (tag name, value) if the tag has been defined in one of the specifications,
         (tag_number, value) otherwise.
         """
         if self.name == self.UNKNOWN_TAG:
             return f"({self.tag}, {self.value})"
 
-        return f"({self.name}, {self.value})"
-
-    @property
-    def tag(self):
-        return self._tag
-
-    @tag.setter
-    def tag(self, value):
-        """Ensures that tag values are always set as integers"""
-        self._tag = int(utils.decode(value))
+        return f"({self.name} ({self.tag}), {self.value})"
 
     @property
     def name(self):
@@ -82,42 +119,11 @@ class Field:
             return self.UNKNOWN_TAG
 
     @property
-    def value(self):
-        return self._value
-
-    @value.setter
-    def value(self, val):
-        """Ensures that field values are always set as strings"""
-        self._value = utils.decode(val)
-
-    @property
     def raw(self):
         """
         :return: The FIX-compliant, raw binary string representation for this Field.
         """
-        return utils.encode(self.tag) + b"=" + utils.encode(self.value) + common.SOH
-
-    @classmethod
-    def validate(cls, *elements):
-        """
-        Checks whether 'elements' can be used to form a valid Field.
-
-        :param elements: a tuple of (tag, value) or two tag, value arguments.
-        :return: the verified tag and value pair extracted from elements.
-        """
-        try:
-            tag_, value = list(*elements)
-        except (TypeError, ValueError):
-            # Not a tuple of (tag, value) pairs, try using arguments as-is
-            try:
-                tag_, value = elements
-            except ValueError:
-                raise InvalidField(
-                    "'{}' should either consist of a tag / value pair, or "
-                    "be a tuple of type (tag, value).".format(*elements)
-                )
-
-        return tag_, value
+        return utils.encode(self.tag) + b"=" + self.value.raw + common.SOH
 
 
 class GroupIdentifier(Field):
