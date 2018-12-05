@@ -16,6 +16,7 @@ class FieldValue(Sequence):
     Used to store Field values (i.e. strings or bytes). Adds some convenience methods for making comparison
     checks easier.
     """
+
     def __init__(self, value):
         self.value = value
 
@@ -130,4 +131,5 @@ class GroupIdentifier(Field):
     """
     A special type of Field that is used to identify repeating groups.
     """
+
     pass

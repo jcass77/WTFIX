@@ -9,7 +9,9 @@
 # superset defined by Microsoft that adds useful symbols like curly quotes and the euro symbol. Both cp1252 and
 # iso8859-1 are ASCII-compatible. If you want to enforce strict adherence to the FIX protocol, then set this to 'ascii'.
 ENCODING = "ascii"
-ENCODING_ERRORS = "strict"  # Valid options are 'strict', 'ignore', 'replace', and any other
+ENCODING_ERRORS = (
+    "strict"
+)  # Valid options are 'strict', 'ignore', 'replace', and any other
 SOH = b"\x01"  # Start of header / field delimiter
 SOH_BYTE = ord(SOH)
 

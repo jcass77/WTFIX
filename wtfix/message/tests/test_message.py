@@ -41,13 +41,13 @@ class TestGenericMessage:
 
         assert (
             m.raw
-            == b"8=FIX.4.4\x019=117\x0135=a\x012=bb\x01" +  # Header
-               b"539=2\x01" +  # Group identifier
-               b"524=a\x01525=aa\x01538=aaa\x01" +  # First group
-               b"804=2\x01545=c\x01805=cc\x01545=d\x01805=dd\x01" +  # First nested group
-               b"524=b\x01525=bb\x01538=bbb\x01" +  # Second group
-               b"804=2\x01545=e\x01805=ee\x01545=f\x01805=ff\x01" +  # Second nested group
-               b"10=219\x01"
+            == b"8=FIX.4.4\x019=117\x0135=a\x012=bb\x01"
+            + b"539=2\x01"  # Header
+            + b"524=a\x01525=aa\x01538=aaa\x01"  # Group identifier
+            + b"804=2\x01545=c\x01805=cc\x01545=d\x01805=dd\x01"  # First group
+            + b"524=b\x01525=bb\x01538=bbb\x01"  # First nested group
+            + b"804=2\x01545=e\x01805=ee\x01545=f\x01805=ff\x01"  # Second group
+            + b"10=219\x01"  # Second nested group
         )
 
     def test_validate(self, sdr_message):

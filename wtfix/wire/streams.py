@@ -18,6 +18,7 @@ class MessageParser:
     """
     Translates FIX application messages in raw (wire) format to GenericMessage instances.
     """
+
     def parse(self, data: bytes):
         # TODO: Cater for nested repeating groups
         """
@@ -34,18 +35,28 @@ class MessageParser:
         :param data: The raw FIX message (probably received from a FIX server via a StreamReader) as a string of bytes.
         """
         checksum_location = data.find(b"10=")
-        if checksum_location == -1 or (checksum_location != 0 and data[checksum_location-1] != common.SOH_BYTE):
+        if checksum_location == -1 or (
+            checksum_location != 0 and data[checksum_location - 1] != common.SOH_BYTE
+        ):
             # Checksum could not be found
-            raise ParsingError(f"Could not find Checksum (10) in: {utils.decode(data[:20])}...")
+            raise ParsingError(
+                f"Could not find Checksum (10) in: {utils.decode(data[:20])}..."
+            )
 
         # Discard fields that precede begin_string
         message_start = data.find(b"8=")
-        if message_start == -1 or (message_start != 0 and data[message_start-1] != common.SOH_BYTE):
+        if message_start == -1 or (
+            message_start != 0 and data[message_start - 1] != common.SOH_BYTE
+        ):
             # Beginning of Message could not be determined
-            raise ParsingError(f"Could not find BeginString (8) in: {utils.decode(data[:20])}...")
+            raise ParsingError(
+                f"Could not find BeginString (8) in: {utils.decode(data[:20])}..."
+            )
 
         if message_start > 0:
-            logger.debug(f"Discarding bytes that precede BeginString (8): {utils.decode(data[:message_start])}")
+            logger.debug(
+                f"Discarding bytes that precede BeginString (8): {utils.decode(data[:message_start])}"
+            )
             data = data[message_start:]
 
         fields = []

@@ -9,6 +9,7 @@ class _FieldSetException(Exception):
     """
     Base class for exceptions that are related to issues with the tags in a FieldSet.
     """
+
     def __init__(self, tag, fieldset, message):
         self.tag = tag
         self.fieldset = fieldset
@@ -70,7 +71,9 @@ class FieldSet(collections.OrderedDict):
         for field in self.values():
             length += 1
             if isinstance(field, Group):
-                length += len(field) - 1  # Deduct group identifier field already counted
+                length += (
+                    len(field) - 1
+                )  # Deduct group identifier field already counted
 
         return length
 
@@ -101,8 +104,12 @@ class FieldSet(collections.OrderedDict):
             # Then, see if a Field with that tag number is available in this FieldSet.
             return self[tag].value
         except KeyError:
-            raise TagNotFound(tag, self, f"Tag {tag} not found in {self!r}. Perhaps you are looking"
-                                         f"for a group tag? If so, use 'get_group' instead.")
+            raise TagNotFound(
+                tag,
+                self,
+                f"Tag {tag} not found in {self!r}. Perhaps you are looking"
+                f"for a group tag? If so, use 'get_group' instead.",
+            )
 
     def __repr__(self):
         """
@@ -159,7 +166,9 @@ class FieldSet(collections.OrderedDict):
                 continue
 
             # Add new field
-            parsed_fields.append(Field(*field))  # Make sure that this is an actual, well-formed Field.
+            parsed_fields.append(
+                Field(*field)
+            )  # Make sure that this is an actual, well-formed Field.
 
         return parsed_fields
 
@@ -201,6 +210,7 @@ class GroupInstance(FieldSet):
 
     All of the fields in the GroupInstance together form one 'instance'.
     """
+
     pass
 
 
@@ -208,6 +218,7 @@ class Group(collections.UserList):
     """
     A repeating group of GroupInstances that form the Group.
     """
+
     def __init__(self, identifier, *fields):
         """
         :param identifier: A Field that identifies the repeating Group. The value of the 'identifier' Field
@@ -217,16 +228,22 @@ class Group(collections.UserList):
         super().__init__()
         self.identifier = GroupIdentifier(*identifier)
 
-        instance_length = len(fields) / self.size  # The number of fields in each group instance
+        instance_length = (
+            len(fields) / self.size
+        )  # The number of fields in each group instance
 
         if not instance_length.is_integer():
             # Not enough fields to construct the required number of group instances
-            raise InvalidGroup(self.identifier.tag, fields, f"Not enough fields in {fields} to make {self.size} "
-                                                            f"instances that are each {instance_length} fields long.")
+            raise InvalidGroup(
+                self.identifier.tag,
+                fields,
+                f"Not enough fields in {fields} to make {self.size} "
+                f"instances that are each {instance_length} fields long.",
+            )
 
         instance_length = int(instance_length)
         for idx in range(0, len(fields), instance_length):  # Loop over group instances
-            self.append(GroupInstance(*fields[idx:idx + instance_length]))
+            self.append(GroupInstance(*fields[idx : idx + instance_length]))
 
     def __len__(self):
         length = 1  # Count identifier field

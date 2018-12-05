@@ -22,11 +22,13 @@ class TestMessageParser:
         with pytest.raises(ParsingError):
             m = GenericMessage((35, 7), (9, "a"))
             data = m.raw
-            data = data[:data.find(b"10=")]
+            data = data[: data.find(b"10=")]
             MessageParser().parse(data)
 
     def test_parse_ignores_leading_junk_pairs(self):
-        m = MessageParser().parse(b"1=2\x013=4\x018=FIX.4.4\x019=5\x0135=0\x0110=161\x01")
+        m = MessageParser().parse(
+            b"1=2\x013=4\x018=FIX.4.4\x019=5\x0135=0\x0110=161\x01"
+        )
 
         with pytest.raises(TagNotFound):
             assert m[1] is None

@@ -2,17 +2,10 @@ import pytest
 
 from ...protocol import common
 from ..field import Field
-from ..fieldset import (
-    DuplicateTags,
-    FieldSet,
-    Group,
-    TagNotFound,
-    InvalidGroup,
-)
+from ..fieldset import DuplicateTags, FieldSet, Group, TagNotFound, InvalidGroup
 
 
 class TestFieldSet:
-
     def test_add(self, fieldset_a_b):
         fs = fieldset_a_b + FieldSet((3, "ccc"), (4, "dddd"))
 
@@ -82,7 +75,9 @@ class TestFieldSet:
         assert str(fs) == "()"
 
         fs = FieldSet((34, "a"), (35, "bb"), (1, "ccc"))
-        assert str(fs) == "((MsgSeqNum (34), a), (MsgType (35), bb), (Account (1), ccc))"
+        assert (
+            str(fs) == "((MsgSeqNum (34), a), (MsgType (35), bb), (Account (1), ccc))"
+        )
 
     def test_raw(self, fieldset_a_b):
         assert fieldset_a_b.raw == b"1=a" + common.SOH + b"2=bb" + common.SOH
@@ -177,7 +172,7 @@ class TestGroup:
         assert (
             str(routing_id_group)
             == "(NoRoutingIDs (215), 2):((RoutingType (216), a), (RoutingID (217), b)), "
-               "((RoutingType (216), c), (RoutingID (217), d))"
+            "((RoutingType (216), c), (RoutingID (217), d))"
         )
 
     def test_raw(self, routing_id_group):

@@ -12,6 +12,7 @@ class GenericMessage(FieldSet):
 
     We think of FIX messages as lists of (tag, value) pairs, where tag is a number and value is a bytestring.
     """
+
     def __init__(self, *fields, begin_string=b"FIX.4.4"):
         """
         Constructor.
@@ -63,13 +64,26 @@ class GenericMessage(FieldSet):
 
         body = b""
         for field in self.values():
-            if field.tag in (8, 9, 35, 10):  # Standard header and trailer fields will be handled separately - ignore.
+            if field.tag in (
+                8,
+                9,
+                35,
+                10,
+            ):  # Standard header and trailer fields will be handled separately - ignore.
                 continue
             body += field.raw
 
-        header = b"8=" + utils.encode(self.begin_string) + common.SOH \
-                 + b"9=" + utils.encode(len(body)) + common.SOH \
-                 + b"35=" + utils.encode(self.type) + common.SOH
+        header = (
+            b"8="
+            + utils.encode(self.begin_string)
+            + common.SOH
+            + b"9="
+            + utils.encode(len(body))
+            + common.SOH
+            + b"35="
+            + utils.encode(self.type)
+            + common.SOH
+        )
 
         trailer = b"10=" + utils.encode(self._checksum(header + body)) + common.SOH
 
