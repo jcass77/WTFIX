@@ -1,11 +1,11 @@
 from functools import wraps
 
-from wtfix.middleware.core import BaseMiddleware, logger
+from wtfix.app.base import BaseApp, logger
 
 
 def on(message_type):
     """
-    Decorator to be used with a ByMessageTypeMiddleware to handle messages of a specific type.
+    Decorator to be used with a ByMessageTypeApp to handle messages of a specific type.
 
     Compares tag 35 of the message with message_type.
 
@@ -16,7 +16,7 @@ def on(message_type):
             return message # Pass the message on for further processing.
 
     :param message_type: The type of message to be processed.
-    :returna: decorator that can be used with a ByMessageTypeMiddleware method.
+    :returna: decorator that can be used with a ByMessageTypeApp method.
     """
     @wraps(message_type)
     def wrapper(f):
@@ -26,7 +26,7 @@ def on(message_type):
     return wrapper
 
 
-class ByMessageTypeMiddleware(BaseMiddleware):
+class ByMessageTypeApp(BaseApp):
     """
     Allows for the definition of 'on_' method handlers to process specific types of messages.
     """

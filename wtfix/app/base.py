@@ -1,18 +1,23 @@
 import logging
 
+from wtfix.core.exceptions import ValidationError
+
 logger = logging.getLogger(__name__)
 
 
-class BaseMiddleware:
+class BaseApp:
     """
     Performs some sort of processing on inbound and outbound messages.
     """
-    def __init__(self, name, *args, **kwargs):
+    name = None
+
+    def __init__(self, *args, **kwargs):
         """
-        :param name: A unique name that can be used to retrieve this middleware from the base
+        :param name: A unique name that can be used to retrieve this app from the base
         message handler.
         """
-        self.name = name
+        if self.name is None:
+            raise ValidationError(f"No name specified for app '{self.__class__.__name__}'.")
 
     def on_receive(self, message):
         """
@@ -43,7 +48,7 @@ class BaseMiddleware:
         return message
 
 
-# class BaseSessionMiddleware(BaseMiddleware):
+# class BaseSessionMiddleware(BaseApp):
 #     def __init__(self,
 #                  name,
 #                  sender=None,

@@ -1,46 +1,58 @@
 import logging
+import importlib
 from collections import OrderedDict
+
+from wtfix.conf import settings
 
 logger = logging.getLogger(__name__)
 
 
 class BaseHandler:
     """
-    Propagates inbound messages up and down the layers of configured message handling middleware instances.
+    Propagates inbound messages up and down the layers of configured message handling app instances.
     """
-    _middleware = OrderedDict()
+    _installed_apps = OrderedDict()
 
-    def load_middleware(self, middleware):
+    def load_apps(self, installed_apps=None):
         """
-        Loads the list of middleware to be used for processing messages.
-        :param middleware: A list of BaseMiddleware instances
+        Loads the list of apps to be used for processing messages.
+        :param installed_apps: The list of class paths for the installed apps.
         """
-        for mw in middleware:
-            self._middleware[mw.name] = mw
+        if installed_apps is None:
+            installed_apps = settings.INSTALLED_APPS
+
+        for app in installed_apps:
+            last_dot = app.rfind(".")
+            module = importlib.import_module(app[:last_dot])
+
+            class_ = getattr(module, app[last_dot+1:])
+            instance = class_()
+
+            self._installed_apps[instance.name] = instance
 
     def _process_message(self, message, inbound=True):
         """
-        Process a message by passing it on to the various middleware handlers.
+        Process a message by passing it on to the various app handlers.
         :param message: The GenericMessage instance to process
         :param inbound: True if this is an inbound message, False otherwise.
 
-        :return: The processed message or None if processing was halted somewhere in the middleware stack.
+        :return: The processed message or None if processing was halted somewhere in the app stack.
         """
-        middleware = self._middleware.values()
+        app_chain = self._installed_apps.values()
         if inbound is False:
             # Process top-down.
-            middleware = reversed(middleware)
+            app_chain = reversed(app_chain)
 
-        mw_iter = iter(middleware)
+        chain_iter = iter(app_chain)
         try:
             while message is not None:
-                mw = next(mw_iter)
+                app = next(chain_iter)
                 if inbound is True:
-                    message = mw.on_receive(message)
+                    message = app.on_receive(message)
                 else:
-                    message = mw.on_send(message)
+                    message = app.on_send(message)
 
-            logger.debug(f"Processing of message {message} stopped at '{mw.name}'.")
+            logger.debug(f"Processing of message {message} stopped at '{app.name}'.")
         except StopIteration:
             # Message propagated all the way to the top!
             logger.debug(f"Message {message} processed successfully!")

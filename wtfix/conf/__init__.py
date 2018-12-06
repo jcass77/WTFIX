@@ -15,8 +15,10 @@ ENVIRONMENT_VARIABLE = "SETTINGS_MODULE"
 
 class Settings:
     def __init__(self, settings_module=None):
+
         if settings_module is None:
             settings_module = os.environ.get(ENVIRONMENT_VARIABLE)
+
             if not settings_module:
                 raise ImproperlyConfigured(
                     f"Settings are not configured. You must either define the environment variable "
@@ -32,8 +34,9 @@ class Settings:
 
         mod = importlib.import_module(self.SETTINGS_MODULE)
 
-        tuple_settings = ("INSTALLED_APPS")
+        tuple_settings = "INSTALLED_APPS"
         self._explicit_settings = set()
+
         for setting in dir(mod):
             if setting.isupper():
                 setting_value = getattr(mod, setting)
@@ -42,7 +45,7 @@ class Settings:
                     setting_value, (list, tuple)
                 ):
                     raise ImproperlyConfigured(
-                        "The %s setting must be a list or a tuple. " % setting
+                        f"The {setting} setting must be a list or a tuple. "
                     )
                 setattr(self, setting, setting_value)
                 self._explicit_settings.add(setting)
@@ -52,5 +55,6 @@ class Settings:
             "cls": self.__class__.__name__,
             "settings_module": self.SETTINGS_MODULE,
         }
+
 
 settings = Settings()

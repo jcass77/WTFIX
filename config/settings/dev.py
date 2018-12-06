@@ -4,10 +4,10 @@ from .base import *  # noqa
 # ------------------------------------------------------------------------------
 DEBUG = True
 
-# MIDDLEWARE
+# APPS
 # ------------------------------------------------------------------------------
-# MIDDLEWARE += [
-#     "wtfix.wire.middleware.ByMessageTypeMiddleware",
+# INSTALLED_APPS += [
+#     "wtfix.wire.app.ByMessageTypeApp",
 # ]
 
 # SESSION

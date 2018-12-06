@@ -3,7 +3,7 @@ import logging
 import wtfix.conf.global_settings
 from ..message.fieldset import Group
 from ..message.field import Field
-from ..message.core import GenericMessage
+from ..message.message import GenericMessage
 from wtfix.core.exceptions import ValidationError
 from ..protocol import utils
 

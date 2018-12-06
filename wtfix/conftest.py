@@ -1,6 +1,6 @@
 import pytest
 
-from wtfix.message.core import GenericMessage
+from wtfix.message.message import GenericMessage
 from wtfix.message.fieldset import Group
 
 
