@@ -1,7 +1,8 @@
 import pytest
 
 from ..field import Field
-from ..message import GenericMessage, ValidationError
+from ..core import GenericMessage
+from wtfix.core.exceptions import ValidationError
 from ...protocol.common import MsgType
 
 

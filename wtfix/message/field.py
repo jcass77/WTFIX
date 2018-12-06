@@ -4,11 +4,10 @@ import collections
 from collections import Sequence
 from distutils.util import strtobool
 
+import wtfix.conf.global_settings
+import wtfix.core.exceptions
+from wtfix.core.exceptions import InvalidField
 from ..protocol import common, utils
-
-
-class InvalidField(Exception):
-    pass
 
 
 class FieldValue(Sequence):
@@ -119,7 +118,7 @@ class Field(collections.namedtuple("Field", ["tag", "value_ref"])):
         """
         try:
             return common.Tag.get_name(self.tag)
-        except common.UnknownTag:
+        except wtfix.core.exceptions.UnknownTag:
             return self.UNKNOWN_TAG
 
     @property
@@ -127,4 +126,4 @@ class Field(collections.namedtuple("Field", ["tag", "value_ref"])):
         """
         :return: The FIX-compliant, raw binary string representation for this Field.
         """
-        return utils.encode(self.tag) + b"=" + self.value_ref.raw + common.SOH
+        return utils.encode(self.tag) + b"=" + self.value_ref.raw + wtfix.conf.global_settings.SOH

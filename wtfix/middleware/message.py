@@ -1,47 +1,6 @@
-import logging
 from functools import wraps
 
-logger = logging.getLogger(__name__)
-
-
-class BaseMiddleware:
-    """
-    Performs some sort of processing on inbound and outbound messages.
-    """
-    def __init__(self, name):
-        """
-        :param name: A unique name that can be used to retrieve this middleware from the base
-        message handler.
-        """
-        self.name = name
-
-    def on_receive(self, message):
-        """
-        Override this method in order to define what to do when a message is received.
-
-        :param message: Received message.
-        :return: a processed message or None if message should not be processed any further.
-        """
-        return message
-
-    def on_resend(self, message):
-        """
-        Override this message in order to define what to do when a message was not received successfully
-        by the counter party.
-
-        :param message: Message that was not received.
-        :return: a processed message or None if message should not be processed any further.
-        """
-        return message
-
-    def on_send(self, message):
-        """
-        Override this method in order to define what to do with a message needs to be transmitted.
-
-        :param message: Message to be sent.
-        :return: a processed message or None if message should not be processed any further.
-        """
-        return message
+from wtfix.middleware.core import BaseMiddleware, logger
 
 
 def on(message_type):

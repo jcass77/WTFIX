@@ -1,9 +1,11 @@
 import logging
 
+import wtfix.conf.global_settings
 from ..message.fieldset import Group
 from ..message.field import Field
-from ..message.message import GenericMessage, ValidationError
-from ..protocol import common, utils
+from ..message.core import GenericMessage
+from wtfix.core.exceptions import ValidationError
+from ..protocol import utils
 
 
 logger = logging.getLogger(__name__)
@@ -23,6 +25,7 @@ class MessageParser:
     def __init__(self):
         self._group_templates = {}
 
+    # TODO: Refactor this method into smaller units.
     def _parse_fields(self, raw_pairs, group_index=None):
         """
         Parses the raw list of field pairs recursively into Field instances.
@@ -118,7 +121,7 @@ class MessageParser:
         """
         checksum_location = data.find(b"10=")
         if checksum_location == -1 or (
-            checksum_location != 0 and data[checksum_location - 1] != common.SOH_BYTE
+                checksum_location != 0 and data[checksum_location - 1] != wtfix.conf.global_settings.SOH_BYTE
         ):
             # Checksum could not be found
             raise ParsingError(
@@ -128,7 +131,7 @@ class MessageParser:
         # Discard fields that precede begin_string
         message_start = data.find(b"8=")
         if message_start == -1 or (
-            message_start != 0 and data[message_start - 1] != common.SOH_BYTE
+                message_start != 0 and data[message_start - 1] != wtfix.conf.global_settings.SOH_BYTE
         ):
             # Beginning of Message could not be determined
             raise ParsingError(
@@ -141,7 +144,7 @@ class MessageParser:
             )
             data = data[message_start:]
 
-        data = data.rstrip(common.SOH).split(common.SOH)  # Remove last SOH at end of byte stream and split into fields
+        data = data.rstrip(wtfix.conf.global_settings.SOH).split(wtfix.conf.global_settings.SOH)  # Remove last SOH at end of byte stream and split into fields
         fields = self._parse_fields(data)
 
         return GenericMessage(*fields)

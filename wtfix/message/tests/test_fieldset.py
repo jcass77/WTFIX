@@ -1,8 +1,11 @@
 import pytest
 
+import wtfix.conf.global_settings
+import wtfix.core.exceptions
 from ...protocol import common
 from ..field import Field
-from ..fieldset import DuplicateTags, FieldSet, Group, TagNotFound, InvalidGroup
+from ..fieldset import FieldSet, Group
+from wtfix.core.exceptions import TagNotFound, DuplicateTags, InvalidGroup
 
 
 class TestFieldSet:
@@ -55,7 +58,7 @@ class TestFieldSet:
         assert fieldset_a_b.Account == "a"
 
     def test_getattr_unknown(self):
-        with pytest.raises(common.UnknownTag):
+        with pytest.raises(wtfix.core.exceptions.UnknownTag):
             fs = FieldSet((1, "a"))
             fs.TEST_TAG
 
@@ -80,7 +83,7 @@ class TestFieldSet:
         )
 
     def test_raw(self, fieldset_a_b):
-        assert fieldset_a_b.raw == b"1=a" + common.SOH + b"2=bb" + common.SOH
+        assert fieldset_a_b.raw == b"1=a" + wtfix.conf.global_settings.SOH + b"2=bb" + wtfix.conf.global_settings.SOH
 
     def test_parse_fields_tuple(self):
         fs = FieldSet((1, "a"), (2, "b"))

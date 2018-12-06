@@ -1,8 +1,8 @@
 import pytest
 
 from ...message.field import Field
-from ...message.fieldset import TagNotFound
-from ...message.message import GenericMessage, ValidationError
+from ...message.core import GenericMessage
+from wtfix.core.exceptions import ValidationError, TagNotFound
 from ..streams import MessageParser, ParsingError
 
 

@@ -1,40 +1,10 @@
 import collections
 import itertools
 
+import wtfix.core.exceptions
+from wtfix.core.exceptions import TagNotFound, InvalidGroup
 from .field import Field
 from ..protocol import common
-
-
-class _FieldSetException(Exception):
-    """
-    Base class for exceptions that are related to issues with the tags in a FieldSet.
-    """
-
-    def __init__(self, tag, fieldset, message):
-        self.tag = tag
-        self.fieldset = fieldset
-        super().__init__(tag, fieldset, message)
-
-
-class TagNotFound(_FieldSetException):
-    def __init__(self, tag, fieldset, message=None):
-        if message is None:
-            message = f"Tag {tag} not found in {fieldset!r}."
-        super().__init__(tag, fieldset, message)
-
-
-class DuplicateTags(_FieldSetException):
-    def __init__(self, tag, fieldset, message=None):
-        if message is None:
-            message = f"Tag {tag} repeated in {fieldset!r}."
-        super().__init__(tag, fieldset, message)
-
-
-class InvalidGroup(_FieldSetException):
-    def __init__(self, tag, fieldset, message=None):
-        if message is None:
-            message = f"{tag} is not a group tag in {fieldset!r}."
-        super().__init__(tag, fieldset, message)
 
 
 class FieldSet(collections.OrderedDict):
@@ -98,7 +68,7 @@ class FieldSet(collections.OrderedDict):
             tag = common.Tag.get_tag(name)
         except KeyError:
             # Not a known tag, abort
-            raise common.UnknownTag(name)
+            raise wtfix.core.exceptions.UnknownTag(name)
 
         try:
             # Then, see if a Field with that tag number is available in this FieldSet.

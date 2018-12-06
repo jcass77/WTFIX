@@ -1,33 +1,11 @@
 # Constants related to the FIX protocol.
 # TODO: Divide into different FIX versions?
-
-# The FIX standard relies on ASCII encoding. Well-behaving FIX counter parties should use the 'Encoded' range of
-# fields for providing non-ASCII data, and specify the exact encoding in the MessageEncoding (347) field.
-
-# Using cp1252 (a.k.a ANSI) here might be the most forgiving option while still ensuring that (a) the encoding is
-# ASCII-compatible and (b) code points will always be encoded into a single byte. cp1252 is latin-1 (a.k.a. iso8859-1)
-# superset defined by Microsoft that adds useful symbols like curly quotes and the euro symbol. Both cp1252 and
-# iso8859-1 are ASCII-compatible. If you want to enforce strict adherence to the FIX protocol, then set this to 'ascii'.
-ENCODING = "ascii"
-ENCODING_ERRORS = (
-    "strict"
-)  # Valid options are 'strict', 'ignore', 'replace', and any other
-SOH = b"\x01"  # Start of header / field delimiter
-SOH_BYTE = ord(SOH)
+from wtfix.core.exceptions import UnknownType, UnknownTag
 
 
 class Side(object):
     Buy = "1"
     Sell = "2"
-
-
-class UnknownType(Exception):
-    def __init__(self, type_):
-        self.type_ = type_
-
-        super().__init__(
-            f"Type '{type_}' not found in any of the supported FIX specifications."
-        )
 
 
 class MsgType(object):
@@ -179,15 +157,6 @@ class MsgType(object):
 
 TYPE2NAME = {v: k for k, v in MsgType.__dict__.items() if "_" != k[0]}
 NAME2TYPE = MsgType.__dict__
-
-
-class UnknownTag(Exception):
-    def __init__(self, tag):
-        self.tag = tag
-
-        super().__init__(
-            f"Tag '{tag}' not found in any of the supported FIX specifications."
-        )
 
 
 class Tag:

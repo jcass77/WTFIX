@@ -1,0 +1,2 @@
+# https://github.com/theskumar/python-dotenv
+python-dotenv==0.9.1

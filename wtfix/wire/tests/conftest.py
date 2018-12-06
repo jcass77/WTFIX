@@ -1,6 +1,6 @@
 import pytest
 
-from ..middleware import BaseMiddleware
+from wtfix.middleware.core import BaseMiddleware
 from ...protocol import utils
 
 

@@ -1,7 +1,7 @@
 from collections import Counter
 
-from ...message.message import GenericMessage
-from ..middleware import ByMessageTypeMiddleware, on
+from wtfix.message.core import GenericMessage
+from wtfix.middleware.message import ByMessageTypeMiddleware, on
 
 
 class MockMiddleware(ByMessageTypeMiddleware):

@@ -1,9 +1,7 @@
+import wtfix.conf.global_settings
+from wtfix.core.exceptions import ValidationError, TagNotFound
 from ..protocol import common, utils
-from .fieldset import FieldSet, TagNotFound
-
-
-class ValidationError(Exception):
-    pass
+from .fieldset import FieldSet
 
 
 class GenericMessage(FieldSet):
@@ -76,16 +74,16 @@ class GenericMessage(FieldSet):
         header = (
             b"8="
             + utils.encode(self.begin_string)
-            + common.SOH
+            + wtfix.conf.global_settings.SOH
             + b"9="
             + utils.encode(len(body))
-            + common.SOH
+            + wtfix.conf.global_settings.SOH
             + b"35="
             + utils.encode(self.type)
-            + common.SOH
+            + wtfix.conf.global_settings.SOH
         )
 
-        trailer = b"10=" + utils.encode(self._checksum(header + body)) + common.SOH
+        trailer = b"10=" + utils.encode(self._checksum(header + body)) + wtfix.conf.global_settings.SOH
 
         return header + body + trailer
 

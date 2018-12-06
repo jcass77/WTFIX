@@ -1,6 +1,7 @@
 import pytest
 
-from ..common import MsgType, UnknownType, Tag, UnknownTag
+from ..common import MsgType, Tag
+from wtfix.core.exceptions import UnknownType, UnknownTag
 
 
 class TestMsgType:
