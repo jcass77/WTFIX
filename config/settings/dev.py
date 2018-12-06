@@ -1,13 +1,16 @@
+import logging
+
 from .base import *  # noqa
 
 # GENERAL
 # ------------------------------------------------------------------------------
 DEBUG = True
+LOGGING_LEVEL = logging.DEBUG
 
 # APPS
 # ------------------------------------------------------------------------------
 # INSTALLED_APPS += [
-#     "wtfix.wire.app.ByMessageTypeApp",
+#     "wtfix.wire.apps.MessageTypeFilterApp",
 # ]
 
 # SESSION
@@ -21,5 +24,5 @@ TARGET_COMP_ID = "market_data"
 BEGIN_STRING = "FIX.4.4"
 HEARTBEAT_TIME = 30
 
-USERNAME = os.getenv("USERNAME")
+USERNAME = os.getenv("USERNAME", SENDER_COMP_ID)
 PASSWORD = os.getenv("PASSWORD")

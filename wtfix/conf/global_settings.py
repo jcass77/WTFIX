@@ -6,6 +6,7 @@ by the SETTINGS_MODULE environment variable.
 ####################
 # CORE             #
 ####################
+import logging
 
 DEBUG = False
 
@@ -40,3 +41,5 @@ INSTALLED_APPS = []
 
 # Default formatting for datetime objects.
 DATETIME_FORMAT = "%Y%m%d-%H:%M:%S.%f"
+
+LOGGING_LEVEL = logging.INFO

@@ -47,11 +47,34 @@ class FieldSet(collections.OrderedDict):
 
         return length
 
-    def __getitem__(self, item):
+    def __getitem__(self, tag):
+        """
+        Tries to retrieve a Field with the given tag number from this FieldSet.
+
+        Translates 'KeyErrors' into 'TagNotFound' errors.
+
+        :param tag: The tag number of the Field to look up.
+        :return: A Field object.
+        :raises: TagNotFound if a Field with the specified tag number could not be found.
+        """
         try:
-            return super().__getitem__(item)
+            return super().__getitem__(tag)
         except KeyError:
-            raise TagNotFound(item, self)
+            raise TagNotFound(tag, self)
+
+    def __setitem__(self, tag, value):
+        """
+        Sets a Field in the FieldSet with the specified tag number and value..
+
+        :param tag: The tag number to set in the FieldSet.
+        :param value: The value of the Field.
+        :return:
+        """
+        if not (isinstance(value, Field) or isinstance(value, Group)):
+            # Create a new Field if value is not a Field or Group already.
+            value = Field(tag, value)
+
+        return super().__setitem__(tag, value)
 
     def __getattr__(self, name):
         """
@@ -124,7 +147,6 @@ class FieldSet(collections.OrderedDict):
 
         :param fields: Any combination of (tag, value) pairs or other Field objects.
         :return: An list of Fields.
-        :raises DuplicateTags if a Field for that tag already exists in the FieldSet.
         """
         parsed_fields = []
 

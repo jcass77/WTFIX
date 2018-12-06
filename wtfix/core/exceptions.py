@@ -9,7 +9,19 @@ class ImproperlyConfigured(Exception):
     pass
 
 
+class ParsingError(Exception):
+    pass
+
+
 class ValidationError(Exception):
+    pass
+
+
+class MessageProcessingError(Exception):
+    pass
+
+
+class StopMessageProcessing(Exception):
     pass
 
 

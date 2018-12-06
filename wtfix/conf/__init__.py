@@ -10,6 +10,10 @@ import os
 from . import global_settings
 from ..core.exceptions import ImproperlyConfigured
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 ENVIRONMENT_VARIABLE = "SETTINGS_MODULE"
 
 

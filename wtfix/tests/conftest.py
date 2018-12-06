@@ -1,7 +1,8 @@
 import pytest
 
-from wtfix.app.base import BaseApp
-from ...protocol import utils
+from wtfix.apps.base import BaseApp
+from wtfix.core.exceptions import StopMessageProcessing
+from wtfix.protocol import utils
 
 
 @pytest.fixture(scope="session")
@@ -39,10 +40,10 @@ class MiddleStop(BaseApp):
     name = "middle_stop"
 
     def on_receive(self, message):
-        return None
+        raise StopMessageProcessing()
 
     def on_send(self, message):
-        return None
+        raise StopMessageProcessing()
 
 
 class Top(BaseApp):
@@ -58,16 +59,16 @@ class Top(BaseApp):
 @pytest.fixture(scope="session")
 def three_level_app_chain():
     return [
-        "wtfix.wire.tests.conftest.Below",
-        "wtfix.wire.tests.conftest.Middle",
-        "wtfix.wire.tests.conftest.Top",
+        "wtfix.tests.conftest.Below",
+        "wtfix.tests.conftest.Middle",
+        "wtfix.tests.conftest.Top",
     ]
 
 
 @pytest.fixture(scope="session")
 def three_level_stop_app_chain():
     return [
-        "wtfix.wire.tests.conftest.Below",
-        "wtfix.wire.tests.conftest.MiddleStop",
-        "wtfix.wire.tests.conftest.Top",
+        "wtfix.tests.conftest.Below",
+        "wtfix.tests.conftest.MiddleStop",
+        "wtfix.tests.conftest.Top",
     ]

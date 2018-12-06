@@ -47,6 +47,12 @@ class TestFieldSet:
 
         assert len(fs) == 19
 
+    def test_setitem(self, fieldset_a_b):
+        fs = FieldSet((1, "a"), (2, "b"))
+
+        fs[3] = "c"
+        assert fs[3] == "c"
+
     def test_getitem(self, fieldset_a_b):
         assert fieldset_a_b[1] == "a"
 

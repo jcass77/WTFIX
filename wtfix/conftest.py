@@ -3,6 +3,13 @@ import pytest
 from wtfix.message.message import GenericMessage
 from wtfix.message.fieldset import Group
 
+from pytest_socket import disable_socket
+
+
+# https://github.com/miketheman/pytest-socket#usage
+def pytest_runtest_setup():
+    disable_socket()
+
 
 @pytest.fixture(scope="session")
 def routing_id_group():

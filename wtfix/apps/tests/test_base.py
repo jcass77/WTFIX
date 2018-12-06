@@ -1,10 +1,13 @@
+from unittest import mock
+
 import pytest
 
-from wtfix.app.base import BaseApp
+from wtfix.apps.base import BaseApp
 from wtfix.core.exceptions import ValidationError
+from wtfix.pipeline import BasePipeline
 
 
 class TestBaseApp:
     def test_check_name(self):
         with pytest.raises(ValidationError):
-            BaseApp()
+            BaseApp(mock.MagicMock(BasePipeline))

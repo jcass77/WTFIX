@@ -21,5 +21,5 @@ USE_TZ = True
 # APPS
 # ------------------------------------------------------------------------------
 INSTALLED_APPS = [
-    "wtfix.wire.app.ByMessageTypeApp",
+    "wtfix.apps.sessions.ClientSessionApp",
 ]

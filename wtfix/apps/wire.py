@@ -1,29 +1,104 @@
 import logging
+from datetime import datetime
 
-import wtfix.conf.global_settings
-from ..message.fieldset import Group
-from ..message.field import Field
-from ..message.message import GenericMessage
-from wtfix.core.exceptions import ValidationError
-from ..protocol import utils
-
+from wtfix.apps.base import BaseApp
+from wtfix.conf import global_settings, settings
+from wtfix.core.exceptions import ParsingError, ValidationError
+from wtfix.message.field import Field
+from wtfix.message.fieldset import Group
+from wtfix.message.message import GenericMessage
+from wtfix.protocol import utils
 
 logger = logging.getLogger(__name__)
 
 
-class ParsingError(Exception):
-    pass
+class EncoderApp(BaseApp):
+    """
+    This app can be used to encode a message, and generate its header tags, right before it is transmitted.
+    """
+    name = "encoder_app"
+
+    # These tags will all be generated dynamically as part of the encoding process.
+    HEADER_TAGS = {8, 9, 35, 34, 49, 56, 52, 43, 128}
+
+    def __init__(self, handler, *args, **kwargs):
+        super().__init__(handler, *args, **kwargs)
+        self.cur_seq_num = 1
+
+    def on_send(self, message):
+        m = self.encode_message(message)
+        self.cur_seq_num += 1
+
+        return m
+
+    def encode_message(self, message):
+        """
+        :param message: The message to encode.
+
+        :return: The FIX-compliant, raw binary string representation for this message with freshly
+        generated header tags.
+        """
+        message.validate()  # Make sure the message is valid before attempting to encode.
+
+        body = b""
+        for field in message.values():
+            if field.tag in self.HEADER_TAGS:  # These tags will be generated - ignore.
+                continue
+            body += field.raw
+
+        header = (
+            b"8="
+            + utils.encode(message.begin_string)
+            + global_settings.SOH
+            + b"9="
+            + utils.encode(len(body))
+            + global_settings.SOH
+            + b"35="
+            + utils.encode(message.type)
+            + global_settings.SOH
+            + b"34="
+            + utils.encode(self.cur_seq_num)
+            + global_settings.SOH
+            + b"49="
+            + utils.encode(message.sender_id)
+            + global_settings.SOH
+            + b"56="
+            + utils.encode(message.target_id)
+            + global_settings.SOH
+            + b"52="
+            + utils.encode(datetime.utcnow().strftime(settings.DATETIME_FORMAT)[:-3])
+            + global_settings.SOH
+        )
+
+        trailer = b"10=" + utils.encode(f"{self._checksum(header + body):03}") + global_settings.SOH
+
+        return header + body + trailer
+
+    @staticmethod
+    def _checksum(*fields):
+        """
+        Calculates the checksum for a type of (tag, value) bytes.
+        :param fields: A tuple of bytes representing the raw header and body for a message.
+        :return: The checksum for the fields.
+        """
+        return sum(sum(byte for byte in iter(field)) for field in fields) % 256
 
 
-class MessageParser:
+class DecoderApp(BaseApp):
     # TODO: Add support for raw data?
     # See: https://github.com/da4089/simplefix/blob/88613f798b300757380ef0b3f332c6d3df2b712b/simplefix/parser.py)
     """
-    Translates FIX application messages in raw (wire) format to GenericMessage instances.
+    Translates a FIX application messages in raw (wire) format into a GenericMessage instance.
     """
 
-    def __init__(self):
+    name = "decoder_app"
+
+    def __init__(self, handler, *args, **kwargs):
+        super().__init__(handler, *args, **kwargs)
         self._group_templates = {}
+
+    def on_receive(self, data: bytes):
+        return self.decode_message(data)
 
     # TODO: Refactor this method into smaller units.
     def _parse_fields(self, raw_pairs, group_index=None):
@@ -91,7 +166,8 @@ class MessageParser:
 
     def add_group_template(self, identifier_tag, *args):
         if len(args) == 0:
-            raise ValidationError(f"At least one group instance tag needs to be defined for group {identifier_tag}.")
+            raise ValidationError(
+                f"At least one group instance tag needs to be defined for group {identifier_tag}.")
 
         self._group_templates[identifier_tag] = args
 
@@ -105,7 +181,7 @@ class MessageParser:
         for template in self._group_templates.values():
             return tag in template
 
-    def parse(self, data: bytes):
+    def decode_message(self, data):
         """
         Constructs a GenericMessage from the provided data.
 
@@ -121,7 +197,7 @@ class MessageParser:
         """
         checksum_location = data.find(b"10=")
         if checksum_location == -1 or (
-                checksum_location != 0 and data[checksum_location - 1] != wtfix.conf.global_settings.SOH_BYTE
+                checksum_location != 0 and data[checksum_location - 1] != global_settings.SOH_BYTE
         ):
             # Checksum could not be found
             raise ParsingError(
@@ -131,7 +207,7 @@ class MessageParser:
         # Discard fields that precede begin_string
         message_start = data.find(b"8=")
         if message_start == -1 or (
-                message_start != 0 and data[message_start - 1] != wtfix.conf.global_settings.SOH_BYTE
+                message_start != 0 and data[message_start - 1] != global_settings.SOH_BYTE
         ):
             # Beginning of Message could not be determined
             raise ParsingError(
@@ -144,7 +220,8 @@ class MessageParser:
             )
             data = data[message_start:]
 
-        data = data.rstrip(wtfix.conf.global_settings.SOH).split(wtfix.conf.global_settings.SOH)  # Remove last SOH at end of byte stream and split into fields
+        data = data.rstrip(global_settings.SOH).split(
+            global_settings.SOH)  # Remove last SOH at end of byte stream and split into fields
         fields = self._parse_fields(data)
 
         return GenericMessage(*fields)

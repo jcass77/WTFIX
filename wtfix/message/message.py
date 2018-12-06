@@ -1,6 +1,6 @@
-import wtfix.conf.global_settings
+from wtfix.conf import settings
 from wtfix.core.exceptions import ValidationError, TagNotFound
-from ..protocol import common, utils
+from wtfix.protocol.common import Tag, MsgType
 from .fieldset import FieldSet
 
 
@@ -28,7 +28,7 @@ class GenericMessage(FieldSet):
         The type of this Message, as denoted by tag 35.
         :return: Value of tag 35.
         """
-        return str(self[common.Tag.MsgType].value_ref)
+        return str(self[Tag.MsgType].value_ref)
 
     @property
     def name(self):
@@ -36,7 +36,7 @@ class GenericMessage(FieldSet):
         Human friendly name of this type of Message, based on tag 35.
         :return:
         """
-        return common.MsgType.get_name(self.type)
+        return MsgType.get_name(self.type)
 
     @property
     def seq_num(self):
@@ -45,47 +45,31 @@ class GenericMessage(FieldSet):
         """
         return int(self.MsgSeqNum.value)
 
+    @seq_num.setter
+    def seq_num(self, value):
+        self[Tag.MsgSeqNum] = value
+
     @property
     def sender_id(self):
-        return self.SenderCompID.value
+        try:
+            return self.SenderCompID.value
+        except TagNotFound:
+            return settings.SENDER_COMP_ID
+
+    @sender_id.setter
+    def sender_id(self, value):
+        self[Tag.SenderCompID] = value
 
     @property
     def target_id(self):
-        return self.TargetCompID.value
+        try:
+            return self.TargetCompID.value
+        except TagNotFound:
+            return settings.TARGET_COMP_ID
 
-    @property
-    def raw(self):
-        """
-        :return: The FIX-compliant, raw binary string representation for this message.
-        """
-        self.validate()  # Make sure the message is valid before attempting to encode.
-
-        body = b""
-        for field in self.values():
-            if field.tag in (
-                8,
-                9,
-                35,
-                10,
-            ):  # Standard header and trailer fields will be handled separately - ignore.
-                continue
-            body += field.raw
-
-        header = (
-            b"8="
-            + utils.encode(self.begin_string)
-            + wtfix.conf.global_settings.SOH
-            + b"9="
-            + utils.encode(len(body))
-            + wtfix.conf.global_settings.SOH
-            + b"35="
-            + utils.encode(self.type)
-            + wtfix.conf.global_settings.SOH
-        )
-
-        trailer = b"10=" + utils.encode(self._checksum(header + body)) + wtfix.conf.global_settings.SOH
-
-        return header + body + trailer
+    @target_id.setter
+    def target_id(self, value):
+        self[Tag.TargetCompID] = value
 
     def validate(self, begin_string=False, length=False, checksum=False):
         """
@@ -95,12 +79,8 @@ class GenericMessage(FieldSet):
         :raises: ValidationError if the message is not valid.
         """
         try:
-            self[common.Tag.MsgType]
+            self[Tag.MsgType]
         except TagNotFound:
             raise ValidationError(f"No 'MsgType (35)' specified for {self}.")
 
         return self
-
-    @staticmethod
-    def _checksum(*args):
-        return sum(sum(byte for byte in iter(field)) for field in args) % 256

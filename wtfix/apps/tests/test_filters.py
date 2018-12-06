@@ -1,10 +1,10 @@
 from collections import Counter
 
 from wtfix.message.message import GenericMessage
-from wtfix.app.message import ByMessageTypeApp, on
+from wtfix.apps.filters import MessageTypeFilterApp, on
 
 
-class MockApp(ByMessageTypeApp):
+class MockApp(MessageTypeFilterApp):
     name = "mock_app"
 
     def __init__(self, name, *args, **kwargs):
@@ -20,7 +20,7 @@ class MockApp(ByMessageTypeApp):
         self.counter["unhandled"] += 1
 
 
-class TestByMessageTypeApp:
+class TestMessageTypeFilterApp:
     def test_on_receive_handler(self):
 
         app = MockApp("mock_app")
