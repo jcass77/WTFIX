@@ -1,5 +1,6 @@
 import pytest
 
+from wtfix.protocol.common import MsgType
 from wtfix.message.message import GenericMessage
 from wtfix.message.fieldset import Group
 
@@ -46,7 +47,7 @@ def nested_parties_group():
 def logon_message():
     """Sample logon message"""
     return GenericMessage(
-        (35, "A"),
+        (35, MsgType.Logon),
         (34, "1"),
         (49, "SENDER"),
         (52, "20181206-10:24:27.018"),
@@ -63,7 +64,7 @@ def logon_message():
 def sdr_message():
     """Sample of a security definition request message"""
     return GenericMessage(
-        (35, "c"),  # MsgType: SecurityDefinitionRequest
+        (35, MsgType.SecurityDefinitionRequest),
         (34, "1"),  # MsgSeqNum: 1
         (49, "SENDER"),  # SenderCompID
         (52, "20181127-11:33:31.505"),  # SendingTime

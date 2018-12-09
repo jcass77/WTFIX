@@ -26,6 +26,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
         self._heartbeat = None
         self._last_receive = None
         self._test_request_id = None  # A waiting TestRequest message for which no response has been received.
+        self._test_request_response_delay = None
 
         super().__init__(pipeline, *args, **kwargs)
 
@@ -56,6 +57,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
         :param heartbeat: The heartbeat interval in seconds.
         """
         self._heartbeat = heartbeat
+        self._test_request_response_delay = 2 * self._heartbeat + 4
 
         connection_is_active = True
         logger.info(f"{self.name}: Starting heartbeat monitor...")
@@ -100,7 +102,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
         self.pipeline.send(admin.TestRequest(utils.encode(self._test_request_id)))
 
         # Sleep while we wait for a response on the test request
-        await asyncio.sleep(2 * self._heartbeat + 4)
+        await asyncio.sleep(self._test_request_response_delay)
 
         if self.is_waiting():
             # No response received, force logout!

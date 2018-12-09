@@ -1,7 +1,7 @@
 import collections
 import itertools
 
-from wtfix.core.exceptions import TagNotFound, InvalidGroup, UnknownTag
+from wtfix.core.exceptions import TagNotFound, InvalidGroup, UnknownTag, DuplicateTags
 from .field import Field
 from ..protocol import common
 
@@ -148,18 +148,27 @@ class FieldSet(collections.OrderedDict):
         :return: An list of Fields.
         """
         parsed_fields = []
+        tags_seen = set()
 
         for field in fields:
             # For each field in the fieldset
             if isinstance(field, Field) or isinstance(field, Group):
                 # Add field as-is
+                if field.tag in tags_seen:
+                    raise DuplicateTags(field.tag, *fields)
+
                 parsed_fields.append(field)
+                tags_seen.add(field.tag)
                 continue
 
             # Add new field
+            if field[0] in tags_seen:
+                raise DuplicateTags(field[0], fields)
+
             parsed_fields.append(
                 Field(*field)  # Make sure that this is an actual, well-formed Field.
             )
+            tags_seen.add(field[0])
 
         return parsed_fields
 

@@ -1,7 +1,9 @@
+from unittest import mock
 from unittest.mock import MagicMock
 
 import pytest
 
+from wtfix.apps.admin import HeartbeatApp
 from wtfix.apps.wire import EncoderApp, DecoderApp
 from wtfix.pipeline import BasePipeline
 
@@ -14,3 +16,12 @@ def encoder_app():
 @pytest.fixture
 def decoder_app():
     return DecoderApp(MagicMock(BasePipeline))
+
+
+@pytest.fixture
+def heartbeat_app():
+    app = HeartbeatApp(mock.MagicMock(BasePipeline))
+    app._heartbeat = 0
+    app._test_request_response_delay = 0
+
+    return app

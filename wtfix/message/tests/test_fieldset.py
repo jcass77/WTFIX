@@ -113,7 +113,6 @@ class TestFieldSet:
         assert all([value in fs.items() for value in [(1, "a"), (2, "b")]])
         assert type(fs[1] is Field)
 
-    @pytest.mark.skip("Raise exception instead of just doing __setitem__?")
     def test_parse_fields_duplicate_tags_raises_exception(self):
         with pytest.raises(DuplicateTags):
             FieldSet((1, "a"), (1, "b"))
