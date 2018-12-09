@@ -2,12 +2,13 @@ import logging
 from datetime import datetime
 
 from wtfix.apps.base import BaseApp
-from wtfix.conf import global_settings, settings
-from wtfix.core.exceptions import ParsingError, ValidationError
+from wtfix.conf import settings
+from wtfix.core.exceptions import ParsingError, ValidationError, MessageProcessingError
 from wtfix.message.field import Field
 from wtfix.message.fieldset import Group
 from wtfix.message.message import GenericMessage
 from wtfix.protocol import utils
+from wtfix.protocol.common import Tag
 
 logger = logging.getLogger(__name__)
 
@@ -16,20 +17,31 @@ class EncoderApp(BaseApp):
     """
     This app can be used to encode a message, and generate its header tags, right before it is transmitted.
     """
+
     name = "encoder_app"
 
-    # These tags will all be generated dynamically as part of the encoding process.
-    HEADER_TAGS = {8, 9, 35, 34, 49, 56, 52, 43, 128}
+    # These tags will all be generated dynamically each time as part of the encoding process.
+    DYNAMIC_TAGS = {
+        Tag.BeginString,
+        Tag.BodyLength,
+        Tag.MsgType,
+        Tag.MsgSeqNum,
+        Tag.SenderCompID,
+        Tag.TargetCompID,
+        Tag.SendingTime,
+        Tag.PossDupFlag,
+        Tag.DeliverToCompID
+    }
 
-    def __init__(self, handler, *args, **kwargs):
-        super().__init__(handler, *args, **kwargs)
-        self.cur_seq_num = 1
+    def __init__(self, pipeline, *args, **kwargs):
+        super().__init__(pipeline, *args, **kwargs)
+        self.cur_seq_num = 1  # TODO: Move to a future sequence number manager app?
 
     def on_send(self, message):
-        m = self.encode_message(message)
+        message = self.encode_message(message)
         self.cur_seq_num += 1
 
-        return m
+        return message
 
     def encode_message(self, message):
         """
@@ -39,38 +51,43 @@ class EncoderApp(BaseApp):
         generated header tags.
         """
         message.validate()  # Make sure the message is valid before attempting to encode.
+        body = (
+            b"35="
+            + utils.encode(message.type)
+            + settings.SOH
+            + b"34="
+            + utils.encode(self.cur_seq_num)
+            + settings.SOH
+            + b"49="
+            + utils.encode(message.sender_id)
+            + settings.SOH
+            + b"52="
+            + utils.encode(datetime.utcnow().strftime(settings.DATETIME_FORMAT)[:-3])
+            + settings.SOH
+            + b"56="
+            + utils.encode(message.target_id)
+            + settings.SOH
+        )
 
-        body = b""
         for field in message.values():
-            if field.tag in self.HEADER_TAGS:  # These tags will be generated - ignore.
+            if field.tag in self.DYNAMIC_TAGS:  # These tags will be generated - ignore.
                 continue
             body += field.raw
 
         header = (
             b"8="
-            + utils.encode(message.begin_string)
-            + global_settings.SOH
+            + utils.encode(settings.BEGIN_STRING)
+            + settings.SOH
             + b"9="
             + utils.encode(len(body))
-            + global_settings.SOH
-            + b"35="
-            + utils.encode(message.type)
-            + global_settings.SOH
-            + b"34="
-            + utils.encode(self.cur_seq_num)
-            + global_settings.SOH
-            + b"49="
-            + utils.encode(message.sender_id)
-            + global_settings.SOH
-            + b"56="
-            + utils.encode(message.target_id)
-            + global_settings.SOH
-            + b"52="
-            + utils.encode(datetime.utcnow().strftime(settings.DATETIME_FORMAT)[:-3])
-            + global_settings.SOH
+            + settings.SOH
         )
 
-        trailer = b"10=" + utils.encode(f"{self._checksum(header + body):03}") + global_settings.SOH
+        trailer = (
+            b"10="
+            + utils.encode(f"{self._checksum(header + body):03}")
+            + settings.SOH
+        )
 
         return header + body + trailer
 
@@ -93,12 +110,15 @@ class DecoderApp(BaseApp):
 
     name = "decoder_app"
 
-    def __init__(self, handler, *args, **kwargs):
-        super().__init__(handler, *args, **kwargs)
+    def __init__(self, pipeline, *args, **kwargs):
+        super().__init__(pipeline, *args, **kwargs)
         self._group_templates = {}
 
     def on_receive(self, data: bytes):
-        return self.decode_message(data)
+        try:
+            return self.decode_message(data)
+        except Exception as e:
+            raise MessageProcessingError() from e
 
     # TODO: Refactor this method into smaller units.
     def _parse_fields(self, raw_pairs, group_index=None):
@@ -129,10 +149,12 @@ class DecoderApp(BaseApp):
         template_tags = iter(template)
 
         while idx < len(raw_pairs):
-            tag, value = raw_pairs[idx].split(b"=")
+            tag, value = raw_pairs[idx].split(b"=", maxsplit=1)
             tag = int(tag)
             if tag in tags_seen and tag not in template:
-                raise ParsingError(f"No repeating group template for duplicate tag {tag}.")
+                raise ParsingError(
+                    f"No repeating group template for duplicate tag {tag}."
+                )
 
             if tag in self._group_templates:
                 # Tag denotes the start of a new repeating group.
@@ -167,7 +189,8 @@ class DecoderApp(BaseApp):
     def add_group_template(self, identifier_tag, *args):
         if len(args) == 0:
             raise ValidationError(
-                f"At least one group instance tag needs to be defined for group {identifier_tag}.")
+                f"At least one group instance tag needs to be defined for group {identifier_tag}."
+            )
 
         self._group_templates[identifier_tag] = args
 
@@ -181,6 +204,7 @@ class DecoderApp(BaseApp):
         for template in self._group_templates.values():
             return tag in template
 
+    # TODO: check length and checksum!
     def decode_message(self, data):
         """
         Constructs a GenericMessage from the provided data.
@@ -197,17 +221,19 @@ class DecoderApp(BaseApp):
         """
         checksum_location = data.find(b"10=")
         if checksum_location == -1 or (
-                checksum_location != 0 and data[checksum_location - 1] != global_settings.SOH_BYTE
+            checksum_location != 0
+            and data[checksum_location - 1] != settings.SOH_BYTE
         ):
             # Checksum could not be found
             raise ParsingError(
                 f"Could not find Checksum (10) in: {utils.decode(data[:20])}..."
             )
 
+        # TODO: Raise exception instead
         # Discard fields that precede begin_string
         message_start = data.find(b"8=")
         if message_start == -1 or (
-                message_start != 0 and data[message_start - 1] != global_settings.SOH_BYTE
+            message_start != 0 and data[message_start - 1] != settings.SOH_BYTE
         ):
             # Beginning of Message could not be determined
             raise ParsingError(
@@ -216,12 +242,13 @@ class DecoderApp(BaseApp):
 
         if message_start > 0:
             logger.debug(
-                f"Discarding bytes that precede BeginString (8): {utils.decode(data[:message_start])}"
+                f"{self.name}: Discarding bytes that precede BeginString (8): {utils.decode(data[:message_start])}"
             )
             data = data[message_start:]
 
-        data = data.rstrip(global_settings.SOH).split(
-            global_settings.SOH)  # Remove last SOH at end of byte stream and split into fields
+        data = data.rstrip(settings.SOH).split(
+            settings.SOH
+        )  # Remove last SOH at end of byte stream and split into fields
         fields = self._parse_fields(data)
 
         return GenericMessage(*fields)

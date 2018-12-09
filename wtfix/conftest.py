@@ -19,7 +19,7 @@ def routing_id_group():
 
 @pytest.fixture(scope="session")
 def nested_parties_group():
-    """Example of a nested group based on NoNestedPartyIDs"""
+    """Sample of a nested group based on NoNestedPartyIDs"""
     nested_party = Group(
         (539, "2"),
         (524, "a"),
@@ -43,8 +43,25 @@ def nested_parties_group():
 
 
 @pytest.fixture
+def logon_message():
+    """Sample logon message"""
+    return GenericMessage(
+        (35, "A"),
+        (34, "1"),
+        (49, "SENDER"),
+        (52, "20181206-10:24:27.018"),
+        (56, "TARGET"),
+        (98, "0"),
+        (108, "30"),
+        (553, "USERNAME"),
+        (554, "PASSWORD"),
+        (141, "Y"),
+    )
+
+
+@pytest.fixture
 def sdr_message():
-    """Example of a security definition request message"""
+    """Sample of a security definition request message"""
     return GenericMessage(
         (35, "c"),  # MsgType: SecurityDefinitionRequest
         (34, "1"),  # MsgSeqNum: 1

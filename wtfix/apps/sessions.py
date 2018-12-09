@@ -1,23 +1,24 @@
 import asyncio
+from asyncio import IncompleteReadError
 
 from unsync import unsync
 
 from wtfix.apps.base import BaseApp, logger
 from wtfix.conf import settings
 from wtfix.message.message import GenericMessage
-from wtfix.protocol.common import Tag
+from wtfix.protocol import utils
+from wtfix.protocol.common import Tag, MsgType
 
 
 class SessionApp(BaseApp):
-    def __init__(
-        self,
-        handler,
-        sender=None,
-        heartbeat_time=None,
-        *args,
-        **kwargs,
-    ):
-        super().__init__(handler, *args, **kwargs)
+    """
+    Base class for apps that manage client / server connections.
+    """
+    def __init__(self, pipeline, sender=None, heartbeat_time=None, *args, **kwargs):
+        super().__init__(pipeline, *args, **kwargs)
+        self.reader = None
+        self.writer = None
+
         if sender is None:
             sender = settings.SENDER_COMP_ID
 
@@ -31,12 +32,15 @@ class SessionApp(BaseApp):
 
 
 class ClientSessionApp(SessionApp):
+    """
+    Establishes a connection to a FIX server.
+    """
 
     name = "client_session"
 
     def __init__(
         self,
-        handler,
+        pipeline,
         sender=None,
         heartbeat_time=None,
         target=None,
@@ -44,11 +48,12 @@ class ClientSessionApp(SessionApp):
         password=None,
         reset_seq_nums=True,
         test_mode=False,
-        app_ver_id=None,
         *args,
         **kwargs,
     ):
-        super().__init__(handler, sender=sender, heartbeat_time=heartbeat_time, *args, **kwargs)
+        super().__init__(
+            pipeline, sender=sender, heartbeat_time=heartbeat_time, *args, **kwargs
+        )
 
         if target is None:
             target = settings.TARGET_COMP_ID
@@ -65,46 +70,42 @@ class ClientSessionApp(SessionApp):
 
         self.reset_seq_nums = reset_seq_nums
         self.test_mode = test_mode
-        self.app_ver_id = app_ver_id
 
-    def initialize(self):
-        self.connect().result()
-        # self.logon()
+    def initialize(self, *args, **kwargs):
+        """
+        Establish a connection to the FIX server and start listening for messages.
+        """
+        super().initialize(*args, **kwargs)
+
+        self.connect().result()  # Block until connection is established
+        self.logon()
+        self.listen().result()  # Block forever while we listen for new messages
 
     @unsync
     async def connect(self):
-        logger.info("Establishing connection...")
+        """
+        Connect to the FIX server, obtaining StreamReader and StreamWriter instances for receiving messages
+        from and sending messages to the server.
+        """
+        logger.info(f"Establishing connection to {settings.HOST}:{settings.PORT}...")
         self.reader, self.writer = await asyncio.open_connection(
             settings.HOST, settings.PORT
         )
+        logger.info("Connected!")
 
-        message = self.logon()
-
-        logger.info(f"Logging in with {message}...")
-        self.writer.write(message.raw)
-
-        while True:
-            data = await self.reader.read(1024)
-            if len(data) > 0:
-                logger.info(f"Received: {data.decode()!r}")
-
-        # logger.info("Close the connection")
-        # self.writer.close()
-        # await self.writer.wait_closed()
-
-    # connect().result()
-
-    def logon(self):
+    @unsync
+    async def logon(self):
+        """
+        Log on to the FIX server using the provided credentials.
+        :return:
+        """
         logon_msg = GenericMessage(
-            (Tag.MsgType, "A"),
-            (Tag.EncryptMethod, "0"),
+            (Tag.MsgType, MsgType.Logon),
+            (Tag.EncryptMethod, "0"),  # TODO: should this be a configurable value?
             (Tag.HeartBtInt, self.heartbeat_time),
             (Tag.Username, self.username),
             (Tag.Password, self.password),
         )
-
-        if self.app_ver_id:
-            logon_msg[Tag.DefaultApplVerID] = self.app_ver_id
 
         if self.reset_seq_nums:
             logon_msg[Tag.ResetSeqNumFlag] = "Y"
@@ -112,6 +113,55 @@ class ClientSessionApp(SessionApp):
         if self.test_mode is True:
             logon_msg[Tag.TestMessageIndicator] = "Y"
 
-        return logon_msg
+        logger.info(f"{self.name}: Logging in with {logon_msg}...")
+        self.pipeline.send(logon_msg)
 
-        # self.handler.send(logon_msg)
+    @unsync
+    async def listen(self):
+        """
+        Listen for new messages that are sent by the server.
+        :return:
+        """
+        begin_string = b"8=" + utils.encode(settings.BEGIN_STRING)
+        checksum_start = settings.SOH + b"10="
+
+        data = b""
+        while True:
+            try:
+                # Try to read a complete message.
+                data = await self.reader.readuntil(
+                    begin_string
+                )  # Detect beginning of message.
+                data += await self.reader.readuntil(
+                    checksum_start
+                )  # Detect start of checksum field.
+                data += await self.reader.readuntil(
+                    settings.SOH
+                )  # Detect final message delimiter.
+
+            except IncompleteReadError as e:
+                # Connection was closed before a complete message could be received.
+                if b"35=5" + settings.SOH in e.partial:
+                    # Process logout message that was sent by the server.
+                    logger.warning(f"{self.name}: Forced logout initiated by the FIX server!")
+                    data = e.partial
+                    break
+                else:
+                    logger.exception(
+                        f"{self.name}: Unexpected EOF waiting for next chunk of partial data '{utils.decode(e.partial)}'."
+                    )
+                    break
+
+            self.pipeline.receive(data)
+
+        self.pipeline.receive(data)  # Process the last message in the buffer.
+
+        logger.info(f"{self.name}: Closing the connection...")
+        self.writer.close()
+        # await self.writer.wait_closed()  Python 3.7 and up.
+
+    @unsync
+    async def on_send(self, message):
+        logger.info(f"{self.name}: Sending message: {message}.) ")
+        self.writer.write(message)
+        await self.writer.drain()

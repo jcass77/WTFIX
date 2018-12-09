@@ -1,8 +1,7 @@
 import collections
 import itertools
 
-import wtfix.core.exceptions
-from wtfix.core.exceptions import TagNotFound, InvalidGroup
+from wtfix.core.exceptions import TagNotFound, InvalidGroup, UnknownTag
 from .field import Field
 from ..protocol import common
 
@@ -59,8 +58,8 @@ class FieldSet(collections.OrderedDict):
         """
         try:
             return super().__getitem__(tag)
-        except KeyError:
-            raise TagNotFound(tag, self)
+        except KeyError as e:
+            raise TagNotFound(tag, self) from e
 
     def __setitem__(self, tag, value):
         """
@@ -89,24 +88,24 @@ class FieldSet(collections.OrderedDict):
         try:
             # First, try to get the tag number associated with 'name'.
             tag = common.Tag.get_tag(name)
-        except KeyError:
-            # Not a known tag, abort
-            raise wtfix.core.exceptions.UnknownTag(name)
+        except UnknownTag as e:
+            # No tag
+            raise AttributeError(f"{self.__class__.__name__} instance has no attribute '{name}'.") from e
 
         try:
             # Then, see if a Field with that tag number is available in this FieldSet.
             return self[tag].value_ref
-        except KeyError:
+        except KeyError as e:
             raise TagNotFound(
                 tag,
                 self,
                 f"Tag {tag} not found in {self!r}. Perhaps you are looking"
                 f"for a group tag? If so, use 'get_group' instead.",
-            )
+            ) from e
 
     def __repr__(self):
         """
-        :return: ((tag_1, value_1), (tag_2, value_2))
+        :return: (tag_1, value_1), (tag_2, value_2)
         """
         fields_repr = ""
         for field in self.values():
@@ -114,11 +113,11 @@ class FieldSet(collections.OrderedDict):
         else:
             fields_repr = fields_repr[:-2]
 
-        return f"({fields_repr})"
+        return f"{fields_repr}"
 
     def __str__(self):
         """
-        :return: ((tag_name_1, value_1), (tag_name_2, value_2))
+        :return: (tag_name_1, value_1), (tag_name_2, value_2)
         """
         fields_str = ""
         for field in self.values():
@@ -127,7 +126,7 @@ class FieldSet(collections.OrderedDict):
         else:
             fields_str = fields_str[:-2]
 
-        return f"({fields_str})"
+        return f"{fields_str}"
 
     @property
     def raw(self):
@@ -187,8 +186,8 @@ class FieldSet(collections.OrderedDict):
         """
         try:
             group = self[tag]
-        except KeyError:
-            raise TagNotFound(tag, self)
+        except KeyError as e:
+            raise TagNotFound(tag, self) from e
 
         if isinstance(group, Group):
             return group

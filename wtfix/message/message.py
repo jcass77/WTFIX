@@ -1,5 +1,5 @@
 from wtfix.conf import settings
-from wtfix.core.exceptions import ValidationError, TagNotFound
+from wtfix.core.exceptions import ValidationError, TagNotFound, UnknownType
 from wtfix.protocol.common import Tag, MsgType
 from .fieldset import FieldSet
 
@@ -11,39 +11,40 @@ class GenericMessage(FieldSet):
     We think of FIX messages as lists of (tag, value) pairs, where tag is a number and value is a bytestring.
     """
 
-    def __init__(self, *fields, begin_string=b"FIX.4.4"):
+    def __str__(self):
         """
-        Constructor.
-
-        :param fields: The fields that the message should consist of. Can be (tag, value) tuples,
-        a list of Field instances, or tag, value arguments.
-        :param begin_string: The being string that will be used for tag number 8 in this message's raw format.
+        :return: name (type): ((tag_name_1, value_1), (tag_name_2, value_2))
         """
-        super().__init__(*fields)
-        self.begin_string = begin_string
+        return f"{self.name} ({self.type}): {super().__str__()}"
 
     @property
     def type(self):
         """
         The type of this Message, as denoted by tag 35.
-        :return: Value of tag 35.
+        :return: Value of tag 35 or None if no message type has been defined.
         """
-        return str(self[Tag.MsgType].value_ref)
+        try:
+            return str(self[Tag.MsgType].value_ref)
+        except TagNotFound:
+            return None
 
     @property
     def name(self):
         """
-        Human friendly name of this type of Message, based on tag 35.
-        :return:
+        :return: Human friendly name of this type of Message, based on tag 35, or 'Unknown' if name
+        could not be determined.
         """
-        return MsgType.get_name(self.type)
+        try:
+            return MsgType.get_name(self.type)
+        except UnknownType:
+            return "Unknown"
 
     @property
     def seq_num(self):
         """
         :return: Message sequence number
         """
-        return int(self.MsgSeqNum.value)
+        return int(self[Tag.MsgSeqNum].value_ref.value)
 
     @seq_num.setter
     def seq_num(self, value):
@@ -52,9 +53,10 @@ class GenericMessage(FieldSet):
     @property
     def sender_id(self):
         try:
-            return self.SenderCompID.value
+            return str(self[Tag.SenderCompID].value_ref.value)
         except TagNotFound:
-            return settings.SENDER_COMP_ID
+            self[Tag.SenderCompID] = settings.SENDER_COMP_ID
+            return str(self[Tag.SenderCompID].value_ref.value)
 
     @sender_id.setter
     def sender_id(self, value):
@@ -63,15 +65,16 @@ class GenericMessage(FieldSet):
     @property
     def target_id(self):
         try:
-            return self.TargetCompID.value
+            return str(self[Tag.TargetCompID].value_ref.value)
         except TagNotFound:
-            return settings.TARGET_COMP_ID
+            self[Tag.TargetCompID] = settings.TARGET_COMP_ID
+            return str(self[Tag.TargetCompID].value_ref.value)
 
     @target_id.setter
     def target_id(self, value):
         self[Tag.TargetCompID] = value
 
-    def validate(self, begin_string=False, length=False, checksum=False):
+    def validate(self):
         """
         A well-formed message should, at minimum, contain tag 35.
 
@@ -80,7 +83,7 @@ class GenericMessage(FieldSet):
         """
         try:
             self[Tag.MsgType]
-        except TagNotFound:
-            raise ValidationError(f"No 'MsgType (35)' specified for {self}.")
+        except TagNotFound as e:
+            raise ValidationError(f"No 'MsgType (35)' specified for {self}.") from e
 
         return self

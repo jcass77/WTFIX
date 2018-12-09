@@ -24,7 +24,7 @@ class MsgType(object):
     BidResponse = "l"
     BusinessMessageReject = "j"
     CollateralAssignment = "AY"
-    CollateralInquiry = "B"
+    CollateralInquiry = "BB"
     CollateralInquiryAck = "BG"
     CollateralReport = "BA"
     CollateralRequest = "AX"
@@ -65,7 +65,7 @@ class MsgType(object):
     NetworkCounterpartySystemStatusResponse = "BD"
     NewOrderCross = "s"
     NewOrderList = "E"
-    NewOrderMultileg = "A"
+    NewOrderMultileg = "AB"
     NewOrderSingle = "D"
     News = ""
     OrderCancelReject = "9"
@@ -137,9 +137,9 @@ class MsgType(object):
         """
         try:
             return TYPE2NAME[type_]
-        except KeyError:
+        except KeyError as e:
             # Not a known type
-            raise UnknownType(type_)
+            raise UnknownType(type_) from e
 
     @classmethod
     def get_type(cls, type_name):
@@ -150,9 +150,9 @@ class MsgType(object):
         """
         try:
             return NAME2TYPE[type_name]
-        except KeyError:
+        except KeyError as e:
             # Not a known tag
-            raise UnknownType(type_name)
+            raise UnknownType(type_name) from e
 
 
 TYPE2NAME = {v: k for k, v in MsgType.__dict__.items() if "_" != k[0]}
@@ -1782,9 +1782,9 @@ class Tag:
         """
         try:
             return TAG2NAME[tag]
-        except KeyError:
+        except KeyError as e:
             # Not a known tag
-            raise UnknownTag(tag)
+            raise UnknownTag(tag) from e
 
     @classmethod
     def get_tag(cls, tag_name):
@@ -1795,9 +1795,9 @@ class Tag:
         """
         try:
             return NAME2TAG[tag_name]
-        except KeyError:
+        except KeyError as e:
             # Not a known tag
-            raise UnknownTag(tag_name)
+            raise UnknownTag(tag_name) from e
 
 
 TAG2NAME = {v: k for k, v in Tag.__dict__.items() if "_" != k[0]}

@@ -10,7 +10,7 @@ LOGGING_LEVEL = logging.DEBUG
 # APPS
 # ------------------------------------------------------------------------------
 # INSTALLED_APPS += [
-#     "wtfix.wire.apps.MessageTypeFilterApp",
+#     "wtfix.wire.apps.MessageTypeHandlerApp",
 # ]
 
 # SESSION

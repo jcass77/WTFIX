@@ -1,8 +1,6 @@
 import pytest
 
-import wtfix.conf.global_settings
-import wtfix.core.exceptions
-from ...protocol import common
+from wtfix.conf import settings
 from ..field import Field
 from ..fieldset import FieldSet, Group
 from wtfix.core.exceptions import TagNotFound, DuplicateTags, InvalidGroup
@@ -64,7 +62,7 @@ class TestFieldSet:
         assert fieldset_a_b.Account == "a"
 
     def test_getattr_unknown(self):
-        with pytest.raises(wtfix.core.exceptions.UnknownTag):
+        with pytest.raises(AttributeError):
             fs = FieldSet((1, "a"))
             fs.TEST_TAG
 
@@ -75,21 +73,21 @@ class TestFieldSet:
 
     def test_repr(self, fieldset_a_b):
         fs = FieldSet()
-        assert repr(fs) == "()"
+        assert repr(fs) == ""
 
-        assert repr(fieldset_a_b) == "((1, a), (2, bb))"
+        assert repr(fieldset_a_b) == "(1, a), (2, bb)"
 
     def test_str(self):
         fs = FieldSet()
-        assert str(fs) == "()"
+        assert str(fs) == ""
 
         fs = FieldSet((34, "a"), (35, "bb"), (1, "ccc"))
         assert (
-            str(fs) == "((MsgSeqNum (34), a), (MsgType (35), bb), (Account (1), ccc))"
+            str(fs) == "(MsgSeqNum (34), a), (MsgType (35), bb), (Account (1), ccc)"
         )
 
     def test_raw(self, fieldset_a_b):
-        assert fieldset_a_b.raw == b"1=a" + wtfix.conf.global_settings.SOH + b"2=bb" + wtfix.conf.global_settings.SOH
+        assert fieldset_a_b.raw == b"1=a" + settings.SOH + b"2=bb" + settings.SOH
 
     def test_parse_fields_tuple(self):
         fs = FieldSet((1, "a"), (2, "b"))
@@ -174,14 +172,14 @@ class TestGroup:
     def test_repr(self, routing_id_group):
         assert (
             repr(routing_id_group)
-            == "(215, 2):((216, a), (217, b)), ((216, c), (217, d))"
+            == "(215, 2):(216, a), (217, b), (216, c), (217, d)"
         )
 
     def test_str(self, routing_id_group):
         assert (
             str(routing_id_group)
-            == "(NoRoutingIDs (215), 2):((RoutingType (216), a), (RoutingID (217), b)), "
-            "((RoutingType (216), c), (RoutingID (217), d))"
+            == "(NoRoutingIDs (215), 2):(RoutingType (216), a), (RoutingID (217), b), "
+            "(RoutingType (216), c), (RoutingID (217), d)"
         )
 
     def test_raw(self, routing_id_group):

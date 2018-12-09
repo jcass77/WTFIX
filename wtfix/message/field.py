@@ -6,6 +6,7 @@ from distutils.util import strtobool
 
 import wtfix.conf.global_settings
 import wtfix.core.exceptions
+from wtfix.conf import settings
 from wtfix.core.exceptions import InvalidField
 from ..protocol import common, utils
 
@@ -87,8 +88,8 @@ class Field(collections.namedtuple("Field", ["tag", "value_ref"])):
             # a str or bytes.
             try:
                 tag = int(tag)
-            except ValueError:
-                raise InvalidField(f"Tag '{tag}' must be an integer.")
+            except ValueError as e:
+                raise InvalidField(f"Tag '{tag}' must be an integer.") from e
 
         return _tuple.__new__(_cls, (tag, FieldValue(value)))
 
@@ -126,4 +127,4 @@ class Field(collections.namedtuple("Field", ["tag", "value_ref"])):
         """
         :return: The FIX-compliant, raw binary string representation for this Field.
         """
-        return utils.encode(self.tag) + b"=" + self.value_ref.raw + wtfix.conf.global_settings.SOH
+        return utils.encode(self.tag) + b"=" + self.value_ref.raw + settings.SOH

@@ -21,5 +21,8 @@ USE_TZ = True
 # APPS
 # ------------------------------------------------------------------------------
 INSTALLED_APPS = [
+    "wtfix.apps.admin.HeartbeatApp",
+    "wtfix.apps.wire.EncoderApp",
+    "wtfix.apps.wire.DecoderApp",
     "wtfix.apps.sessions.ClientSessionApp",
 ]

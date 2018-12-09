@@ -1,33 +1,39 @@
 import pytest
 
+from wtfix.conf import settings
 from wtfix.core.exceptions import ValidationError, ParsingError, TagNotFound
 from wtfix.message.field import Field
 from wtfix.message.message import GenericMessage
+from wtfix.protocol import utils
 
 
 class TestEncoderApp:
-    @pytest.mark.skip("Figure out what encoded message looks like")
-    def test_encode_message(self, encoder_app):
-        m = GenericMessage((35, "a"), (2, "bb"))
-        assert encoder_app.encode_message(m) == b"8=FIX.4.4\x019=5\x0135=a\x012=bb\x0110=8\x01"
+    def test_encode_message(self, logon_message, encoder_app):
+        # Skip timestamp, which will always change.
+        assert encoder_app.encode_message(logon_message).startswith(
+            b"8=FIX.4.4\x019=99\x0135=A\x0134=1\x0149=SENDER\x01"
+        )
+
+        # Compare remainder, skipping checksum which will change based on timestamp
+        assert encoder_app.encode_message(logon_message)[:-7].endswith(
+            b"56=TARGET\x0198=0\x01108=30\x01553=USERNAME\x01554=PASSWORD\x01141=Y\x01"
+        )
 
     def test_encode_message_invalid(self, encoder_app):
         with pytest.raises(ValidationError):
             encoder_app.encode_message(GenericMessage((1, "a"), (2, "b")))
 
-    @pytest.mark.skip("Figure out what encoded message looks like")
     def test_encode_message_nested_group(self, encoder_app, nested_parties_group):
         m = GenericMessage((35, "a"), (2, "bb"))
         m.set_group(nested_parties_group)
 
-        assert encoder_app.encode_message(m) == (
-            b"8=FIX.4.4\x019=117\x0135=a\x012=bb\x01"
-            + b"539=2\x01"  # Header
+        # Compare just the group-related bytes.
+        assert encoder_app.encode_message(m)[92:-7] == (
+            b"539=2\x01"  # Header
             + b"524=a\x01525=aa\x01538=aaa\x01"  # Group identifier
             + b"804=2\x01545=c\x01805=cc\x01545=d\x01805=dd\x01"  # First group
             + b"524=b\x01525=bb\x01538=bbb\x01"  # First nested group
             + b"804=2\x01545=e\x01805=ee\x01545=f\x01805=ff\x01"  # Second group
-            + b"10=219\x01"
         )  # Second nested group
 
     def test_checksum(self, encoder_app):
@@ -78,7 +84,7 @@ class TestDecoderApp:
     def test_parse_raises_exception_if_no_beginstring(self, encoder_app, decoder_app):
         with pytest.raises(ParsingError):
             m = GenericMessage((35, 7), (9, "a"))
-            data = encoder_app.encode_message(m).replace(b"8=" + m.begin_string, b"")
+            data = encoder_app.encode_message(m).replace(b"8=" + utils.encode(settings.BEGIN_STRING), b"")
             decoder_app.decode_message(data)
 
     def test_parse_raises_exception_if_no_checksum(self, encoder_app, decoder_app):

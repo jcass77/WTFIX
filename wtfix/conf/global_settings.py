@@ -31,6 +31,7 @@ ENCODING_ERRORS = (
     "strict"
 )  # Valid options are 'strict', 'ignore', 'replace', and any other
 
+BEGIN_STRING = b"FIX.4.4"
 HEARTBEAT_TIME = 30
 
 SOH = b"\x01"  # Start of header / field delimiter

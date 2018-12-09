@@ -1,8 +1,17 @@
+from unittest import mock
+
 import pytest
+from unsync import Unfuture
 
 from wtfix.apps.base import BaseApp
 from wtfix.core.exceptions import StopMessageProcessing
 from wtfix.protocol import utils
+
+
+def mock_unfuture_result(result):
+    uf = mock.MagicMock(Unfuture)
+    uf.result.return_value = result
+    return uf
 
 
 @pytest.fixture(scope="session")
@@ -59,16 +68,16 @@ class Top(BaseApp):
 @pytest.fixture(scope="session")
 def three_level_app_chain():
     return [
-        "wtfix.tests.conftest.Below",
-        "wtfix.tests.conftest.Middle",
         "wtfix.tests.conftest.Top",
+        "wtfix.tests.conftest.Middle",
+        "wtfix.tests.conftest.Below",
     ]
 
 
 @pytest.fixture(scope="session")
 def three_level_stop_app_chain():
     return [
-        "wtfix.tests.conftest.Below",
-        "wtfix.tests.conftest.MiddleStop",
         "wtfix.tests.conftest.Top",
+        "wtfix.tests.conftest.MiddleStop",
+        "wtfix.tests.conftest.Below",
     ]

@@ -1,7 +1,6 @@
 import pytest
 
-import wtfix.conf.global_settings
-from ...protocol import common
+from wtfix.conf import settings
 from ..field import Field, FieldValue
 from wtfix.core.exceptions import InvalidField
 
@@ -86,4 +85,4 @@ class TestField:
 
     def test_raw_getter(self):
         f = Field(35, "k")
-        assert f.raw == b"35=k" + wtfix.conf.global_settings.SOH
+        assert f.raw == b"35=k" + settings.SOH

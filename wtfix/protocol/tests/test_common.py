@@ -6,7 +6,7 @@ from wtfix.core.exceptions import UnknownType, UnknownTag
 
 class TestMsgType:
     def test_get_name(self):
-        assert MsgType.get_name("7") == "Advertisement"
+        assert MsgType.get_name("A") == "Logon"
 
     def test_get_name_unknown_raises_exception(self):
         with pytest.raises(UnknownType):
