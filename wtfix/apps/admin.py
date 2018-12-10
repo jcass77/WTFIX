@@ -124,7 +124,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
         :param message: The Logon message received. Should contain a HeartBtInt tag that will be used
         to set the heartbeat interval to monitor.
         """
-        self.start(int(message[Tag.HeartBtInt].value_ref.value))
+        self.start(message[Tag.HeartBtInt].as_int)
 
         return message
 

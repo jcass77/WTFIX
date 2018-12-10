@@ -50,7 +50,7 @@ class GenericMessage(FieldSet):
         :return: Value of tag 35 or None if no message type has been defined.
         """
         try:
-            return str(self[Tag.MsgType].value_ref)
+            return self[Tag.MsgType].as_str
         except TagNotFound:
             return None
 
@@ -70,7 +70,7 @@ class GenericMessage(FieldSet):
         """
         :return: Message sequence number
         """
-        return int(self[Tag.MsgSeqNum].value_ref.value)
+        return self[Tag.MsgSeqNum].as_int
 
     @seq_num.setter
     def seq_num(self, value):
@@ -79,10 +79,10 @@ class GenericMessage(FieldSet):
     @property
     def sender_id(self):
         try:
-            return str(self[Tag.SenderCompID].value_ref.value)
+            return self[Tag.SenderCompID].as_str
         except TagNotFound:
             self[Tag.SenderCompID] = settings.SENDER_COMP_ID
-            return str(self[Tag.SenderCompID].value_ref.value)
+            return self[Tag.SenderCompID].as_str
 
     @sender_id.setter
     def sender_id(self, value):
@@ -91,10 +91,10 @@ class GenericMessage(FieldSet):
     @property
     def target_id(self):
         try:
-            return str(self[Tag.TargetCompID].value_ref.value)
+            return self[Tag.TargetCompID].as_str
         except TagNotFound:
             self[Tag.TargetCompID] = settings.TARGET_COMP_ID
-            return str(self[Tag.TargetCompID].value_ref.value)
+            return self[Tag.TargetCompID].as_str
 
     @target_id.setter
     def target_id(self, value):

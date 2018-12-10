@@ -129,3 +129,11 @@ class Field(collections.namedtuple("Field", ["tag", "value_ref"])):
         :return: The FIX-compliant, raw binary string representation for this Field.
         """
         return utils.encode(self.tag) + b"=" + self.value_ref.raw + settings.SOH
+
+    @property
+    def as_str(self):
+        return str(self.value_ref.value)
+
+    @property
+    def as_int(self):
+        return int(self.as_str)

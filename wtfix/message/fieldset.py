@@ -307,4 +307,4 @@ class Group(collections.UserList):
         """
         :return: The number of GroupInstances in this group.
         """
-        return int(str((self.identifier.value_ref.value)))
+        return self.identifier.as_int
