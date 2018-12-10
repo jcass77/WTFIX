@@ -1,10 +1,12 @@
 import pytest
 
+from wtfix.apps.wire import DecoderApp
 from wtfix.conf import settings
 from wtfix.core.exceptions import ValidationError, ParsingError, TagNotFound
 from wtfix.message.field import Field
 from wtfix.message.message import GenericMessage
-from wtfix.protocol import utils
+from wtfix.core import utils
+from wtfix.protocol.common import Tag, MsgType
 
 
 class TestEncoderApp:
@@ -36,24 +38,6 @@ class TestEncoderApp:
             + b"804=2\x01545=e\x01805=ee\x01545=f\x01805=ff\x01"  # Second group
         )  # Second nested group
 
-    def test_checksum(self, encoder_app):
-        # Test with real message sent by ROFEX demo
-        assert (
-            encoder_app._checksum(
-                b"8=FIXT.1.1\x01",
-                b"9=75\x01",
-                b"35=A\x01",
-                b"34=1\x01",
-                b"49=ROFX\x01",
-                b"52=20170417-18:29:09.599\x01",
-                b"56=eco\x0198=0\x01",
-                b"108=20\x01",
-                b"141=Y\x01",
-                b"1137=9\x01",
-            )
-            == 79
-        )
-
 
 class TestDecoderApp:
     def test_add_group_template_too_short(self, decoder_app):
@@ -76,43 +60,70 @@ class TestDecoderApp:
 
         assert decoder_app.is_template_tag(217) is False
 
-    def test_parse(self, encoder_app, decoder_app, sdr_message):
+    def test_check_begin_string(self, simple_encoded_msg):
+        assert DecoderApp.check_begin_string(simple_encoded_msg) == (b"FIX.4.4", 9)
+
+    def test_check_begin_string_not_found_raises_exception(self, simple_encoded_msg):
+        with pytest.raises(ParsingError):
+            DecoderApp.check_begin_string(simple_encoded_msg[10:])
+
+    def test_check_begin_string_not_at_start_raises_exception(self, simple_encoded_msg):
+        with pytest.raises(ParsingError):
+            DecoderApp.check_begin_string(b"34=0" + settings.SOH + simple_encoded_msg)
+
+    def test_check_body_length(self, simple_encoded_msg):
+        assert DecoderApp.check_body_length(simple_encoded_msg, start=0, body_end=19) == (5, 13)
+
+    def test_check_body_length_body_end_not_provided(self, simple_encoded_msg):
+        assert DecoderApp.check_body_length(simple_encoded_msg) == (5, 13)
+
+    def test_body_length_not_found_raises_exception(self, simple_encoded_msg):
+        with pytest.raises(ParsingError):
+            encoded_msg = simple_encoded_msg[:9] + simple_encoded_msg[13:]
+            DecoderApp.check_body_length(encoded_msg)
+
+    def test_check_body_length_wrong_length_raises_exception(self, simple_encoded_msg):
+        with pytest.raises(ParsingError):
+            encoded_msg = b"8=FIX.4.4\x019=1\x0135=0\x0110=161\x01"
+            assert DecoderApp.check_body_length(encoded_msg) == (b"5", 9, 13)
+
+    def test_check_checksum(self, simple_encoded_msg):
+        checksum, _ = DecoderApp.check_checksum(simple_encoded_msg)
+        assert checksum == 163
+
+    def test_check_checksum_not_found_raises_exception(self, simple_encoded_msg):
+        with pytest.raises(ParsingError):
+            encoded_msg = simple_encoded_msg[:-7]
+            DecoderApp.check_checksum(encoded_msg)
+
+    def test_check_checksum_trailing_bytes_raises_exception(self, simple_encoded_msg):
+        with pytest.raises(ParsingError):
+            message = simple_encoded_msg + b"34=1" + settings.SOH
+            DecoderApp.check_checksum(message)
+
+    def test_check_checksum_raises_exception_if_checksum_invalid(self, simple_encoded_msg):
+        with pytest.raises(ParsingError):
+            encoded_msg = simple_encoded_msg[:-4] + b"123" + settings.SOH
+            DecoderApp.check_checksum(encoded_msg, 0, 19)
+
+    def test_decode_message(self, encoder_app, decoder_app, sdr_message):
         m = decoder_app.decode_message(encoder_app.encode_message(sdr_message))
         assert m.name == "SecurityDefinitionRequest"
         assert m[8].value_ref == "FIX.4.4"
 
-    def test_parse_raises_exception_if_no_beginstring(self, encoder_app, decoder_app):
+    def test_decode_message_raises_exception_if_no_beginstring(self, encoder_app, decoder_app):
         with pytest.raises(ParsingError):
-            m = GenericMessage((35, 7), (9, "a"))
+            m = GenericMessage((Tag.MsgType, MsgType.TestRequest), (Tag.TestReqID, "a"))
             data = encoder_app.encode_message(m).replace(b"8=" + utils.encode(settings.BEGIN_STRING), b"")
             decoder_app.decode_message(data)
 
-    def test_parse_raises_exception_if_no_checksum(self, encoder_app, decoder_app):
+    def test_decode_message_raises_exception_on_leading_junk(self, decoder_app):
         with pytest.raises(ParsingError):
-            m = GenericMessage((35, 7), (9, "a"))
+            decoder_app.decode_message(
+                b"1=2\x013=4\x018=FIX.4.4\x019=5\x0135=0\x0110=161\x01"
+            )
 
-            data = encoder_app.encode_message(m)
-            data = data[: data.find(b"10=")]
-            decoder_app.decode_message(data)
-
-    def test_parse_ignores_leading_junk_pairs(self, decoder_app):
-        m = decoder_app.decode_message(
-            b"1=2\x013=4\x018=FIX.4.4\x019=5\x0135=0\x0110=161\x01"
-        )
-
-        with pytest.raises(TagNotFound):
-            assert m[1] is None
-
-        with pytest.raises(TagNotFound):
-            assert m[3] is None
-
-        assert m[8].value_ref == "FIX.4.4"
-
-    def test_parse_ignores_junk_pairs(self, decoder_app):
-        with pytest.raises(ParsingError):
-            decoder_app.decode_message(b"1=2\x013=4\x015=6\x01")
-
-    def test_parse_detects_duplicate_tags_without_template(self, encoder_app, decoder_app, routing_id_group):
+    def test_decode_message_detects_duplicate_tags_without_template(self, encoder_app, decoder_app, routing_id_group):
         m = GenericMessage((35, "a"))
         m.set_group(routing_id_group)
         m += Field(1, "a")
@@ -120,7 +131,7 @@ class TestDecoderApp:
         with pytest.raises(ParsingError):
             decoder_app.decode_message(encoder_app.encode_message(m))
 
-    def test_parse_repeating_group(self, encoder_app, decoder_app, routing_id_group):
+    def test_decode_message_repeating_group(self, encoder_app, decoder_app, routing_id_group):
         m = GenericMessage((35, "a"))
         m.set_group(routing_id_group)
         m += Field(1, "a")
@@ -142,7 +153,7 @@ class TestDecoderApp:
         assert group[1][216] == "c"
         assert group[1][217] == "d"
 
-    def test_parse_nested_repeating_group(self, encoder_app, decoder_app, nested_parties_group):
+    def test_decode_message_nested_repeating_group(self, encoder_app, decoder_app, nested_parties_group):
         m = GenericMessage((35, "a"))
         m.set_group(nested_parties_group)
         m += Field(1, "a")

@@ -41,36 +41,36 @@ class InvalidField(Exception):
     pass
 
 
-class _FieldSetException(Exception):
+class _TagException(Exception):
     """
-    Base class for exceptions that are related to issues with the tags in a FieldSet.
+    Base class for exceptions that are related to issues with tags.
     """
 
-    def __init__(self, tag, fieldset, message):
+    def __init__(self, tag, data, message):
         self.tag = tag
-        self.fieldset = fieldset
-        super().__init__(tag, fieldset, message)
+        self.data = data
+        super().__init__(tag, data, message)
 
 
-class TagNotFound(_FieldSetException):
-    def __init__(self, tag, fieldset, message=None):
+class TagNotFound(_TagException):
+    def __init__(self, tag, data, message=None):
         if message is None:
-            message = f"Tag {tag} not found in {fieldset!r}."
-        super().__init__(tag, fieldset, message)
+            message = f"Tag {tag} not found in {data!r}."
+        super().__init__(tag, data, message)
 
 
-class DuplicateTags(_FieldSetException):
-    def __init__(self, tag, fieldset, message=None):
+class DuplicateTags(_TagException):
+    def __init__(self, tag, data, message=None):
         if message is None:
-            message = f"Tag {tag} repeated in {fieldset!r}."
-        super().__init__(tag, fieldset, message)
+            message = f"Tag {tag} repeated in {data!r}."
+        super().__init__(tag, data, message)
 
 
-class InvalidGroup(_FieldSetException):
-    def __init__(self, tag, fieldset, message=None):
+class InvalidGroup(_TagException):
+    def __init__(self, tag, data, message=None):
         if message is None:
-            message = f"{tag} is not a group tag in {fieldset!r}."
-        super().__init__(tag, fieldset, message)
+            message = f"{tag} is not a group tag in {data!r}."
+        super().__init__(tag, data, message)
 
 
 class UnknownType(Exception):

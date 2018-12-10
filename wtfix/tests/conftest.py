@@ -5,7 +5,7 @@ from unsync import Unfuture
 
 from wtfix.apps.base import BaseApp
 from wtfix.core.exceptions import StopMessageProcessing
-from wtfix.protocol import utils
+from wtfix.core import utils
 
 
 def mock_unfuture_result(result):

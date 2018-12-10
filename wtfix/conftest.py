@@ -74,3 +74,8 @@ def sdr_message():
         (320, "37a0b5c8afb543ec8f29eca2a44be2ec"),  # SecurityReqID
         (321, "3"),  # SecurityRequestType: all
     )
+
+
+@pytest.fixture(scope="session")
+def simple_encoded_msg():
+    return b"8=FIX.4.4\x019=5\x0135=0\x0110=163\x01"

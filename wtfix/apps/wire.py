@@ -3,11 +3,16 @@ from datetime import datetime
 
 from wtfix.apps.base import BaseApp
 from wtfix.conf import settings
-from wtfix.core.exceptions import ParsingError, ValidationError, MessageProcessingError
+from wtfix.core.exceptions import (
+    ParsingError,
+    ValidationError,
+    MessageProcessingError,
+    TagNotFound,
+)
 from wtfix.message.field import Field
 from wtfix.message.fieldset import Group
 from wtfix.message.message import GenericMessage
-from wtfix.protocol import utils
+from wtfix.core import utils
 from wtfix.protocol.common import Tag
 
 logger = logging.getLogger(__name__)
@@ -30,7 +35,7 @@ class EncoderApp(BaseApp):
         Tag.TargetCompID,
         Tag.SendingTime,
         Tag.PossDupFlag,
-        Tag.DeliverToCompID
+        Tag.DeliverToCompID,
     }
 
     def __init__(self, pipeline, *args, **kwargs):
@@ -84,21 +89,10 @@ class EncoderApp(BaseApp):
         )
 
         trailer = (
-            b"10="
-            + utils.encode(f"{self._checksum(header + body):03}")
-            + settings.SOH
+            b"10=" + utils.encode(f"{utils.calculate_checksum(header + body):03}") + settings.SOH
         )
 
         return header + body + trailer
-
-    @staticmethod
-    def _checksum(*fields):
-        """
-        Calculates the checksum for a type of (tag, value) bytes.
-        :param fields: A tuple of bytes representing the raw header and body for a message.
-        :return: The checksum for the fields.
-        """
-        return sum(sum(byte for byte in iter(field)) for field in fields) % 256
 
 
 class DecoderApp(BaseApp):
@@ -204,47 +198,123 @@ class DecoderApp(BaseApp):
         for template in self._group_templates.values():
             return tag in template
 
+    @classmethod
+    def check_begin_string(cls, data, start=0):
+        """
+        Checks the BeginString tag (8) for the encoded message data provided.
+
+        :param data: An encoded FIX message.
+        :param start: Position at which to start the search. Usually 0.
+        :return: A tuple consisting of the value of the BeginString tag in encoded byte format, and the
+        index at which the tag ends.
+        :raises: ParsingError if the BeginString tag can either not be found, or if it is not the first tag
+        in the message.
+        """
+        try:
+            begin_string, start, tag_end = utils.index_tag(8, data, start=start)
+        except TagNotFound as e:
+            raise ParsingError(f"BeginString (8) not found in {utils.decode(data)}.") from e
+
+        if start != 0:
+            # Begin string was not found at start of Message
+            raise ParsingError(
+                f"Message does not start with BeginString (8): {utils.decode(data)}."
+            )
+
+        return begin_string, tag_end
+
+    @classmethod
+    def check_body_length(cls, data, start=0, body_end=None):
+        """
+        Checks the BodyLength tag (9) for the encoded message data provided.
+
+        :param data: An encoded FIX message.
+        :param start: Optimization: the position at which to start the search.
+        :param body_end: Optimization: the index at which the body terminates in data. If this value
+        is not provided then the data byte string will be parsed to look for the Checksum (10) tag,
+        which should denote the end of the message body.
+        :return: A tuple consisting of the value of the BodyLength tag in encoded byte format, and the
+        index at which the tag ends.
+        :raises: ParsingError if the BodyLength tag can either not be found, or if the actual body
+        length does not match the check value provided by the server.
+        """
+        try:
+            if body_end is None:
+                checksum_check, body_end, _ = utils.rindex_tag(10, data)
+
+            body_length, _, tag_end = utils.index_tag(9, data, start=start)
+        except TagNotFound as e:
+            raise ParsingError(f"BodyLength (9) not found in {utils.decode(data)}.") from e
+
+        body_length = int(body_length)
+        actual_length = body_end - tag_end - 1
+        if actual_length != body_length:
+            raise ParsingError(
+                f"Message has wrong body length. Expected: {body_length}, actual: {actual_length}."
+            )
+
+        return body_length, tag_end
+
+    @classmethod
+    def check_checksum(cls, data, body_start=0, body_end=None):
+        """
+        Checks the Checksum tag (10) for the encoded message data provided.
+
+        :param data: An encoded FIX message.
+        :param body_start: The index in the encoded message at which the message body starts.
+        :param body_end: The index in the encoded message at which the message body ends.
+        If this value is not provided, then it will default to the index at which the Checksum tag starts.
+        :return: A tuple consisting of the value of the BeginString tag in encoded byte format, and the
+        index at which the tag ends.
+        :raises: ParsingError if the BeginString tag can either not be found, or if it is not the first tag
+        in the message.
+        """
+        try:
+            checksum, checksum_start, checksum_end = utils.rindex_tag(10, data)
+        except TagNotFound as e:
+            raise ParsingError(
+                f"Checksum (10) not found in {utils.decode(data)}."
+            ) from e
+
+        if len(data) != checksum_end + 1:
+            raise ParsingError(
+                f"Unexpected bytes following checksum: {data[checksum_start:]}."
+            )
+
+        if body_end is None:
+            body_end = checksum_start
+
+        checksum = int(checksum)
+        calc_checksum = utils.calculate_checksum(data[body_start:body_end])
+        if checksum != calc_checksum:
+            raise ParsingError(
+                f"Checksum check failed. Calculated value of {calc_checksum} does not match {checksum}."
+            )
+
+        return checksum, checksum_end
+
     # TODO: check length and checksum!
     def decode_message(self, data):
         """
-        Constructs a GenericMessage from the provided data.
+        Constructs a GenericMessage from the provided data. Also uses the BeginString (8), BodyLength (9),
+        and Checksum (10) tags to verify the message before decoding.
 
-        If the byte string starts with FIX fields other than BeginString (8), these are discarded until the
-        start of a message is found.
-
-        If no BeginString (8) field is found, this function returns None.  Similarly, if (after a BeginString)
-        no Checksum (10) field is found, the function returns None.
-
-        Otherwise, it returns a GenericMessage instance initialised with the fields from the first complete message
-        found in the data.
         :param data: The raw FIX message (probably received from a FIX server via a StreamReader) as a string of bytes.
+        :return: a GenericMessage instance initialised from the raw data.
         """
-        checksum_location = data.find(b"10=")
-        if checksum_location == -1 or (
-            checksum_location != 0
-            and data[checksum_location - 1] != settings.SOH_BYTE
-        ):
-            # Checksum could not be found
-            raise ParsingError(
-                f"Could not find Checksum (10) in: {utils.decode(data[:20])}..."
-            )
+        # Message MUST start with begin_string
+        begin_string, begin_tag_end = self.check_begin_string(data, start=0)
 
-        # TODO: Raise exception instead
-        # Discard fields that precede begin_string
-        message_start = data.find(b"8=")
-        if message_start == -1 or (
-            message_start != 0 and data[message_start - 1] != settings.SOH_BYTE
-        ):
-            # Beginning of Message could not be determined
-            raise ParsingError(
-                f"Could not find BeginString (8) in: {utils.decode(data[:20])}..."
-            )
+        # Optimization: Find checksum now so that we can re-use its
+        # index in both the body_length and subsequent 'check_checksum' calls.
+        checksum_check, checksum_tag_start, _ = utils.rindex_tag(10, data)
 
-        if message_start > 0:
-            logger.debug(
-                f"{self.name}: Discarding bytes that precede BeginString (8): {utils.decode(data[:message_start])}"
-            )
-            data = data[message_start:]
+        # Body length must match what was sent by server
+        self.check_body_length(
+            data, start=begin_tag_end, body_end=checksum_tag_start
+        )
+
+        checksum, _ = self.check_checksum(data, body_start=0, body_end=checksum_tag_start)
 
         data = data.rstrip(settings.SOH).split(
             settings.SOH

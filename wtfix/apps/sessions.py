@@ -6,7 +6,7 @@ from unsync import unsync
 from wtfix.apps.base import BaseApp, logger
 from wtfix.conf import settings
 from wtfix.message.message import GenericMessage
-from wtfix.protocol import utils
+from wtfix.core import utils
 from wtfix.protocol.common import Tag, MsgType
 
 
@@ -162,6 +162,10 @@ class ClientSessionApp(SessionApp):
 
     @unsync
     async def on_send(self, message):
+        """
+        Writes an encoded message to the StreamWriter.
+        :param message: A valid, encoded, FIX message.
+        """
         logger.info(f"{self.name}: Sending message: {message}.) ")
         self.writer.write(message)
         await self.writer.drain()

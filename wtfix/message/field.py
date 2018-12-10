@@ -8,7 +8,8 @@ import wtfix.conf.global_settings
 import wtfix.core.exceptions
 from wtfix.conf import settings
 from wtfix.core.exceptions import InvalidField
-from ..protocol import common, utils
+from ..protocol import common
+from wtfix.core import utils
 
 
 class FieldValue(Sequence):
