@@ -1,7 +1,33 @@
 from wtfix.conf import settings
+from wtfix.core import utils
 from wtfix.core.exceptions import ValidationError, TagNotFound, UnknownType
 from wtfix.protocol.common import Tag, MsgType
 from .fieldset import FieldSet
+
+
+class BasicMessage(FieldSet):
+    def __init__(self, begin_string=None, body_length=None, message_type=None, encoded_body=None, checksum=None):
+
+        if begin_string is None:
+            begin_string = settings.BEGIN_STRING
+
+        if encoded_body is None:
+            encoded_body = b""
+
+        self.encoded_body = encoded_body
+
+        if body_length is None:
+            body_length = len(encoded_body)
+
+        if checksum is None:
+            checksum = utils.calculate_checksum(encoded_body)
+
+        super().__init__(
+            (Tag.BeginString, begin_string),
+            (Tag.BodyLength, body_length),
+            (Tag.MsgType, message_type),
+            (Tag.CheckSum, checksum),
+        )
 
 
 class GenericMessage(FieldSet):

@@ -2,8 +2,7 @@ import pytest
 
 from wtfix.apps.wire import DecoderApp
 from wtfix.conf import settings
-from wtfix.core.exceptions import ValidationError, ParsingError, TagNotFound
-from wtfix.message.field import Field
+from wtfix.core.exceptions import ValidationError, ParsingError
 from wtfix.message.message import GenericMessage
 from wtfix.core import utils
 from wtfix.protocol.common import Tag, MsgType
@@ -40,26 +39,6 @@ class TestEncoderApp:
 
 
 class TestDecoderApp:
-    def test_add_group_template_too_short(self, decoder_app):
-        with pytest.raises(ValidationError):
-            decoder_app.add_group_template(35)
-
-    def test_remove_group_template(self, decoder_app):
-        decoder_app.add_group_template(215, 216, 217)
-
-        assert 215 in decoder_app._group_templates
-
-        decoder_app.remove_group_template(215)
-        assert 215 not in decoder_app._group_templates
-
-    def test_is_template_tag(self, decoder_app):
-        decoder_app.add_group_template(215, 216, 216)
-
-        assert decoder_app.is_template_tag(215) is True
-        assert decoder_app.is_template_tag(216) is True
-
-        assert decoder_app.is_template_tag(217) is False
-
     def test_check_begin_string(self, simple_encoded_msg):
         assert DecoderApp.check_begin_string(simple_encoded_msg) == (b"FIX.4.4", 9)
 
@@ -108,8 +87,12 @@ class TestDecoderApp:
 
     def test_decode_message(self, encoder_app, decoder_app, sdr_message):
         m = decoder_app.decode_message(encoder_app.encode_message(sdr_message))
-        assert m.name == "SecurityDefinitionRequest"
-        assert m[8].value_ref == "FIX.4.4"
+        assert m[Tag.BeginString] == b"FIX.4.4"
+        assert m[Tag.BodyLength] == b"113"
+        assert m[Tag.MsgType] == b"c"
+        # Compare body, skipping timestamp and checksum
+        assert m.encoded_body[:18] == b"34=1\x0149=SENDER\x0152="
+        assert m.encoded_body[40:] == b"56=TARGET\x0155=^.*$\x01167=CS\x01320=37a0b5c8afb543ec8f29eca2a44be2ec\x01321=3\x01"
 
     def test_decode_message_raises_exception_if_no_beginstring(self, encoder_app, decoder_app):
         with pytest.raises(ParsingError):
@@ -122,58 +105,3 @@ class TestDecoderApp:
             decoder_app.decode_message(
                 b"1=2\x013=4\x018=FIX.4.4\x019=5\x0135=0\x0110=161\x01"
             )
-
-    def test_decode_message_detects_duplicate_tags_without_template(self, encoder_app, decoder_app, routing_id_group):
-        m = GenericMessage((35, "a"))
-        m.set_group(routing_id_group)
-        m += Field(1, "a")
-
-        with pytest.raises(ParsingError):
-            decoder_app.decode_message(encoder_app.encode_message(m))
-
-    def test_decode_message_repeating_group(self, encoder_app, decoder_app, routing_id_group):
-        m = GenericMessage((35, "a"))
-        m.set_group(routing_id_group)
-        m += Field(1, "a")
-
-        decoder_app.add_group_template(215, 216, 217)
-        m = decoder_app.decode_message(encoder_app.encode_message(m))
-
-        assert 215 in m
-        assert m[1].value_ref == "a"
-
-        group = m.get_group(215)
-        assert group.size == 2
-
-        assert len(group[0]) == 2
-        assert group[0][216] == "a"
-        assert group[0][217] == "b"
-
-        assert len(group[0]) == 2
-        assert group[1][216] == "c"
-        assert group[1][217] == "d"
-
-    def test_decode_message_nested_repeating_group(self, encoder_app, decoder_app, nested_parties_group):
-        m = GenericMessage((35, "a"))
-        m.set_group(nested_parties_group)
-        m += Field(1, "a")
-
-        decoder_app.add_group_template(539, 524, 525, 538)
-        decoder_app.add_group_template(804, 545, 805)
-
-        decoder_app.decode_message(encoder_app.encode_message(m))
-
-        group = m.get_group(539)
-        assert group.size == 2
-
-        group_instance_1 = group[0]
-        assert len(group_instance_1) == 8
-
-        nested_group_1 = group_instance_1[804]
-        assert len(nested_group_1) == 5
-
-        nested_instance_1 = nested_group_1[0]
-        assert len(nested_instance_1) == 2
-        assert nested_instance_1[805] == "cc"
-
-        assert m[1].value_ref == "a"
