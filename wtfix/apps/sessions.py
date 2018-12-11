@@ -209,8 +209,6 @@ class ClientSessionApp(SessionApp):
         :return:
         """
         logout_msg = GenericMessage((Tag.MsgType, MsgType.Logout))
-
-        logger.info(f"{self.name}: Sending logout request: {logout_msg}...")
         self.pipeline.send(logout_msg)
 
     @unsync
