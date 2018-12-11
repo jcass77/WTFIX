@@ -15,8 +15,7 @@ setup(
     description="A pythonic library for connecting to FIX servers",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    # TODO: update project URL.
-    url="https://github.com/jcass77/",
+    url="https://github.com/jcass77/WTFIX",
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Programming Language :: Python :: 3.6",
@@ -27,14 +26,13 @@ setup(
     ],
     keywords="FIX financial information exchange",
     packages=find_packages(exclude=["contrib", "docs", "tests"]),
-    # TODO: link to requirements.txt?
-    # install_requires=[],
+    install_requires=[
+        "python-dotenv~=0.9",
+        "unsync~=1.1",
+    ],
     python_requires=">=3.6",
-    # TODO: update URLs
-    # project_urls={  # Optional
-    #     "Bug Reports": "https://github.com/pypa/sampleproject/issues",
-    #     "Funding": "https://donate.pypi.org",
-    #     "Say Thanks!": "http://saythanks.io/to/example",
-    #     "Source": "https://github.com/pypa/sampleproject/",
-    # },
+    project_urls={
+        "Bug Reports": "https://github.com/jcass77/WTFIX/issues",
+        "Source": "https://github.com/jcass77/WTFIX/",
+    },
 )
