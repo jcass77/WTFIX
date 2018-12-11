@@ -1,4 +1,3 @@
-import logging
 from datetime import datetime
 
 from wtfix.apps.base import BaseApp
@@ -11,8 +10,6 @@ from wtfix.core.exceptions import (
 from wtfix.message.message import BasicMessage
 from wtfix.core import utils
 from wtfix.protocol.common import Tag
-
-logger = logging.getLogger(__name__)
 
 
 class EncoderApp(BaseApp):

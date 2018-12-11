@@ -1,6 +1,7 @@
 """
 Base settings to build other settings files upon.
 """
+import logging
 import os
 from distutils.util import strtobool
 
@@ -11,6 +12,8 @@ load_dotenv()
 # GENERAL
 # ------------------------------------------------------------------------------
 DEBUG = strtobool(os.getenv("DEBUG", "False"))
+LOGGING_LEVEL = logging.INFO
+
 # Local time zone. Choices are
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
 # though not all of them may be available with every OS.

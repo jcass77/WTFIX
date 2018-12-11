@@ -1,16 +1,14 @@
 import asyncio
-import logging
 from asyncio import IncompleteReadError
 
 from unsync import unsync
 
+from wtfix.conf import logger
 from wtfix.apps.base import BaseApp
 from wtfix.conf import settings
 from wtfix.message.message import GenericMessage
 from wtfix.core import utils
 from wtfix.protocol.common import Tag, MsgType
-
-logger = logging.getLogger(__name__)
 
 
 class SessionApp(BaseApp):

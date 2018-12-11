@@ -1,17 +1,15 @@
-import logging
 import importlib
 from collections import OrderedDict
 
 from unsync import unsync
 
+from wtfix.conf import logger
 from wtfix.conf import settings
 from wtfix.core.exceptions import (
     MessageProcessingError,
     StopMessageProcessing,
     ValidationError,
 )
-
-logger = logging.getLogger(__name__)
 
 
 class BasePipeline:

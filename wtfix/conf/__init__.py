@@ -6,6 +6,7 @@ Read values from the module specified by the WTFIX_SETTINGS_MODULE environment v
 
 import importlib
 import os
+import logging
 
 from . import global_settings
 from ..core.exceptions import ImproperlyConfigured
@@ -18,6 +19,8 @@ env_path = Path(".") / ".env"
 load_dotenv(dotenv_path=env_path)
 
 ENVIRONMENT_VARIABLE = "WTFIX_SETTINGS_MODULE"
+
+logger = logging.getLogger("wtfix")
 
 
 class Settings:

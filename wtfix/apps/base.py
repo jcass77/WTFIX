@@ -1,9 +1,7 @@
 from functools import wraps
-import logging
 
+from wtfix.conf import logger
 from wtfix.core.exceptions import ValidationError
-
-logger = logging.getLogger(__name__)
 
 
 class BaseApp:
