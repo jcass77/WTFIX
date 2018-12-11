@@ -10,8 +10,9 @@ if __name__ == "__main__":
         format="%(asctime)s - %(threadName)s - %(module)s - %(levelname)s - %(message)s",
     )
 
-    logger.info("Initiating new FIX session...")
-    handler = BasePipeline()
-    logger.info("Ending session...")
-    # apps.logout()
-    logger.info("Scheduler shut down successfully!")
+    fix_pipeline = BasePipeline()
+    try:
+        fix_pipeline.start()
+    except KeyboardInterrupt:
+        fix_pipeline.shutdown()
+        logger.info("Pipeline shut down successfully!")

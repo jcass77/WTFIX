@@ -31,6 +31,18 @@ class SessionApp(BaseApp):
 
         self.next_in_seq_num = 1
 
+    def connect(self, *args, **kwargs):
+        """
+        Override this method to establish a new connection to the FIX server
+        """
+        pass
+
+    def disconnect(self, *args, **kwargs):
+        """
+        Override this method to close a FIX server connection
+        """
+        pass
+
 
 class ClientSessionApp(SessionApp):
     """
@@ -72,18 +84,19 @@ class ClientSessionApp(SessionApp):
         self.reset_seq_nums = reset_seq_nums
         self.test_mode = test_mode
 
+        self._logout_initiated = False
+        self._logged_out = False
+
     def initialize(self, *args, **kwargs):
         """
         Establish a connection to the FIX server and start listening for messages.
         """
         super().initialize(*args, **kwargs)
 
-        self.connect().result()  # Block until connection is established
-        self.logon()
-        self.listen().result()  # Block forever while we listen for new messages
+        self.open_connection().result()  # Block until connection is established
 
     @unsync
-    async def connect(self):
+    async def open_connection(self):
         """
         Connect to the FIX server, obtaining StreamReader and StreamWriter instances for receiving messages
         from and sending messages to the server.
@@ -94,28 +107,10 @@ class ClientSessionApp(SessionApp):
         )
         logger.info(f"{self.name}: Connected!")
 
-    @unsync
-    async def logon(self):
-        """
-        Log on to the FIX server using the provided credentials.
-        :return:
-        """
-        logon_msg = GenericMessage(
-            (Tag.MsgType, MsgType.Logon),
-            (Tag.EncryptMethod, "0"),  # TODO: should this be a configurable value?
-            (Tag.HeartBtInt, self.heartbeat_time),
-            (Tag.Username, self.username),
-            (Tag.Password, self.password),
-        )
-
-        if self.reset_seq_nums:
-            logon_msg[Tag.ResetSeqNumFlag] = "Y"
-
-        if self.test_mode is True:
-            logon_msg[Tag.TestMessageIndicator] = "Y"
-
-        logger.info(f"{self.name}: Logging in with {logon_msg}...")
-        self.pipeline.send(logon_msg)
+    def connect(self, *args, **kwargs):
+        super().connect(*args, **kwargs)
+        self.listen()  # Block forever while we listen for new messages
+        self.logon()
 
     @unsync
     async def listen(self):
@@ -144,10 +139,18 @@ class ClientSessionApp(SessionApp):
                 # Connection was closed before a complete message could be received.
                 if b"35=5" + settings.SOH in e.partial:
                     # Process logout message that was sent by the server.
-                    logger.warning(f"{self.name}: Forced logout initiated by the FIX server!")
+                    logger.warning(
+                        f"{self.name}: Forced logout initiated by the FIX server!"
+                    )
                     data = e.partial
                     break
                 else:
+                    if self._logout_initiated is True:
+                        logger.info(f"{self.name}: Session closed by server.")
+                        # Server closed connection at our request - done.
+                        self._logged_out = True
+                        return
+
                     logger.exception(
                         f"{self.name}: Unexpected EOF waiting for next chunk of partial data '{utils.decode(e.partial)}'."
                     )
@@ -160,6 +163,50 @@ class ClientSessionApp(SessionApp):
         logger.info(f"{self.name}: Closing the connection...")
         self.writer.close()
         # await self.writer.wait_closed()  Python 3.7 and up.
+
+    @unsync
+    async def logon(self):
+        """
+        Log on to the FIX server using the provided credentials.
+        :return:
+        """
+        logon_msg = GenericMessage(
+            (Tag.MsgType, MsgType.Logon),
+            (Tag.EncryptMethod, "0"),  # TODO: should this be a configurable value?
+            (Tag.HeartBtInt, self.heartbeat_time),
+            (Tag.Username, self.username),
+            (Tag.Password, self.password),
+        )
+
+        if self.reset_seq_nums:
+            logon_msg[Tag.ResetSeqNumFlag] = "Y"
+
+        if self.test_mode is True:
+            logon_msg[Tag.TestMessageIndicator] = "Y"
+
+        logger.info(f"{self.name}: Logging in with: {logon_msg}...")
+        self.pipeline.send(logon_msg)
+
+    @unsync
+    async def disconnect(self, *args, **kwargs):
+        super().disconnect(*args, **kwargs)
+
+        await self.logout()
+        self._logout_initiated = True
+
+        while self._logged_out is False:
+            await asyncio.sleep(1)
+
+    @unsync
+    async def logout(self):
+        """
+        Log out of the FIX server.
+        :return:
+        """
+        logout_msg = GenericMessage((Tag.MsgType, MsgType.Logout))
+
+        logger.info(f"{self.name}: Sending logout request: {logout_msg}...")
+        self.pipeline.send(logout_msg)
 
     @unsync
     async def on_send(self, message):

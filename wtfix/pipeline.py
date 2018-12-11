@@ -1,3 +1,4 @@
+import asyncio
 import importlib
 from collections import OrderedDict
 
@@ -21,10 +22,11 @@ class BasePipeline:
     OUTBOUND = 1
 
     def __init__(self, installed_apps=None):
+        logger.info(f"Creating new FIX pipeline...")
         self._installed_apps = OrderedDict()
-
         self.load_apps(installed_apps=installed_apps)
-        self.initialize()
+
+        self._session_app = next(reversed(self._installed_apps.values()))
 
     def load_apps(self, installed_apps=None):
         """
@@ -42,7 +44,8 @@ class BasePipeline:
             instance = class_(self)
 
             self._installed_apps[instance.name] = instance
-        logger.info(f"Loaded apps: {list(self._installed_apps.keys())}...")
+
+        logger.info(f"Pipeline apps: {list(self._installed_apps.keys())}...")
 
     def _prep_processing_pipeline(self, direction):
         if direction is self.INBOUND:
@@ -88,7 +91,27 @@ class BasePipeline:
         return self._process_message(message, self.OUTBOUND)
 
     def initialize(self):
-        logger.info("Initializing apps...")
         for app in reversed(self._installed_apps.values()):
+            logger.info(f"Initializing app '{app.name}'...")
             app.initialize()
+
         logger.info("All apps initialized!")
+
+    def start(self):
+        logger.info("Starting pipeline...")
+        self.initialize()
+        self._session_app.connect()
+        self.run().result()
+
+    @unsync
+    async def run(self):
+        while True:
+            await asyncio.sleep(86400)  # Block forever, at 24-hour intervals.
+
+    def shutdown(self):
+        logger.info("Shutting down pipeline...")
+        self.stop().result()
+
+    @unsync
+    async def stop(self):
+        await asyncio.wait_for(self._session_app.disconnect(), 10)

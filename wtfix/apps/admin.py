@@ -114,7 +114,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
         return True
 
     @on(MsgType.Logon)
-    def logon_handler(self, message):
+    def on_logon(self, message):
         """
         Start the heartbeat monitor as soon as a logon response is received from the server.
 
@@ -126,7 +126,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
         return message
 
     @on(MsgType.TestRequest)
-    def test_request_handler(self, message):
+    def on_test_request(self, message):
         """
         Send a HeartBeat message in response to a TestRequest received from the server.
 
@@ -140,7 +140,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
         return message
 
     @on(MsgType.Heartbeat)
-    def heartbeat_handler(self, message):
+    def on_heartbeat(self, message):
         """
         Handle a TestRequest response from the server.
         :param message: The Heartbeat message that was received in response to our TestRequest. The
