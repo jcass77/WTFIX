@@ -21,6 +21,17 @@ LOGGING_LEVEL = logging.INFO
 TIME_ZONE = "Africa/Johannesburg"
 USE_TZ = True
 
+# SESSION
+# ------------------------------------------------------------------------------
+HOST = os.getenv("HOST")
+PORT = os.getenv("PORT")
+
+SENDER_COMP_ID = os.getenv("SENDER_COMP_ID")
+TARGET_COMP_ID = os.getenv("TARGET_COMP_ID")
+
+USERNAME = os.getenv("USERNAME", SENDER_COMP_ID)
+PASSWORD = os.getenv("PASSWORD")
+
 # APPS
 # ------------------------------------------------------------------------------
 PIPELINE_APPS = [
