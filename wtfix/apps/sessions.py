@@ -37,7 +37,8 @@ class SessionApp(BaseApp):
         """
         pass
 
-    def disconnect(self, *args, **kwargs):
+    @unsync
+    async def disconnect(self, *args, **kwargs):
         """
         Override this method to close a FIX server connection
         """
@@ -109,7 +110,7 @@ class ClientSessionApp(SessionApp):
 
     def connect(self, *args, **kwargs):
         super().connect(*args, **kwargs)
-        self.listen()  # Block forever while we listen for new messages
+        self.listen()
         self.logon()
 
     @unsync
@@ -122,7 +123,7 @@ class ClientSessionApp(SessionApp):
         checksum_start = settings.SOH + b"10="
 
         data = b""
-        while True:
+        while True:  # Listen forever for new messages
             try:
                 # Try to read a complete message.
                 data = await self.reader.readuntil(
@@ -189,13 +190,17 @@ class ClientSessionApp(SessionApp):
 
     @unsync
     async def disconnect(self, *args, **kwargs):
-        super().disconnect(*args, **kwargs)
+        logger.info(f"{self.name}: Closing connection...")
+        await super().disconnect(*args, **kwargs)
 
         await self.logout()
         self._logout_initiated = True
 
         while self._logged_out is False:
-            await asyncio.sleep(1)
+            await asyncio.sleep(1)  # Wait for server to confirm logout and close connection.
+
+        self.writer.close()
+        logger.info(f"{self.name}: Connection closed!")
 
     @unsync
     async def logout(self):
@@ -214,6 +219,5 @@ class ClientSessionApp(SessionApp):
         Writes an encoded message to the StreamWriter.
         :param message: A valid, encoded, FIX message.
         """
-        logger.info(f"{self.name}: Sending message: {message}.) ")
         self.writer.write(message)
         await self.writer.drain()

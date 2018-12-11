@@ -27,6 +27,7 @@ class BasePipeline:
         self.load_apps(installed_apps=installed_apps)
 
         self._session_app = next(reversed(self._installed_apps.values()))
+        self.initialize()
 
     def load_apps(self, installed_apps=None):
         """
@@ -83,11 +84,13 @@ class BasePipeline:
     @unsync
     def receive(self, message):
         """Receives a new message to be processed"""
-        return self._process_message(message, self.INBOUND)
+        message = self._process_message(message, self.INBOUND)
+        logger.info(f"Received message: {message}. ")
 
     @unsync
     def send(self, message):
         """Processes a new message to be sent"""
+        logger.info(f"Sending message: {message}. ")
         return self._process_message(message, self.OUTBOUND)
 
     def initialize(self):
@@ -99,7 +102,6 @@ class BasePipeline:
 
     def start(self):
         logger.info("Starting pipeline...")
-        self.initialize()
         self._session_app.connect()
         self.run().result()
 
@@ -111,6 +113,7 @@ class BasePipeline:
     def shutdown(self):
         logger.info("Shutting down pipeline...")
         self.stop().result()
+        logger.info("Pipeline shut down successfully!")
 
     @unsync
     async def stop(self):

@@ -14,5 +14,5 @@ if __name__ == "__main__":
     try:
         fix_pipeline.start()
     except KeyboardInterrupt:
+        logger.info("Received keyboard interrupt!")
         fix_pipeline.shutdown()
-        logger.info("Pipeline shut down successfully!")

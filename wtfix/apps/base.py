@@ -138,5 +138,4 @@ class MessageTypeHandlerApp(BaseApp):
         :param message: Unhandled message.
         :return: the processed Message.
         """
-        logger.debug(f"{self.name}: No handler defined for {message}.")
         return message
