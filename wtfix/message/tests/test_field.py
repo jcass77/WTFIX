@@ -6,6 +6,10 @@ from wtfix.core.exceptions import InvalidField
 
 
 class TestFieldValue:
+    def test_init_does_not_wrap_fieldvalue(self):
+        fv = FieldValue(FieldValue("abc"))
+        assert not isinstance(fv.value, FieldValue)
+
     def test_getitem(self):
         assert FieldValue("abc")[1] == "b"
 
@@ -30,8 +34,17 @@ class TestFieldValue:
     def test_eq_bytes_str(self):
         assert FieldValue(b"abc") == "abc"
 
+    def test_eq_bytes_int(self):
+        assert FieldValue(b"1") == 1
+
     def test_eq_str_bytes(self):
         assert FieldValue("abc") == b"abc"
+
+    def test_eq_str_int(self):
+        assert FieldValue("1") == 1
+
+    def test_eq_fieldvalue(self):
+        assert FieldValue("abc") == FieldValue(b"abc")
 
     def test_str_bytes(self):
         assert str(FieldValue(b"abc")) == "abc"

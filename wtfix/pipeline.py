@@ -34,7 +34,7 @@ class BasePipeline:
         :param installed_apps: The list of class paths for the installed apps.
         """
         if installed_apps is None:
-            installed_apps = settings.INSTALLED_APPS
+            installed_apps = settings.PIPELINE_APPS
 
         for app in installed_apps:
             last_dot = app.rfind(".")
@@ -93,3 +93,4 @@ class BasePipeline:
         logger.info("Initializing apps...")
         for app in reversed(self._installed_apps.values()):
             app.initialize()
+        logger.info("All apps initialized!")

@@ -47,6 +47,10 @@ def test_encode_bytearray():
     assert utils.encode(bytearray("abc", encoding="utf-8")) == b"abc"
 
 
+def test_encode_none():
+    assert utils.encode(None) == b"None"
+
+
 def test_decode_bytes():
     assert utils.decode(b"abc") == "abc"
 
@@ -61,3 +65,7 @@ def test_decode_str():
 
 def test_decode_int():
     assert utils.decode(123) == 123
+
+
+def test_decode_none():
+    assert utils.decode(None) == "None"

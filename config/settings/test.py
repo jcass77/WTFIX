@@ -1,10 +1,10 @@
-from .dev import *  # noqa
+from .local import *  # noqa
 
 # GENERAL
 # ------------------------------------------------------------------------------
 DEBUG = True
 
-INSTALLED_APPS = []
+PIPELINE_APPS = []
 
 # SESSION
 # ------------------------------------------------------------------------------

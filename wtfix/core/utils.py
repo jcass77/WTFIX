@@ -76,6 +76,9 @@ def calculate_checksum(bytes_):
 @singledispatch
 def encode(obj):
     """Encode an object to bytes"""
+    if obj is None:
+        return b"None"
+
     return obj.encode(settings.ENCODING, errors=settings.ENCODING_ERRORS)
 
 
@@ -100,6 +103,9 @@ def _(ba):
 @singledispatch
 def decode(obj):
     """Decode a bytes-like object to string"""
+    if obj is None:
+        return "None"
+
     return obj.decode(settings.ENCODING, errors=settings.ENCODING_ERRORS)
 
 

@@ -1,6 +1,6 @@
 """
 Default wtfix settings. Override these with settings in the module pointed to
-by the SETTINGS_MODULE environment variable.
+by the WTFIX_SETTINGS_MODULE environment variable.
 """
 
 ####################
@@ -9,6 +9,7 @@ by the SETTINGS_MODULE environment variable.
 import logging
 
 DEBUG = False
+LOGGING_LEVEL = logging.INFO
 
 # Local time zone for this installation. All choices can be found here:
 # https://en.wikipedia.org/wiki/List_of_tz_zones_by_name (although not all
@@ -38,9 +39,7 @@ SOH = b"\x01"  # Start of header / field delimiter
 SOH_BYTE = ord(SOH)
 
 # List of strings representing installed apps.
-INSTALLED_APPS = []
+PIPELINE_APPS = []
 
 # Default formatting for datetime objects.
 DATETIME_FORMAT = "%Y%m%d-%H:%M:%S.%f"
-
-LOGGING_LEVEL = logging.INFO

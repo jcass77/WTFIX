@@ -1,7 +1,7 @@
 """
 Settings and configuration for wtfix.
 
-Read values from the module specified by the SETTINGS_MODULE environment variable
+Read values from the module specified by the WTFIX_SETTINGS_MODULE environment variable
 """
 
 import importlib
@@ -12,9 +12,12 @@ from ..core.exceptions import ImproperlyConfigured
 
 from dotenv import load_dotenv
 
-load_dotenv()
+from pathlib import Path  # python3 only
 
-ENVIRONMENT_VARIABLE = "SETTINGS_MODULE"
+env_path = Path(".") / ".env"
+load_dotenv(dotenv_path=env_path)
+
+ENVIRONMENT_VARIABLE = "WTFIX_SETTINGS_MODULE"
 
 
 class Settings:
@@ -34,11 +37,11 @@ class Settings:
                 setattr(self, setting, getattr(global_settings, setting))
 
         # store the settings module in case someone later cares
-        self.SETTINGS_MODULE = settings_module
+        self.WTFIX_SETTINGS_MODULE = settings_module
 
-        mod = importlib.import_module(self.SETTINGS_MODULE)
+        mod = importlib.import_module(self.WTFIX_SETTINGS_MODULE)
 
-        tuple_settings = "INSTALLED_APPS"
+        tuple_settings = "PIPELINE_APPS"
         self._explicit_settings = set()
 
         for setting in dir(mod):
@@ -57,7 +60,7 @@ class Settings:
     def __repr__(self):
         return '<%(cls)s "%(settings_module)s">' % {
             "cls": self.__class__.__name__,
-            "settings_module": self.SETTINGS_MODULE,
+            "settings_module": self.WTFIX_SETTINGS_MODULE,
         }
 
 

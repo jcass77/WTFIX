@@ -19,7 +19,11 @@ class FieldValue(Sequence):
     """
 
     def __init__(self, value):
-        self.value = value
+        if isinstance(value, FieldValue):
+            # FieldValues should be terminal nodes - don't wrap FieldValues in other FieldValues
+            self.value = value.value
+        else:
+            self.value = value
 
     def __getitem__(self, i: int):
         return self.value[i]
@@ -39,15 +43,15 @@ class FieldValue(Sequence):
         :raises ValueError: if comparison cannot be made.
         """
         if isinstance(other, bool):
-            return strtobool(self.value) == other
+            return strtobool(str(self.value)) == other
 
         if isinstance(other, bytes):
             return utils.encode(self.value) == other
 
-        if isinstance(other, str) and not isinstance(self.value, str):
-            return str(self) == other
+        if isinstance(other, numbers.Integral):
+            return int(self.value) == other
 
-        return self.value == other
+        return utils.decode(self.value) == other
 
     def __str__(self):
         """
@@ -132,7 +136,7 @@ class Field(collections.namedtuple("Field", ["tag", "value_ref"])):
 
     @property
     def as_str(self):
-        return str(self.value_ref.value)
+        return str(self.value_ref)
 
     @property
     def as_int(self):

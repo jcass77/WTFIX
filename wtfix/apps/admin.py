@@ -60,7 +60,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
         self._test_request_response_delay = 2 * self._heartbeat + 4
 
         connection_is_active = True
-        logger.info(f"{self.name}: Starting heartbeat monitor...")
+        logger.info(f"{self.name}: Starting heartbeat monitor ({self._heartbeat} second interval)...")
 
         while connection_is_active:
             # Keep monitoring for as long as the connection is active

@@ -9,7 +9,7 @@ LOGGING_LEVEL = logging.DEBUG
 
 # APPS
 # ------------------------------------------------------------------------------
-# INSTALLED_APPS += [
+# PIPELINE_APPS += [
 #     "wtfix.wire.apps.MessageTypeHandlerApp",
 # ]
 

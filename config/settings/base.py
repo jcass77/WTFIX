@@ -20,7 +20,7 @@ USE_TZ = True
 
 # APPS
 # ------------------------------------------------------------------------------
-INSTALLED_APPS = [
+PIPELINE_APPS = [
     "wtfix.apps.admin.HeartbeatApp",
     "wtfix.apps.parsers.BasicMessageParserApp",
     "wtfix.apps.wire.WireCommsApp",

@@ -1,13 +1,16 @@
 import asyncio
+import logging
 from asyncio import IncompleteReadError
 
 from unsync import unsync
 
-from wtfix.apps.base import BaseApp, logger
+from wtfix.apps.base import BaseApp
 from wtfix.conf import settings
 from wtfix.message.message import GenericMessage
 from wtfix.core import utils
 from wtfix.protocol.common import Tag, MsgType
+
+logger = logging.getLogger(__name__)
 
 
 class SessionApp(BaseApp):
@@ -87,11 +90,11 @@ class ClientSessionApp(SessionApp):
         Connect to the FIX server, obtaining StreamReader and StreamWriter instances for receiving messages
         from and sending messages to the server.
         """
-        logger.info(f"Establishing connection to {settings.HOST}:{settings.PORT}...")
+        logger.info(f"{self.name}: Establishing connection to {settings.HOST}:{settings.PORT}...")
         self.reader, self.writer = await asyncio.open_connection(
             settings.HOST, settings.PORT
         )
-        logger.info("Connected!")
+        logger.info(f"{self.name}: Connected!")
 
     @unsync
     async def logon(self):
