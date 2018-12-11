@@ -12,7 +12,7 @@ setup(
     version="0.0.1",
     author="John Cass",
     author_email="john.cass77@gmail.com",
-    description="A pythonic library for connecting to FIX servers",
+    description="The Pythonic Financial Information eXchange client for humans.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/jcass77/WTFIX",
