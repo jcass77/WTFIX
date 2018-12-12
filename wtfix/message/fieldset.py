@@ -228,11 +228,19 @@ class Group(collections.UserList):
         super().__init__()
         self.identifier = Field(*identifier)
 
-        instance_length = (
-            len(fields) / self.size
-        )  # The number of fields in each group instance
+        num_fields = len(fields)
 
-        if not instance_length.is_integer():
+        tags = set()
+        for field in fields:
+            try:
+                tags.add(field[0])
+            except TypeError:
+                # Must be a nested group, add the identifier's tag.
+                tags.add(field.tag)
+
+        instance_length = len(tags)
+
+        if num_fields != (instance_length * self.size):
             # Not enough fields to construct the required number of group instances
             raise InvalidGroup(
                 self.identifier.tag,
@@ -242,7 +250,7 @@ class Group(collections.UserList):
             )
 
         instance_length = int(instance_length)
-        for idx in range(0, len(fields), instance_length):  # Loop over group instances
+        for idx in range(0, num_fields, instance_length):  # Loop over group instances
             self.append(GroupInstance(*fields[idx : idx + instance_length]))
 
     def __len__(self):

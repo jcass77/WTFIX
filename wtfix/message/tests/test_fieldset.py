@@ -1,6 +1,7 @@
 import pytest
 
 from wtfix.conf import settings
+from wtfix.protocol.common import Tag
 from ..field import Field
 from ..fieldset import FieldSet, Group
 from wtfix.core.exceptions import TagNotFound, DuplicateTags, InvalidGroup
@@ -158,6 +159,18 @@ class TestGroupInstance:
 
 
 class TestGroup:
+    def test_group(self):
+        entry_types = [5, "B"]
+        instances = []
+        for et in entry_types:
+            instances.append((Tag.MDEntryType, et))
+
+        g = Group(
+            (Tag.NoMDEntryTypes, 2), *((Tag.MDEntryType, et) for et in entry_types)
+        )
+
+        assert repr(g) == "(267, 2):(269, 5), (269, B)"
+
     def test_invalid_group(self):
         with pytest.raises(InvalidGroup):
             Group((215, "2"), (216, "a"), (217, "b"), (216, "c"))

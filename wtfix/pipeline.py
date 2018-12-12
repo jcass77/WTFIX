@@ -93,7 +93,6 @@ class BasePipeline:
     @unsync
     def send(self, message):
         """Processes a new message to be sent"""
-        logger.info(f"Sending message: {message}. ")
         return self._process_message(message, self.OUTBOUND)
 
     def initialize(self):

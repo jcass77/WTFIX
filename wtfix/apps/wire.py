@@ -236,8 +236,6 @@ class DecoderApp(BaseApp):
             encoded_body=data[msg_type_end_tag + 1:checksum_tag_start],
             checksum=checksum,
         )
-
-        logger.info(f"{self.name}: Received message: {message}. ")
         return message
 
 

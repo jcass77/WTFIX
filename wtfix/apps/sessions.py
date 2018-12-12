@@ -156,7 +156,7 @@ class ClientSessionApp(SessionApp):
                         f"{self.name}: Unexpected EOF waiting for next chunk of partial data '{utils.decode(e.partial)}'."
                     )
                     break
-
+            logger.info(f"{self.name}: Received message: {data}. ")
             self.pipeline.receive(data)
 
         self.pipeline.receive(data)  # Process the last message in the buffer.
@@ -217,5 +217,6 @@ class ClientSessionApp(SessionApp):
         Writes an encoded message to the StreamWriter.
         :param message: A valid, encoded, FIX message.
         """
+        logger.info(f"{self.name}: Sending message: {message}. ")
         self.writer.write(message)
         await self.writer.drain()
