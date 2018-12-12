@@ -88,6 +88,12 @@ def _(n):
     return encode(str(n))
 
 
+@encode.register(numbers.Real)
+def _(r):
+    """Encode a float value"""
+    return encode(str(r))
+
+
 @encode.register(bytes)
 def _(b):
     """Bytes are already encoded"""
@@ -119,3 +125,9 @@ def _(string):
 def _(n):
     """Numbers do not need to be decoded"""
     return n
+
+
+@decode.register(numbers.Real)
+def _(r):
+    """Floats do not need to be decoded"""
+    return r

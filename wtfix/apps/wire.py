@@ -1,13 +1,13 @@
 from datetime import datetime
 
 from wtfix.apps.base import BaseApp
-from wtfix.conf import settings
+from wtfix.conf import settings, logger
 from wtfix.core.exceptions import (
     ParsingError,
     MessageProcessingError,
     TagNotFound,
 )
-from wtfix.message.message import BasicMessage
+from wtfix.message.message import RawMessage
 from wtfix.core import utils
 from wtfix.protocol.common import Tag
 
@@ -42,7 +42,7 @@ class EncoderApp(BaseApp):
 
         return message
 
-    # TODO: Add supporf for encoding BasicMessage instances?
+    # TODO: Add support for encoding RawMessage instances?
     def encode_message(self, message):
         """
         :param message: The message to encode.
@@ -94,7 +94,7 @@ class DecoderApp(BaseApp):
     # TODO: Add support for raw data?
     # See: https://github.com/da4089/simplefix/blob/88613f798b300757380ef0b3f332c6d3df2b712b/simplefix/parser.py)
     """
-    Translates a FIX application messages in raw (wire) format into a BasicMessage instance.
+    Translates a FIX application messages in raw (wire) format into a RawMessage instance.
     """
 
     name = "decoder_app"
@@ -229,13 +229,16 @@ class DecoderApp(BaseApp):
 
         checksum, _ = self.check_checksum(data, body_start=0, body_end=checksum_tag_start)
 
-        return BasicMessage(
+        message = RawMessage(
             begin_string,
             body_length=body_length,
             message_type=msg_type,
             encoded_body=data[msg_type_end_tag + 1:checksum_tag_start],
             checksum=checksum,
         )
+
+        logger.info(f"{self.name}: Received message: {message}. ")
+        return message
 
 
 class WireCommsApp(EncoderApp, DecoderApp):

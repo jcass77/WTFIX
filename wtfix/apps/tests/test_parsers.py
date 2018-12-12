@@ -3,7 +3,7 @@ import pytest
 from wtfix.conf import settings
 from wtfix.core.exceptions import ValidationError, ParsingError
 from wtfix.message.field import Field
-from wtfix.message.message import BasicMessage
+from wtfix.message.message import RawMessage
 
 
 class TestBasicMessageParser:
@@ -28,23 +28,23 @@ class TestBasicMessageParser:
         assert basic_parser_app.is_template_tag(217) is False
 
     def test_parse_detects_duplicate_tags_without_template(self, basic_parser_app, routing_id_group):
-        m = BasicMessage(message_type="a")
-        m.encoded_body = routing_id_group.raw + settings.SOH + Field(1, "a").raw
+        rm = RawMessage(message_type="a")
+        rm.encoded_body = routing_id_group.raw + settings.SOH + Field(1, "a").raw
 
         with pytest.raises(ParsingError):
-            basic_parser_app.on_receive(m)
+            basic_parser_app.on_receive(rm)
 
     def test_parse_repeating_group(self, basic_parser_app, routing_id_group):
-        m = BasicMessage(message_type="a")
-        m.encoded_body = routing_id_group.raw + Field(1, "a").raw + settings.SOH
+        rm = RawMessage(message_type="a")
+        rm.encoded_body = routing_id_group.raw + Field(1, "a").raw + settings.SOH
 
         basic_parser_app.add_group_template(215, 216, 217)
-        m = basic_parser_app.on_receive(m)
+        rm = basic_parser_app.on_receive(rm)
 
-        assert 215 in m
-        assert m[1].value_ref == "a"
+        assert 215 in rm
+        assert rm[1].value_ref == "a"
 
-        group = m.get_group(215)
+        group = rm.get_group(215)
         assert group.size == 2
 
         assert len(group[0]) == 2
@@ -56,15 +56,15 @@ class TestBasicMessageParser:
         assert group[1][217] == "d"
 
     def test_parse_nested_repeating_group(self, basic_parser_app, nested_parties_group):
-        m = BasicMessage(message_type="a")
-        m.encoded_body = nested_parties_group.raw + Field(1, "a").raw + settings.SOH
+        rm = RawMessage(message_type="a")
+        rm.encoded_body = nested_parties_group.raw + Field(1, "a").raw + settings.SOH
 
         basic_parser_app.add_group_template(539, 524, 525, 538)
         basic_parser_app.add_group_template(804, 545, 805)
 
-        m = basic_parser_app.on_receive(m)
+        rm = basic_parser_app.on_receive(rm)
 
-        group = m.get_group(539)
+        group = rm.get_group(539)
         assert group.size == 2
 
         group_instance_1 = group[0]
@@ -77,4 +77,4 @@ class TestBasicMessageParser:
         assert len(nested_instance_1) == 2
         assert nested_instance_1[805] == "cc"
 
-        assert m[1].value_ref == "a"
+        assert rm[1].value_ref == "a"

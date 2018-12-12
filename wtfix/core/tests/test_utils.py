@@ -51,6 +51,10 @@ def test_encode_none():
     assert utils.encode(None) == b"None"
 
 
+def test_encode_float():
+    assert utils.encode(1.23) == b"1.23"
+
+
 def test_decode_bytes():
     assert utils.decode(b"abc") == "abc"
 
@@ -69,3 +73,7 @@ def test_decode_int():
 
 def test_decode_none():
     assert utils.decode(None) == "None"
+
+
+def test_decode_float():
+    assert utils.decode(1.23) == 1.23

@@ -3,13 +3,13 @@ from wtfix.conf import settings
 from wtfix.core.exceptions import ParsingError, ValidationError
 from wtfix.message.field import Field
 from wtfix.message.fieldset import Group
-from wtfix.message.message import BasicMessage, GenericMessage
+from wtfix.message.message import RawMessage, GenericMessage
 from wtfix.protocol.common import Tag
 
 
 class BasicMessageParserApp(BaseApp):
     """
-    Parses BasicMessage instances into GenericMessage instances.
+    Parses RawMessage instances into GenericMessage instances.
     """
 
     name = "basic_message_parser"
@@ -18,7 +18,7 @@ class BasicMessageParserApp(BaseApp):
         super().__init__(pipeline, *args, **kwargs)
         self._group_templates = {}
 
-    def on_receive(self, message: BasicMessage):
+    def on_receive(self, message: RawMessage):
         data = message.encoded_body.rstrip(settings.SOH).split(
             settings.SOH
         )  # Remove last SOH at end of byte stream and split into fields
@@ -61,7 +61,7 @@ class BasicMessageParserApp(BaseApp):
             tag = int(tag)
             if tag in tags_seen and tag not in template:
                 raise ParsingError(
-                    f"No repeating group template for duplicate tag {tag}."
+                    f"No repeating group template for duplicate tag {tag} in {raw_pairs}."
                 )
 
             if tag in self._group_templates:

@@ -29,6 +29,10 @@ class BasePipeline:
         self._session_app = next(reversed(self._installed_apps.values()))
         self.initialize()
 
+    @property
+    def apps(self):
+        return self._installed_apps
+
     def load_apps(self, installed_apps=None):
         """
         Loads the list of apps to be used for processing messages.
@@ -84,8 +88,7 @@ class BasePipeline:
     @unsync
     def receive(self, message):
         """Receives a new message to be processed"""
-        message = self._process_message(message, self.INBOUND)
-        logger.info(f"Received message: {message}. ")
+        return self._process_message(message, self.INBOUND)
 
     @unsync
     def send(self, message):
