@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from wtfix.apps.base import BaseApp
-from wtfix.conf import settings, logger
+from wtfix.conf import settings
 from wtfix.core.exceptions import (
     ParsingError,
     MessageProcessingError,
