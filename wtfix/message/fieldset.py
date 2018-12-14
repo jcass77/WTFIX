@@ -124,7 +124,7 @@ class FieldSet(collections.OrderedDict):
             fields_str += f"{str(field)}"
 
         else:
-            fields_str = fields_str[:-1]
+            fields_str = fields_str[:-2]
 
         return f"{fields_str}"
 

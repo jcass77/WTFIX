@@ -110,7 +110,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
                 f"{self.name}: No response to test request '{self._test_request_id}', "
                 f"initiating shutdown..."
             )
-            self.pipeline.shutdown()
+            self.pipeline.stop()
 
             return False
 
