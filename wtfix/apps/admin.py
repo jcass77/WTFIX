@@ -138,7 +138,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
         logger.debug(
             f"{self.name}: Sending heartbeat in response to request {message[Tag.TestReqID]}."
         )
-        self.pipeline.send(admin.Heartbeat(message[Tag.TestReqID]))
+        self.pipeline.send(admin.Heartbeat(message[Tag.TestReqID].as_str))
 
         return message
 

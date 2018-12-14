@@ -93,12 +93,12 @@ class BasePipeline:
         return message
 
     @unsync
-    def receive(self, message):
+    async def receive(self, message):
         """Receives a new message to be processed"""
         return self._process_message(message, self.INBOUND)
 
     @unsync
-    def send(self, message):
+    async def send(self, message):
         """Processes a new message to be sent"""
         return self._process_message(message, self.OUTBOUND)
 
