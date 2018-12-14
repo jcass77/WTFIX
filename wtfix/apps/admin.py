@@ -53,15 +53,16 @@ class HeartbeatApp(MessageTypeHandlerApp):
 
         :param heartbeat: The heartbeat interval in seconds.
         """
-        self._heartbeat = heartbeat
+        # self._heartbeat = heartbeat
+        self._heartbeat = 5
         self._test_request_response_delay = 2 * self._heartbeat + 4
 
         connection_is_active = True
         logger.info(f"{self.name}: Starting heartbeat monitor ({self._heartbeat} second interval)...")
 
-        while connection_is_active:
+        while connection_is_active is True:
             # Keep monitoring for as long as the connection is active
-            connection_is_active = await self.monitor_heartbeat().result()
+            connection_is_active = await self.monitor_heartbeat()
 
         logger.info(f"{self.name}: Heartbeat monitor stopped!")
 
@@ -72,14 +73,15 @@ class HeartbeatApp(MessageTypeHandlerApp):
 
         :return: True if the monitored connection is still active. False if the server has stopped responding.
         """
-        next_check = max(self._heartbeat - self.sec_since_last_receive(), 0)
+        # next_check = max(self._heartbeat - self.sec_since_last_receive(), 0)
+        next_check = 1
         await asyncio.sleep(
             next_check
         )  # Wait until the next scheduled heartbeat check.
 
         if self.sec_since_last_receive() > self._heartbeat:
             # Heartbeat exceeded, send test message
-            return self.check_server_is_responding().result()
+            return await self.check_server_is_responding()
 
         # Everything ok.
         return True
@@ -99,15 +101,16 @@ class HeartbeatApp(MessageTypeHandlerApp):
         self.pipeline.send(admin.TestRequest(utils.encode(self._test_request_id)))
 
         # Sleep while we wait for a response on the test request
-        await asyncio.sleep(self._test_request_response_delay)
+        # await asyncio.sleep(self._test_request_response_delay)
+        await asyncio.sleep(1)
 
         if self.is_waiting():
             # No response received, force logout!
             logger.error(
                 f"{self.name}: No response to test request '{self._test_request_id}', "
-                f"initiating logout..."
+                f"initiating shutdown..."
             )
-            self.pipeline.send(GenericMessage((Tag.MsgType, MsgType.Logout)))
+            self.pipeline.shutdown()
 
             return False
 

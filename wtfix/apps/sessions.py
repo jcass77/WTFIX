@@ -6,6 +6,7 @@ from unsync import unsync
 from wtfix.conf import logger
 from wtfix.apps.base import BaseApp
 from wtfix.conf import settings
+from wtfix.core.exceptions import MessageProcessingError
 from wtfix.message.message import GenericMessage
 from wtfix.core import utils
 from wtfix.protocol.common import Tag, MsgType
@@ -85,16 +86,15 @@ class ClientSessionApp(SessionApp):
         self.reset_seq_nums = reset_seq_nums
         self.test_mode = test_mode
 
-        self._logout_initiated = False
-        self._logged_out = False
+        self.is_closing = False
 
-    def initialize(self, *args, **kwargs):
+    @unsync
+    async def initialize(self, *args, **kwargs):
         """
         Establish a connection to the FIX server and start listening for messages.
         """
-        super().initialize(*args, **kwargs)
-
-        self.open_connection().result()  # Block until connection is established
+        await super().initialize(*args, **kwargs)
+        await self.open_connection()  # Block until connection is established
 
     @unsync
     async def open_connection(self):
@@ -108,10 +108,11 @@ class ClientSessionApp(SessionApp):
         )
         logger.info(f"{self.name}: Connected!")
 
-    def connect(self, *args, **kwargs):
+    @unsync
+    async def connect(self, *args, **kwargs):
         super().connect(*args, **kwargs)
-        self.listen()
-        self.logon()
+        await self.listen()
+        await self.logon()
 
     @unsync
     async def listen(self):
@@ -122,8 +123,7 @@ class ClientSessionApp(SessionApp):
         begin_string = b"8=" + utils.encode(settings.BEGIN_STRING)
         checksum_start = settings.SOH + b"10="
 
-        data = b""
-        while True:  # Listen forever for new messages
+        while not self.writer.transport.is_closing():  # Listen forever for new messages
             try:
                 # Try to read a complete message.
                 data = await self.reader.readuntil(
@@ -136,6 +136,9 @@ class ClientSessionApp(SessionApp):
                     settings.SOH
                 )  # Detect final message delimiter.
 
+                logger.info(f"{self.name}: Received message: {data}. ")
+                self.pipeline.receive(data)
+
             except IncompleteReadError as e:
                 # Connection was closed before a complete message could be received.
                 if b"35=5" + settings.SOH in e.partial:
@@ -143,27 +146,20 @@ class ClientSessionApp(SessionApp):
                     logger.warning(
                         f"{self.name}: Forced logout initiated by the FIX server!"
                     )
-                    data = e.partial
-                    break
+
+                    logger.info(f"{self.name}: Last message received: {data}. ")
+                    self.pipeline.receive(data)
+
                 else:
-                    if self._logout_initiated is True:
-                        logger.info(f"{self.name}: Session closed by server.")
+                    if self.is_closing is True:
                         # Server closed connection at our request - done.
-                        self._logged_out = True
-                        return
+                        logger.info(f"{self.name}: Session terminated by server.")
+                    else:
+                        raise MessageProcessingError(
+                            f"Unexpected EOF waiting for next chunk of partial data '{utils.decode(e.partial)}'."
+                        ) from e
 
-                    logger.exception(
-                        f"{self.name}: Unexpected EOF waiting for next chunk of partial data '{utils.decode(e.partial)}'."
-                    )
-                    break
-            logger.info(f"{self.name}: Received message: {data}. ")
-            self.pipeline.receive(data)
-
-        self.pipeline.receive(data)  # Process the last message in the buffer.
-
-        logger.info(f"{self.name}: Closing the connection...")
-        self.writer.close()
-        # await self.writer.wait_closed()  Python 3.7 and up.
+                self.writer.close()
 
     @unsync
     async def logon(self):
@@ -190,17 +186,16 @@ class ClientSessionApp(SessionApp):
 
     @unsync
     async def disconnect(self, *args, **kwargs):
-        logger.info(f"{self.name}: Closing connection...")
+        logger.info(f"{self.name}: Initiating disconnect...")
         await super().disconnect(*args, **kwargs)
 
         await self.logout()
-        self._logout_initiated = True
+        self.is_closing = True
 
-        while self._logged_out is False:
+        while self.writer.transport.is_closing() is False:
             await asyncio.sleep(1)  # Wait for server to confirm logout and close connection.
 
-        self.writer.close()
-        logger.info(f"{self.name}: Connection closed!")
+        logger.info(f"{self.name}: Disconnected!")
 
     @unsync
     async def logout(self):

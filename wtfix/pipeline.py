@@ -27,11 +27,18 @@ class BasePipeline:
         self.load_apps(installed_apps=installed_apps)
 
         self._session_app = next(reversed(self._installed_apps.values()))
-        self.initialize()
 
     @property
     def apps(self):
         return self._installed_apps
+
+    @unsync
+    async def initialize(self):
+        for app in reversed(self._installed_apps.values()):
+            logger.info(f"Initializing app '{app.name}'...")
+            await app.initialize()
+
+        logger.info("All apps initialized!")
 
     def load_apps(self, installed_apps=None):
         """
@@ -95,27 +102,22 @@ class BasePipeline:
         """Processes a new message to be sent"""
         return self._process_message(message, self.OUTBOUND)
 
-    def initialize(self):
-        for app in reversed(self._installed_apps.values()):
-            logger.info(f"Initializing app '{app.name}'...")
-            app.initialize()
-
-        logger.info("All apps initialized!")
-
-    def start(self):
+    @unsync
+    async def start(self):
         logger.info("Starting pipeline...")
-        self._session_app.connect()
-        self.run().result()
+        await self.initialize()
+        await self._session_app.connect()
+        await self.run().result()
+        logger.info("Pipeline stopped.")
 
     @unsync
     async def run(self):
-        while True:
-            await asyncio.sleep(86400)  # Block forever, at 24-hour intervals.
+        while self._session_app.writer.transport.is_closing() is False:
+            await asyncio.sleep(5)  # Block forever.
 
     def shutdown(self):
         logger.info("Shutting down pipeline...")
-        self.stop().result()
-        logger.info("Pipeline shut down successfully!")
+        self.stop()
 
     @unsync
     async def stop(self):

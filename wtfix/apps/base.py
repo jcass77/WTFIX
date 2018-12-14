@@ -1,5 +1,7 @@
 from functools import wraps
 
+from unsync import unsync
+
 from wtfix.conf import logger
 from wtfix.core.exceptions import ValidationError
 
@@ -63,7 +65,8 @@ class BaseApp:
         """
         self.pipeline.send(message)
 
-    def initialize(self, *args, **kwargs):
+    @unsync
+    async def initialize(self, *args, **kwargs):
         """
         Initialization that needs to be performed before this apps can start processing messages.
         """
