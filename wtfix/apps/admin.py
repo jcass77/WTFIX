@@ -101,8 +101,8 @@ class HeartbeatApp(MessageTypeHandlerApp):
         self.pipeline.send(admin.TestRequest(utils.encode(self._test_request_id)))
 
         # Sleep while we wait for a response on the test request
-        # await asyncio.sleep(self._test_request_response_delay)
-        await asyncio.sleep(1)
+        await asyncio.sleep(self._test_request_response_delay)
+        # await asyncio.sleep(1)
 
         if self.is_waiting():
             # No response received, force logout!
