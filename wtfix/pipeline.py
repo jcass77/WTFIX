@@ -24,17 +24,23 @@ class BasePipeline:
     def __init__(self, installed_apps=None):
         logger.info(f"Creating new FIX pipeline...")
         self._installed_apps = OrderedDict()
-        self.load_apps(installed_apps=installed_apps)
+        self._session_app = None
 
-        self._session_app = next(reversed(self._installed_apps.values()))
+        self.load_apps(installed_apps=installed_apps)
 
     @property
     def apps(self):
         return self._installed_apps
 
+    @property
+    def session_app(self):
+        if self._session_app is None:
+            self._session_app = next(reversed(self.apps.values()))
+        return self._session_app
+
     @unsync
     async def initialize(self):
-        for app in reversed(self._installed_apps.values()):
+        for app in reversed(self.apps.values()):
             logger.info(f"Initializing app '{app.name}'...")
             await app.initialize()
 
@@ -55,16 +61,31 @@ class BasePipeline:
             class_ = getattr(module, app[last_dot + 1:])
             instance = class_(self)
 
-            self._installed_apps[instance.name] = instance
+            self.apps[instance.name] = instance
 
-        logger.info(f"Pipeline apps: {list(self._installed_apps.keys())}...")
+        logger.info(f"Pipeline apps: {list(self.apps.keys())}...")
+
+    @unsync
+    async def start(self):
+        logger.info("Starting pipeline...")
+
+        await self.initialize()
+        self.session_app.connect()
+        await self.run()
+
+        logger.info("Pipeline stopped.")
+
+    @unsync
+    async def run(self):
+        while self.session_app.writer.transport.is_closing() is False:
+            await asyncio.sleep(5)  # Block forever.
 
     def _prep_processing_pipeline(self, direction):
         if direction is self.INBOUND:
-            return "on_receive", reversed(self._installed_apps.values())
+            return "on_receive", reversed(self.apps.values())
 
         if direction is self.OUTBOUND:
-            return "on_send", iter(self._installed_apps.values())
+            return "on_send", iter(self.apps.values())
 
         raise ValidationError(
             f"Unknown application chain processing direction '{direction}'."
@@ -103,22 +124,10 @@ class BasePipeline:
         return self._process_message(message, self.OUTBOUND)
 
     @unsync
-    async def start(self):
-        logger.info("Starting pipeline...")
-        await self.initialize()
-        self._session_app.connect()
-        await self.run()
-        logger.info("Pipeline stopped.")
-
-    @unsync
-    async def run(self):
-        while self._session_app.writer.transport.is_closing() is False:
-            await asyncio.sleep(5)  # Block forever.
-
-    def shutdown(self):
+    async def shutdown(self):
         logger.info("Shutting down pipeline...")
-        self.stop()
+        await self.stop()
 
     @unsync
     async def stop(self):
-        await asyncio.wait_for(self._session_app.disconnect(), 10)
+        await asyncio.wait_for(self.session_app.disconnect(), 10)

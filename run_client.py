@@ -20,6 +20,6 @@ def main(*args, **kwargs):
         fix_pipeline.start().result()
     except KeyboardInterrupt:
         logger.info("Received keyboard interrupt!")
-        fix_pipeline.shutdown()
+        fix_pipeline.shutdown().result()
 
 main()

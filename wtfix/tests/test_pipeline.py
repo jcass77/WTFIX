@@ -8,7 +8,7 @@ class TestBasePipeline:
     def test_load_apps(self, three_level_app_chain):
         pipeline = BasePipeline(installed_apps=three_level_app_chain)
 
-        assert len(pipeline._installed_apps) == 3
+        assert len(pipeline.apps) == 3
 
     def test_prep_processing_pipeline_inbound(self, three_level_app_chain):
         pipeline = BasePipeline(installed_apps=three_level_app_chain)
