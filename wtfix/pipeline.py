@@ -83,7 +83,8 @@ class BasePipeline:
         logger.info("Shutting down pipeline...")
         await asyncio.wait_for(self.session_app.disconnect(), 10)
 
-    def _prep_processing_pipeline(self, direction):
+    @unsync
+    async def _prep_processing_pipeline(self, direction):
         if direction is self.INBOUND:
             return "on_receive", reversed(self.apps.values())
 
@@ -94,7 +95,8 @@ class BasePipeline:
             f"Unknown application chain processing direction '{direction}'."
         )
 
-    def _process_message(self, message, direction):
+    @unsync
+    async def _process_message(self, message, direction):
         """
         Process a message by passing it on to the various apps in the pipeline.
         :param message: The GenericMessage instance to process
@@ -103,7 +105,7 @@ class BasePipeline:
         :return: The processed message or None if processing was halted somewhere in the apps stack.
         """
 
-        process_func, app_chain = self._prep_processing_pipeline(direction)
+        process_func, app_chain = await self._prep_processing_pipeline(direction)
 
         try:
             for app in app_chain:
@@ -119,10 +121,9 @@ class BasePipeline:
     @unsync
     async def receive(self, message):
         """Receives a new message to be processed"""
-        return self._process_message(message, self.INBOUND)
+        return await self._process_message(message, self.INBOUND)
 
     @unsync
     async def send(self, message):
         """Processes a new message to be sent"""
-        return self._process_message(message, self.OUTBOUND)
-
+        return await self._process_message(message, self.OUTBOUND)
