@@ -25,6 +25,7 @@ class BasePipeline:
         logger.info(f"Creating new FIX pipeline...")
         self._installed_apps = OrderedDict()
         self._session_app = None
+        self.is_closing = asyncio.Condition()
 
         self.load_apps(installed_apps=installed_apps)
 
@@ -71,14 +72,16 @@ class BasePipeline:
 
         await self.initialize()
         self.session_app.connect()
-        await self.run()
+
+        async with self.is_closing:
+            await self.is_closing.wait_for(self.session_app.writer.transport.is_closing)
 
         logger.info("Pipeline stopped.")
 
     @unsync
-    async def run(self):
-        while self.session_app.writer.transport.is_closing() is False:
-            await asyncio.sleep(5)  # Block forever.
+    async def stop(self):
+        logger.info("Shutting down pipeline...")
+        await asyncio.wait_for(self.session_app.disconnect(), 10)
 
     def _prep_processing_pipeline(self, direction):
         if direction is self.INBOUND:
@@ -123,11 +126,3 @@ class BasePipeline:
         """Processes a new message to be sent"""
         return self._process_message(message, self.OUTBOUND)
 
-    @unsync
-    async def shutdown(self):
-        logger.info("Shutting down pipeline...")
-        await self.stop()
-
-    @unsync
-    async def stop(self):
-        await asyncio.wait_for(self.session_app.disconnect(), 10)
