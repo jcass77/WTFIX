@@ -121,9 +121,11 @@ class BasePipeline:
     @unsync
     async def receive(self, message):
         """Receives a new message to be processed"""
-        return await self._process_message(message, self.INBOUND)
+        message = await self._process_message(message, self.INBOUND)
+        logger.info(f" <-- {message}")
 
     @unsync
     async def send(self, message):
         """Processes a new message to be sent"""
+        logger.info(f" --> {message}")
         return await self._process_message(message, self.OUTBOUND)

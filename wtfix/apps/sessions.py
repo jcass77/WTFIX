@@ -136,7 +136,6 @@ class ClientSessionApp(SessionApp):
                     settings.SOH
                 )  # Detect final message delimiter.
 
-                logger.info(f"{self.name}: Received message: {data}. ")
                 self.pipeline.receive(data)
 
             except IncompleteReadError as e:
@@ -212,6 +211,5 @@ class ClientSessionApp(SessionApp):
         Writes an encoded message to the StreamWriter.
         :param message: A valid, encoded, FIX message.
         """
-        logger.info(f"{self.name}: Sending message: {message}. ")
         self.writer.write(message)
         await self.writer.drain()
