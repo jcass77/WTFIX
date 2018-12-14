@@ -106,8 +106,8 @@ class BasePipeline:
     async def start(self):
         logger.info("Starting pipeline...")
         await self.initialize()
-        await self._session_app.connect()
-        await self.run().result()
+        self._session_app.connect()
+        await self.run()
         logger.info("Pipeline stopped.")
 
     @unsync

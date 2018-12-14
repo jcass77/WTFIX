@@ -111,8 +111,8 @@ class ClientSessionApp(SessionApp):
     @unsync
     async def connect(self, *args, **kwargs):
         super().connect(*args, **kwargs)
-        await self.listen()
-        await self.logon()
+        self.listen()
+        self.logon()
 
     @unsync
     async def listen(self):

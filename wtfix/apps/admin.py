@@ -53,8 +53,8 @@ class HeartbeatApp(MessageTypeHandlerApp):
 
         :param heartbeat: The heartbeat interval in seconds.
         """
-        # self._heartbeat = heartbeat
-        self._heartbeat = 5
+        self._heartbeat = heartbeat
+        # self._heartbeat = 5
         self._test_request_response_delay = 2 * self._heartbeat + 4
 
         connection_is_active = True
@@ -73,8 +73,8 @@ class HeartbeatApp(MessageTypeHandlerApp):
 
         :return: True if the monitored connection is still active. False if the server has stopped responding.
         """
-        # next_check = max(self._heartbeat - self.sec_since_last_receive(), 0)
-        next_check = 1
+        next_check = max(self._heartbeat - self.sec_since_last_receive(), 0)
+        # next_check = 1
         await asyncio.sleep(
             next_check
         )  # Wait until the next scheduled heartbeat check.
