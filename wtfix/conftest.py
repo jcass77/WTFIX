@@ -18,11 +18,11 @@ def pytest_runtest_setup():
     socket_allow_hosts(allowed=["localhost", "127.0.0.1", "::1"])
 
 
-@pytest.yield_fixture()
-def unsync_event_loop():
-    # Configure pytest-asyncio to use unsync's existing event loop.
+@pytest.fixture
+def unsync_event_loop(event_loop):
+    # Force unsync to use the same event loop as pytest-asyncio
     # See: https://github.com/pytest-dev/pytest-asyncio#event_loop
-    return unsync.loop
+    unsync.loop = event_loop
 
 
 @pytest.fixture(scope="session")

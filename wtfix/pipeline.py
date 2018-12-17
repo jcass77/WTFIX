@@ -5,14 +5,12 @@ from collections import OrderedDict
 
 from unsync import unsync
 
-from wtfix.apps.sessions import SessionApp
 from wtfix.conf import logger
 from wtfix.conf import settings
 from wtfix.core.exceptions import (
     MessageProcessingError,
     StopMessageProcessing,
-    ValidationError,
-)
+    ValidationError, ImproperlyConfigured)
 
 
 class BasePipeline:
@@ -24,34 +22,27 @@ class BasePipeline:
     OUTBOUND = 1
 
     def __init__(self, installed_apps=None):
-        logger.info(f"Creating new FIX pipeline...")
-        self._installed_apps = OrderedDict()
-        self._session_app = None
-
-        self.load_apps(installed_apps=installed_apps)
+        self._installed_apps = self._load_apps(installed_apps=installed_apps)
+        logger.info(f"Created new FIX application pipeline: {list(self.apps.keys())}.")
 
     @property
     def apps(self):
         return self._installed_apps
 
-    @property
-    def session_app(self):
-        if self._session_app is None:
-            for app in reversed(self.apps.values()):
-                if isinstance(app, SessionApp):
-
-                    self._session_app = app
-                    break
-
-        return self._session_app
-
-    def load_apps(self, installed_apps=None):
+    def _load_apps(self, installed_apps=None):
         """
         Loads the list of apps to be used for processing messages.
         :param installed_apps: The list of class paths for the installed apps.
         """
+        loaded_apps = OrderedDict()
+
         if installed_apps is None:
             installed_apps = settings.PIPELINE_APPS
+
+        if len(installed_apps) == 0:
+            raise ImproperlyConfigured(
+                f"At least one application needs to be added to the pipeline using the PIPELINE_APPS setting."
+            )
 
         for app in installed_apps:
             last_dot = app.rfind(".")
@@ -60,9 +51,9 @@ class BasePipeline:
             class_ = getattr(module, app[last_dot + 1:])
             instance = class_(self)
 
-            self.apps[instance.name] = instance
+            loaded_apps[instance.name] = instance
 
-        logger.info(f"Pipeline apps: {list(self.apps.keys())}...")
+        return loaded_apps
 
     @unsync
     async def initialize(self):
@@ -77,7 +68,8 @@ class BasePipeline:
         logger.info("Starting pipeline...")
 
         await self.initialize()
-        await self.session_app.connect()
+        for app in reversed(self.apps.values()):
+            await app.start()
 
         logger.info("Pipeline stopped.")
 
@@ -85,10 +77,12 @@ class BasePipeline:
     async def stop(self):
         logger.info("Shutting down pipeline...")
         try:
-            await asyncio.wait_for(self.session_app.disconnect(), 5)
+            for app in self.apps.values():
+                await asyncio.wait_for(app.stop(), 5)
+
             logger.info("Pipeline stopped.")
         except futures.TimeoutError:
-            logger.error("Timeout waiting for server to respond to logout - connection terminated abnormally!")
+            logger.error(f"Timeout waiting for app {app} to stop - session terminated abnormally!")
 
     def _prep_processing_pipeline(self, direction):
         if direction is self.INBOUND:

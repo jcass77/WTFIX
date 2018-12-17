@@ -32,20 +32,6 @@ class SessionApp(BaseApp):
 
         self.next_in_seq_num = 1
 
-    @unsync
-    async def connect(self, *args, **kwargs):
-        """
-        Override this method to establish a new connection to the FIX server
-        """
-        pass
-
-    @unsync
-    async def disconnect(self, *args, **kwargs):
-        """
-        Override this method to close a FIX server connection
-        """
-        pass
-
 
 class ClientSessionApp(SessionApp):
     """
@@ -96,10 +82,10 @@ class ClientSessionApp(SessionApp):
         Establish a connection to the FIX server and start listening for messages.
         """
         await super().initialize(*args, **kwargs)
-        await self.open_connection()  # Block until connection is established
+        await self._open_connection()  # Block until connection is established
 
     @unsync
-    async def open_connection(self):
+    async def _open_connection(self):
         """
         Connect to the FIX server, obtaining StreamReader and StreamWriter instances for receiving messages
         from and sending messages to the server.
@@ -111,8 +97,8 @@ class ClientSessionApp(SessionApp):
         logger.info(f"{self.name}: Connected!")
 
     @unsync
-    async def connect(self, *args, **kwargs):
-        await super().connect(*args, **kwargs)
+    async def start(self, *args, **kwargs):
+        await super().start(*args, **kwargs)
         self.listen()  # Intentional non-blocking call
         self.logon()  # Intentional non-blocking call
 
@@ -162,7 +148,6 @@ class ClientSessionApp(SessionApp):
                         f"Unexpected EOF waiting for next chunk of partial data '{utils.decode(e.partial)}'."
                     ) from e
 
-            finally:
                 self.writer.close()
 
     @unsync
@@ -189,8 +174,8 @@ class ClientSessionApp(SessionApp):
         self.pipeline.send(logon_msg)
 
     @unsync
-    async def disconnect(self, *args, **kwargs):
-        await super().disconnect(*args, **kwargs)
+    async def stop(self, *args, **kwargs):
+        await super().stop(*args, **kwargs)
 
         logger.info(f"{self.name}: Initiating disconnect...")
 

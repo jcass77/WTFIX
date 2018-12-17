@@ -24,6 +24,30 @@ class BaseApp:
 
         self.pipeline = pipeline
 
+    @unsync
+    async def initialize(self, *args, **kwargs):
+        """
+        Initialization that needs to be performed when the app is first loaded as part of an application processing
+        pipeline.
+        """
+        pass
+
+    @unsync
+    async def start(self, *args, **kwargs):
+        """
+        Override this method for any app-specific routines that should be performed when the application
+        pipeline is started.
+        """
+        pass
+
+    @unsync
+    async def stop(self, *args, **kwargs):
+        """
+        Override this method for any app-specific routines that should be performed when the application
+        pipeline is stopped.
+        """
+        pass
+
     def on_receive(self, message):
         """
         Override this method in order to define what to do when a message is received.
@@ -63,13 +87,6 @@ class BaseApp:
         :param message: The message to be sent.
         """
         self.pipeline.send(message)
-
-    @unsync
-    async def initialize(self, *args, **kwargs):
-        """
-        Initialization that needs to be performed before an app can start processing messages.
-        """
-        pass
 
 
 def on(message_type):

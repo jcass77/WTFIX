@@ -124,6 +124,14 @@ class TestFieldSet:
 
         assert fs[routing_id_group.tag] == routing_id_group
 
+    def test_set_group_instance_length_one(self):
+        fs = FieldSet((1, "a"), (2, "bb"))
+
+        short_group = Group((Tag.NoMDEntryTypes, "1"), (Tag.MDEntryType, "a"))
+        fs.set_group(short_group)
+
+        assert fs.get_group(Tag.NoMDEntryTypes) == short_group
+
     def test_get_group(self, fieldset_a_b, routing_id_group):
         fs = FieldSet((1, "a"), (2, "bb"))
         fs.set_group(routing_id_group)

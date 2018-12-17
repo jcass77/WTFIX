@@ -4,67 +4,92 @@ import pytest
 from unsync import Unfuture
 
 from wtfix.apps.admin import HeartbeatApp
-from wtfix.protocol.common import MsgType
+from wtfix.core.exceptions import MessageProcessingError
+from wtfix.message import admin
+from wtfix.message.admin import TestRequest, Heartbeat
+from wtfix.protocol.common import Tag
 
 
 class TestHeartbeatApp:
-    def test_monitor_heartbeat_normal(self, heartbeat_app):
+
+    @pytest.mark.asyncio
+    async def test_server_stops_responding_after_three_test_requests(self, unsync_event_loop,
+                                                                     failing_server_heartbeat_app):
+        await failing_server_heartbeat_app.start(heartbeat=0, response_delay=0)
+
+        assert failing_server_heartbeat_app.pipeline.send.call_count == 4
+        assert failing_server_heartbeat_app.pipeline.stop.called
+
+    @pytest.mark.asyncio
+    async def test_monitor_heartbeat_test_request_not_necessary(self, unsync_event_loop, heartbeat_app):
         """Simulate normal heartbeat rythm - message just received"""
         with mock.patch.object(
                 HeartbeatApp,
                 "send_test_request",
-                return_value=Unfuture.from_value(True),
+                return_value=Unfuture.from_value(None)
         ) as check:
-            heartbeat_app.sec_since_last_receive = mock.MagicMock()
             heartbeat_app.sec_since_last_receive.return_value = 0
-
-            assert heartbeat_app.monitor_heartbeat().result() is True
+            await heartbeat_app.monitor_heartbeat()
             assert check.call_count == 0
 
     @pytest.mark.asyncio
-    async def test_monitor_heartbeat_check_server(self, unsync_event_loop, heartbeat_app):
-        """Simulate receiving heartbeat from server"""
+    async def test_monitor_heartbeat_heartbeat_exceeded(self, unsync_event_loop, heartbeat_app):
+        """Simulate normal heartbeat rythm - heartbeat exceeded since last message was received"""
         with mock.patch.object(
-            HeartbeatApp,
-            "send_test_request",
-            return_value=Unfuture.from_value(True),
+                HeartbeatApp,
+                "send_test_request",
+                return_value=Unfuture.from_value(None)
         ) as check:
-            heartbeat_app.update_last_receive_timestamp()
-
-            assert heartbeat_app.monitor_heartbeat().result() is True
-            assert check.call_count == 1
-
-    def test_monitor_heartbeat_server_not_responding(self, heartbeat_app):
-        """Simulate receiving heartbeat from server"""
-        with mock.patch.object(
-            HeartbeatApp,
-            "send_test_request",
-            return_value=Unfuture.from_value(False),
-        ) as check:
-            heartbeat_app.update_last_receive_timestamp()
-
-            assert heartbeat_app.monitor_heartbeat().result() is False
+            await heartbeat_app.monitor_heartbeat()
             assert check.call_count == 1
 
     @pytest.mark.asyncio
-    async def test_server_is_responding_no_response(self, unsync_event_loop, heartbeat_app):
-        """Simulate no response followed by forced logout"""
-        heartbeat_app.update_last_receive_timestamp()
+    async def test_send_test_request(self, unsync_event_loop, heartbeat_app):
 
-        assert heartbeat_app.send_test_request().result() is False
-        assert heartbeat_app.pipeline.send.call_count == 1
-        assert heartbeat_app.pipeline.send.call_args_list[0][0][0].type == MsgType.TestRequest
+        def simulate_heartbeat_response(message):
+            heartbeat_app.on_heartbeat(
+                {Tag.TestReqID: message[Tag.TestReqID].as_str}
+            )
 
-        assert heartbeat_app.pipeline.stop.call_count == 1
+        heartbeat_app.pipeline.send.side_effect = simulate_heartbeat_response
 
-    def test_server_is_responding_response_received(self, heartbeat_app):
-        """Simulate server responding on a TestRequest"""
+        await heartbeat_app.send_test_request()
+        assert not heartbeat_app._server_not_responding.is_set()
 
-        heartbeat_app.is_waiting = mock.MagicMock()
-        heartbeat_app.is_waiting.return_value = False
-        heartbeat_app.update_last_receive_timestamp()
+    @pytest.mark.asyncio
+    async def test_send_test_request_no_response(self, unsync_event_loop, heartbeat_app):
+        await heartbeat_app.send_test_request()
+        assert heartbeat_app._server_not_responding.is_set()
 
-        assert heartbeat_app.send_test_request().result() is True
-        assert heartbeat_app.pipeline.send.call_count == 1
+    def test_logon_sets_heartbeat_increment(self, heartbeat_app, logon_message):
+        assert heartbeat_app._heartbeat == 0
 
-        assert heartbeat_app.pipeline.send.call_args_list[0][0][0].type == MsgType.TestRequest
+        heartbeat_app.on_logon(logon_message)
+        assert heartbeat_app._heartbeat == 30
+
+    def test_sends_heartbeat_on_test_request(self, heartbeat_app):
+        request_message = TestRequest("test123")
+        heartbeat_app.on_test_request(request_message)
+
+        heartbeat_app.pipeline.send.assert_called_with(admin.Heartbeat("test123"))
+
+    def test_resets_request_id_when_heartbeat_received(self, heartbeat_app):
+        heartbeat_message = Heartbeat("test123")
+        heartbeat_app._test_request_id = "test123"
+
+        heartbeat_app.on_heartbeat(heartbeat_message)
+
+        assert heartbeat_app._test_request_id is None
+
+    def test_raises_exception_on_unexpected_heartbeat(self, heartbeat_app):
+        with pytest.raises(MessageProcessingError):
+            heartbeat_message = Heartbeat("123test")
+            heartbeat_app._test_request_id = "test123"
+
+            heartbeat_app.on_heartbeat(heartbeat_message)
+
+    def test_on_receive_updated_timestamp(self, heartbeat_app):
+        assert heartbeat_app._last_receive is None
+
+        heartbeat_app.on_receive(TestRequest("test123"))
+        assert heartbeat_app._last_receive is not None

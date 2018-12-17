@@ -42,14 +42,20 @@ class HeartbeatApp(MessageTypeHandlerApp):
         return self._test_request_id is not None
 
     @unsync
-    async def start(self, heartbeat):
+    async def start(self, heartbeat=30, response_delay=None):
         """
         Start the heartbeat monitor.
 
         :param heartbeat: The heartbeat interval in seconds.
+        :param response_delay: The amount of time to wait for a TestRequest response from the server. Defaults
+        to 2 * heartbeat + 4.
         """
         self._heartbeat = heartbeat
-        self._test_request_response_delay = 2 * self._heartbeat + 4
+
+        if response_delay is None:
+            response_delay = 2 * self._heartbeat + 4
+
+        self._test_request_response_delay = response_delay
 
         logger.info(f"{self.name}: Starting heartbeat monitor ({self._heartbeat} second interval)...")
 
@@ -104,7 +110,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
         :param message: The Logon message received. Should contain a HeartBtInt tag that will be used
         to set the heartbeat interval to monitor.
         """
-        self.start(message[Tag.HeartBtInt].as_int)
+        self._heartbeat = message[Tag.HeartBtInt].as_int
 
         return message
 

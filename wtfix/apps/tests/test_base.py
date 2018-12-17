@@ -13,7 +13,7 @@ from wtfix.apps.base import MessageTypeHandlerApp
 
 
 class TestBaseApp:
-    def test_check_name(self):
+    def test_check_name_on_init(self):
         with pytest.raises(ValidationError):
             BaseApp(mock.MagicMock(BasePipeline))
 
