@@ -84,7 +84,7 @@ class TestFieldSet:
 
         fs = FieldSet((34, "a"), (35, "bb"), (1, "ccc"))
         assert (
-            str(fs) == "(MsgSeqNum (34), a), (MsgType (35), bb), (Account (1), ccc)"
+            str(fs) == "MsgSeqNum (34):a | MsgType (35):bb | Account (1):ccc"
         )
 
     def test_raw(self, fieldset_a_b):
@@ -169,7 +169,7 @@ class TestGroup:
             (Tag.NoMDEntryTypes, 2), *((Tag.MDEntryType, et) for et in entry_types)
         )
 
-        assert repr(g) == "(267, 2):(269, 5), (269, B)"
+        assert repr(g) == "[(267, 2)]:(269, 5), (269, B)"
 
     def test_invalid_group(self):
         with pytest.raises(InvalidGroup):
@@ -184,14 +184,14 @@ class TestGroup:
     def test_repr(self, routing_id_group):
         assert (
             repr(routing_id_group)
-            == "(215, 2):(216, a), (217, b), (216, c), (217, d)"
+            == "[(215, 2)]:(216, a), (217, b), (216, c), (217, d)"
         )
 
     def test_str(self, routing_id_group):
         assert (
             str(routing_id_group)
-            == "(NoRoutingIDs (215), 2):(RoutingType (216), a), (RoutingID (217), b), "
-            "(RoutingType (216), c), (RoutingID (217), d)"
+            == "[NoRoutingIDs (215):2] | RoutingType (216):a | RoutingID (217):b | "
+            "RoutingType (216):c | RoutingID (217):d"
         )
 
     def test_raw(self, routing_id_group):

@@ -109,8 +109,8 @@ class Field(collections.namedtuple("Field", ["tag", "value_ref"])):
 
     def __str__(self):
         """
-        :return: (tag name, value) if the tag has been defined in one of the specifications,
-        (tag_number, value) otherwise.
+        :return: 'tag name:value' if the tag has been defined in one of the specifications,
+        'tag_number:value' otherwise.
         """
         if self.name == self.UNKNOWN_TAG:
             return f"{self.tag}:{self.value_ref}"

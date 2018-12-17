@@ -117,14 +117,14 @@ class FieldSet(collections.OrderedDict):
 
     def __str__(self):
         """
-        :return: (tag_name_1, value_1), (tag_name_2, value_2)
+        :return: 'tag_name_1:value_1 | tag_name_2:value_2'
         """
         fields_str = ""
         for field in self.values():
             fields_str += f"{str(field)} | "
 
         else:
-            fields_str = fields_str[:-2]
+            fields_str = fields_str[:-3]
 
         return f"{fields_str}"
 
@@ -263,7 +263,7 @@ class Group(collections.UserList):
 
     def __repr__(self):
         """
-        :return: (identifier tag, num instances):((tag_1, value_1), (tag_2, value_2)), ((tag_1, value_1), (tag_2, value_2))
+        :return: [(identifier tag, num instances)]:((tag_1, value_1), (tag_2, value_2)), ((tag_1, value_1), (tag_2, value_2))
         """
         group_instances_repr = ""
         for instance in self:
@@ -271,19 +271,19 @@ class Group(collections.UserList):
         else:
             group_instances_repr = group_instances_repr[:-2]
 
-        return f"{repr(self.identifier)}:{group_instances_repr}"
+        return f"[{repr(self.identifier)}]:{group_instances_repr}"
 
     def __str__(self):
         """
-        :return: (identifier_tag_name, b'num_instances'):((tag_1_name, value_1), (tag_2_name, value_2)), ((tag_1_name, value_1), (tag_2_name, value_2))
+        :return: [identifier_tag_name:num_instances] | tag_1_name:value_1 | tag_2_name:value_2 | tag_1_name:value_1) | tag_2_name:value_2
         """
         group_instances_str = ""
         for instance in self:
-            group_instances_str += f"{str(instance)}, "
+            group_instances_str += f"{str(instance)} | "
         else:
-            group_instances_str = group_instances_str[:-2]
+            group_instances_str = group_instances_str[:-3]
 
-        return f"{str(self.identifier)}:{group_instances_str}"
+        return f"[{str(self.identifier)}] | {group_instances_str}"
 
     @property
     def raw(self):

@@ -87,7 +87,8 @@ class ClientSessionApp(SessionApp):
         self.reset_seq_nums = reset_seq_nums
         self.test_mode = test_mode
 
-        self.is_closing = False
+        self._disconnecting = asyncio.Event()
+        self._disconnected = asyncio.Event()
 
     @unsync
     async def initialize(self, *args, **kwargs):
@@ -114,6 +115,9 @@ class ClientSessionApp(SessionApp):
         await super().connect(*args, **kwargs)
         self.listen()  # Intentional non-blocking call
         self.logon()  # Intentional non-blocking call
+
+        # Block for as long as we are connected to the server.
+        await self._disconnected.wait()
 
     @unsync
     async def listen(self):
@@ -150,12 +154,15 @@ class ClientSessionApp(SessionApp):
                     logger.info(f"{self.name}: Last message received: {data}. ")
                     self.pipeline.receive(data)
 
-                elif self.is_closing is False:
+                elif self._disconnecting.is_set():
+                    self._disconnected.set()
+                else:
                     # We did not initiate the disconnect - error!
                     raise MessageProcessingError(
                         f"Unexpected EOF waiting for next chunk of partial data '{utils.decode(e.partial)}'."
                     ) from e
 
+            finally:
                 self.writer.close()
 
     @unsync
@@ -183,14 +190,15 @@ class ClientSessionApp(SessionApp):
 
     @unsync
     async def disconnect(self, *args, **kwargs):
-        logger.info(f"{self.name}: Initiating disconnect...")
         await super().disconnect(*args, **kwargs)
 
+        logger.info(f"{self.name}: Initiating disconnect...")
+
+        self._disconnecting.set()
         await self.logout()
-        self.is_closing = True
 
         wait_time = 0
-        while self.writer.transport.is_closing() is False and wait_time < 5:
+        while not self._disconnected.is_set() and wait_time < 5:
             await asyncio.sleep(1)
             wait_time += 1
 

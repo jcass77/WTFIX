@@ -6,6 +6,7 @@ pytest==3.8.2  # https://github.com/pytest-dev/pytest
 pytest-sugar==0.9.1  # https://github.com/Frozenball/pytest-sugar
 pytest-socket==0.3.1  # https://github.com/miketheman/pytest-socket
 pytest-env==0.6.2  # https://github.com/MobileDynasty/pytest-env
+pytest-asyncio==0.9.0  # https://github.com/pytest-dev/pytest-asyncio
 factory-boy==2.11.1  # https://github.com/FactoryBoy/factory_boy
 
 # Code quality

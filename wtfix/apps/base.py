@@ -2,7 +2,6 @@ from functools import wraps
 
 from unsync import unsync
 
-from wtfix.conf import logger
 from wtfix.core.exceptions import ValidationError
 
 

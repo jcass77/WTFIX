@@ -1,15 +1,28 @@
 import pytest
+from unsync import unsync
 
 from wtfix.protocol.common import MsgType
 from wtfix.message.message import GenericMessage
 from wtfix.message.fieldset import Group
 
-from pytest_socket import disable_socket
+from pytest_socket import socket_allow_hosts
 
 
 # https://github.com/miketheman/pytest-socket#usage
 def pytest_runtest_setup():
-    disable_socket()
+    # Restrict all socket calls in order to prevent unintended web traffic during test runs. Use
+    # @pytest.mark.enable_socket to enable socket connections on a per-test basis, or
+    # @pytest.mark.allow_hosts(['<ip address>]) to allow connections to specific hosts.
+    #
+    # See: https://github.com/miketheman/pytest-socket for details.
+    socket_allow_hosts(allowed=["localhost", "127.0.0.1", "::1"])
+
+
+@pytest.yield_fixture()
+def unsync_event_loop():
+    # Configure pytest-asyncio to use unsync's existing event loop.
+    # See: https://github.com/pytest-dev/pytest-asyncio#event_loop
+    return unsync.loop
 
 
 @pytest.fixture(scope="session")

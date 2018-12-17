@@ -5,6 +5,7 @@ from collections import OrderedDict
 
 from unsync import unsync
 
+from wtfix.apps.sessions import SessionApp
 from wtfix.conf import logger
 from wtfix.conf import settings
 from wtfix.core.exceptions import (
@@ -26,7 +27,6 @@ class BasePipeline:
         logger.info(f"Creating new FIX pipeline...")
         self._installed_apps = OrderedDict()
         self._session_app = None
-        self.is_closing = asyncio.Condition()
 
         self.load_apps(installed_apps=installed_apps)
 
@@ -37,16 +37,13 @@ class BasePipeline:
     @property
     def session_app(self):
         if self._session_app is None:
-            self._session_app = next(reversed(self.apps.values()))
+            for app in reversed(self.apps.values()):
+                if isinstance(app, SessionApp):
+
+                    self._session_app = app
+                    break
+
         return self._session_app
-
-    @unsync
-    async def initialize(self):
-        for app in reversed(self.apps.values()):
-            logger.info(f"Initializing app '{app.name}'...")
-            await app.initialize()
-
-        logger.info("All apps initialized!")
 
     def load_apps(self, installed_apps=None):
         """
@@ -68,15 +65,19 @@ class BasePipeline:
         logger.info(f"Pipeline apps: {list(self.apps.keys())}...")
 
     @unsync
+    async def initialize(self):
+        for app in reversed(self.apps.values()):
+            logger.info(f"Initializing app '{app.name}'...")
+            await app.initialize()
+
+        logger.info("All apps initialized!")
+
+    @unsync
     async def start(self):
         logger.info("Starting pipeline...")
 
         await self.initialize()
-        self.session_app.connect()
-
-        async with self.is_closing:
-            # Block for as long as connection is open.
-            await self.is_closing.wait_for(self.session_app.writer.transport.is_closing)
+        await self.session_app.connect()
 
         logger.info("Pipeline stopped.")
 
@@ -89,8 +90,7 @@ class BasePipeline:
         except futures.TimeoutError:
             logger.error("Timeout waiting for server to respond to logout - connection terminated abnormally!")
 
-    @unsync
-    async def _prep_processing_pipeline(self, direction):
+    def _prep_processing_pipeline(self, direction):
         if direction is self.INBOUND:
             return "on_receive", reversed(self.apps.values())
 
@@ -111,7 +111,7 @@ class BasePipeline:
         :return: The processed message or None if processing was halted somewhere in the apps stack.
         """
 
-        process_func, app_chain = await self._prep_processing_pipeline(direction)
+        process_func, app_chain = self._prep_processing_pipeline(direction)
 
         try:
             for app in app_chain:

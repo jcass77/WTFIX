@@ -6,6 +6,7 @@ from unsync import unsync
 
 from wtfix.apps.base import MessageTypeHandlerApp, on
 from wtfix.conf import logger
+from wtfix.core.exceptions import MessageProcessingError
 from wtfix.message import admin
 from wtfix.core import utils
 from wtfix.protocol.common import MsgType, Tag
@@ -23,6 +24,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
         self._last_receive = None
         self._test_request_id = None  # A waiting TestRequest message for which no response has been received.
         self._test_request_response_delay = None
+        self._server_not_responding = asyncio.Event()
 
         super().__init__(pipeline, *args, **kwargs)
 
@@ -31,12 +33,6 @@ class HeartbeatApp(MessageTypeHandlerApp):
         :return: The number of seconds since the last message was received.
         """
         return (datetime.utcnow() - self._last_receive).total_seconds()
-
-    def update_last_receive_timestamp(self):
-        """
-        Update the timestamp on which the last message was received.
-        """
-        self._last_receive = datetime.utcnow()
 
     def is_waiting(self):
         """
@@ -53,44 +49,39 @@ class HeartbeatApp(MessageTypeHandlerApp):
         :param heartbeat: The heartbeat interval in seconds.
         """
         self._heartbeat = heartbeat
-        # self._heartbeat = 5
         self._test_request_response_delay = 2 * self._heartbeat + 4
 
-        connection_is_active = True
         logger.info(f"{self.name}: Starting heartbeat monitor ({self._heartbeat} second interval)...")
 
-        while connection_is_active is True:
-            # Keep monitoring for as long as the connection is active
-            connection_is_active = await self.monitor_heartbeat()
+        while not self._server_not_responding.is_set():
+            # Keep sending heartbeats until the server stops responding.
+            await self.monitor_heartbeat()
 
-        logger.info(f"{self.name}: Heartbeat monitor stopped!")
+        # No response received, force logout!
+        logger.error(
+            f"{self.name}: No response received for test request '{self._test_request_id}', "
+            f"initiating shutdown..."
+        )
+        self.pipeline.stop()
 
     @unsync
     async def monitor_heartbeat(self):
         """
         Monitors the heartbeat, sending TestRequest messages as necessary.
-
-        :return: True if the monitored connection is still active. False if the server has stopped responding.
         """
         next_check = max(self._heartbeat - self.sec_since_last_receive(), 0)
-        # next_check = 1
         await asyncio.sleep(
             next_check
         )  # Wait until the next scheduled heartbeat check.
 
         if self.sec_since_last_receive() > self._heartbeat:
             # Heartbeat exceeded, send test message
-            return await self.check_server_is_responding()
-
-        # Everything ok.
-        return True
+            await self.send_test_request()
 
     @unsync
-    async def check_server_is_responding(self):
+    async def send_test_request(self):
         """
         Checks if the server is responding to TestRequest messages.
-
-        :return: True if the server responded to the TestRequest, False otherwise.
         """
 
         self._test_request_id = uuid.uuid4().hex
@@ -101,19 +92,9 @@ class HeartbeatApp(MessageTypeHandlerApp):
 
         # Sleep while we wait for a response on the test request
         await asyncio.sleep(self._test_request_response_delay)
-        # await asyncio.sleep(1)
 
         if self.is_waiting():
-            # No response received, force logout!
-            logger.error(
-                f"{self.name}: No response to test request '{self._test_request_id}', "
-                f"initiating shutdown..."
-            )
-            self.pipeline.stop()
-
-            return False
-
-        return True
+            self._server_not_responding.set()
 
     @on(MsgType.Logon)
     def on_logon(self, message):
@@ -151,6 +132,8 @@ class HeartbeatApp(MessageTypeHandlerApp):
         if message[Tag.TestReqID] == self._test_request_id:
             # Response received - reset
             self._test_request_id = None
+        else:
+            raise MessageProcessingError(f"Received an unexpected heartbeat message: {message}.")
 
         return message
 
@@ -159,5 +142,5 @@ class HeartbeatApp(MessageTypeHandlerApp):
         Update the timestamp whenever any message is received.
         :param message:
         """
-        self.update_last_receive_timestamp()
+        self._last_receive = datetime.utcnow()  # Update timestamp on every message received
         return super().on_receive(message)

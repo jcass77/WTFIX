@@ -83,10 +83,10 @@ class TestField:
         assert repr(Field(35, "k")) == "(35, k)"
 
     def test_str(self):
-        assert str(Field(35, "k")) == "(MsgType (35), k)"
+        assert str(Field(35, "k")) == "MsgType (35):k"
 
     def test_str_unknown_tag(self):
-        assert str(Field(1234567890, "k")) == "(1234567890, k)"
+        assert str(Field(1234567890, "k")) == "1234567890:k"
 
     def test_name_getter(self):
         f = Field(35, "k")
