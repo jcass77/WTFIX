@@ -1,6 +1,6 @@
 import logging
 
-from unsync import unsync
+from unsync import unsync  # Import unsync to set event loop and start unsync thread
 
 from wtfix.conf import logger
 from wtfix.conf import settings

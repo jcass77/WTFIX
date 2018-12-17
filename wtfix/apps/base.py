@@ -68,7 +68,7 @@ class BaseApp:
     @unsync
     async def initialize(self, *args, **kwargs):
         """
-        Initialization that needs to be performed before this apps can start processing messages.
+        Initialization that needs to be performed before an app can start processing messages.
         """
         pass
 

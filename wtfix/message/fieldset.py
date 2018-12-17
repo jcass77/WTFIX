@@ -121,7 +121,7 @@ class FieldSet(collections.OrderedDict):
         """
         fields_str = ""
         for field in self.values():
-            fields_str += f"{str(field)}"
+            fields_str += f"{str(field)} | "
 
         else:
             fields_str = fields_str[:-2]

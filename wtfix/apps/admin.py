@@ -7,7 +7,6 @@ from unsync import unsync
 from wtfix.apps.base import MessageTypeHandlerApp, on
 from wtfix.conf import logger
 from wtfix.message import admin
-from wtfix.message.message import GenericMessage
 from wtfix.core import utils
 from wtfix.protocol.common import MsgType, Tag
 

@@ -32,7 +32,8 @@ class SessionApp(BaseApp):
 
         self.next_in_seq_num = 1
 
-    def connect(self, *args, **kwargs):
+    @unsync
+    async def connect(self, *args, **kwargs):
         """
         Override this method to establish a new connection to the FIX server
         """
@@ -110,9 +111,9 @@ class ClientSessionApp(SessionApp):
 
     @unsync
     async def connect(self, *args, **kwargs):
-        super().connect(*args, **kwargs)
-        self.listen()
-        self.logon()
+        await super().connect(*args, **kwargs)
+        self.listen()  # Intentional non-blocking call
+        self.logon()  # Intentional non-blocking call
 
     @unsync
     async def listen(self):
@@ -149,14 +150,11 @@ class ClientSessionApp(SessionApp):
                     logger.info(f"{self.name}: Last message received: {data}. ")
                     self.pipeline.receive(data)
 
-                else:
-                    if self.is_closing is True:
-                        # Server closed connection at our request - done.
-                        logger.info(f"{self.name}: Session terminated by server.")
-                    else:
-                        raise MessageProcessingError(
-                            f"Unexpected EOF waiting for next chunk of partial data '{utils.decode(e.partial)}'."
-                        ) from e
+                elif self.is_closing is False:
+                    # We did not initiate the disconnect - error!
+                    raise MessageProcessingError(
+                        f"Unexpected EOF waiting for next chunk of partial data '{utils.decode(e.partial)}'."
+                    ) from e
 
                 self.writer.close()
 
@@ -191,10 +189,12 @@ class ClientSessionApp(SessionApp):
         await self.logout()
         self.is_closing = True
 
-        while self.writer.transport.is_closing() is False:
-            await asyncio.sleep(1)  # Wait for server to confirm logout and close connection.
+        wait_time = 0
+        while self.writer.transport.is_closing() is False and wait_time < 5:
+            await asyncio.sleep(1)
+            wait_time += 1
 
-        logger.info(f"{self.name}: Disconnected!")
+        logger.info(f"{self.name}: Server disconnect request completed successfully!")
 
     @unsync
     async def logout(self):

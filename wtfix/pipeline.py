@@ -1,5 +1,6 @@
 import asyncio
 import importlib
+from asyncio import futures
 from collections import OrderedDict
 
 from unsync import unsync
@@ -74,6 +75,7 @@ class BasePipeline:
         self.session_app.connect()
 
         async with self.is_closing:
+            # Block for as long as connection is open.
             await self.is_closing.wait_for(self.session_app.writer.transport.is_closing)
 
         logger.info("Pipeline stopped.")
@@ -81,7 +83,11 @@ class BasePipeline:
     @unsync
     async def stop(self):
         logger.info("Shutting down pipeline...")
-        await asyncio.wait_for(self.session_app.disconnect(), 10)
+        try:
+            await asyncio.wait_for(self.session_app.disconnect(), 5)
+            logger.info("Pipeline stopped.")
+        except futures.TimeoutError:
+            logger.error("Timeout waiting for server to respond to logout - connection terminated abnormally!")
 
     @unsync
     async def _prep_processing_pipeline(self, direction):
@@ -121,8 +127,7 @@ class BasePipeline:
     @unsync
     async def receive(self, message):
         """Receives a new message to be processed"""
-        message = await self._process_message(message, self.INBOUND)
-        logger.info(f" <-- {message}")
+        return await self._process_message(message, self.INBOUND)
 
     @unsync
     async def send(self, message):

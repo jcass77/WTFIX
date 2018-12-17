@@ -1,5 +1,5 @@
 from wtfix.apps.base import BaseApp
-from wtfix.conf import settings
+from wtfix.conf import settings, logger
 from wtfix.core.exceptions import ParsingError, ValidationError
 from wtfix.message.field import Field
 from wtfix.message.fieldset import Group
@@ -26,7 +26,10 @@ class BasicMessageParserApp(BaseApp):
         fields = [message[Tag.BeginString], message[Tag.BodyLength], message[Tag.MsgType], *self._parse_fields(data),
                   message[Tag.CheckSum]]
 
-        return GenericMessage(*fields)
+        message = GenericMessage(*fields)
+        logger.info(f" <-- {message}")
+
+        return message
 
     # TODO: Refactor this method into smaller units.
     def _parse_fields(self, raw_pairs, group_index=None):

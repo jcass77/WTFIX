@@ -113,9 +113,9 @@ class Field(collections.namedtuple("Field", ["tag", "value_ref"])):
         (tag_number, value) otherwise.
         """
         if self.name == self.UNKNOWN_TAG:
-            return f"{self.tag}:{self.value_ref} | "
+            return f"{self.tag}:{self.value_ref}"
 
-        return f"{self.name} ({self.tag}):{self.value_ref} | "
+        return f"{self.name} ({self.tag}):{self.value_ref}"
 
     @property
     def name(self):
