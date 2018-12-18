@@ -2,7 +2,7 @@ import numbers
 from functools import singledispatch
 
 from wtfix.conf import settings
-from wtfix.core.exceptions import TagNotFound
+from wtfix.core.exceptions import TagNotFound, ValidationError
 
 
 def index_tag(tag, data, start=0):
@@ -131,3 +131,54 @@ def _(n):
 def _(r):
     """Floats do not need to be decoded"""
     return r
+
+
+class GroupTemplateMixin:
+    """
+    Mixin for maintaining a dictionary of repeating group templates.
+    """
+    @property
+    def group_templates(self):
+        """
+        :return: The dictionary of group templates that have been added for this object. Initializes the dictionary
+        if it does not exist yet.
+        """
+        try:
+            return self._group_templates
+        except AttributeError:
+            self._group_templates = {}
+            return self._group_templates
+
+    @group_templates.setter
+    def group_templates(self, value):
+        self._group_templates = value
+
+    def add_group_templates(self, templates):
+        """
+        Performs some basic validation checks when adding new group templates.
+
+        :param templates: A dictionary of templates in the format {identifier tag: [tag_1,...,tag_n]}
+        """
+        if len(templates) == 0 or len(list(templates.values())[0]) == 0:
+            raise ValidationError(
+                f"At least one group instance tag needs to be defined for group {templates}."
+            )
+
+        self.group_templates = {**self.group_templates, **templates}
+
+    def remove_group_template(self, identifier_tag):
+        """
+        Safely remove a group template.
+        :param identifier_tag: The identifier tag number of the group that should be removed.
+        """
+        del self.group_templates[identifier_tag]
+
+    def is_template_tag(self, tag):
+        """
+        :return: True if the tag occurs in one of the group templates. False otherwise.
+        """
+        if tag in self.group_templates:
+            return True
+
+        for template in self.group_templates.values():
+            return tag in template

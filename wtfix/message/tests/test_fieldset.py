@@ -8,7 +8,6 @@ from wtfix.core.exceptions import (
     TagNotFound,
     DuplicateTags,
     InvalidGroup,
-    ValidationError,
 )
 
 
@@ -268,26 +267,6 @@ class TestOrderedDictFieldSet:
         assert nested_instance_1[805] == "cc"
 
         assert fs[1].value_ref == "a"
-
-    def test_add_group_template_too_short(self, ordered_dict_fieldset_ab):
-        with pytest.raises(ValidationError):
-            ordered_dict_fieldset_ab.add_group_template(35)
-
-    def test_remove_group_template(self, ordered_dict_fieldset_ab):
-        ordered_dict_fieldset_ab.add_group_template(215, 216, 217)
-
-        assert 215 in ordered_dict_fieldset_ab._group_templates
-
-        ordered_dict_fieldset_ab.remove_group_template(215)
-        assert 215 not in ordered_dict_fieldset_ab._group_templates
-
-    def test_is_template_tag(self, ordered_dict_fieldset_ab):
-        ordered_dict_fieldset_ab.add_group_template(215, 216, 216)
-
-        assert ordered_dict_fieldset_ab.is_template_tag(215) is True
-        assert ordered_dict_fieldset_ab.is_template_tag(216) is True
-
-        assert ordered_dict_fieldset_ab.is_template_tag(217) is False
 
     def test_repr_dict(self):
         fs = OrderedDictFieldSet()

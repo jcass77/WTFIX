@@ -1,7 +1,8 @@
 import pytest
 
 from wtfix.core import utils
-from wtfix.core.exceptions import TagNotFound
+from wtfix.core.exceptions import TagNotFound, ValidationError
+from wtfix.core.utils import GroupTemplateMixin
 
 
 def test_find_tag_start_of_message(simple_encoded_msg):
@@ -77,3 +78,27 @@ def test_decode_none():
 
 def test_decode_float():
     assert utils.decode(1.23) == 1.23
+
+
+class TestGroupTemplateMixin:
+    def test_add_group_template_too_short_raises_exception(self):
+        with pytest.raises(ValidationError):
+            GroupTemplateMixin().add_group_templates({35: []})
+
+    def test_remove_group_template(self):
+        gt = GroupTemplateMixin()
+        gt.add_group_templates({215: [216, 217]})
+
+        assert 215 in gt.group_templates
+
+        gt.remove_group_template(215)
+        assert 215 not in gt._group_templates
+
+    def test_is_template_tag(self):
+        gt = GroupTemplateMixin()
+        gt.add_group_templates({215: [216, 216]})
+
+        assert gt.is_template_tag(215) is True
+        assert gt.is_template_tag(216) is True
+
+        assert gt.is_template_tag(217) is False

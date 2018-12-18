@@ -8,9 +8,8 @@ from wtfix.core.exceptions import (
     InvalidGroup,
     UnknownTag,
     DuplicateTags,
-    ValidationError,
-    ParsingError,
 )
+from wtfix.core.utils import GroupTemplateMixin
 from wtfix.message.field import Field
 from wtfix.protocol import common
 
@@ -333,18 +332,16 @@ class ListFieldSet(FieldSet):
         return f"[{FieldSet._str(self, self._fields)}]"
 
 
-class OrderedDictFieldSet(FieldSet):
+class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
     def __init__(self, *fields, **kwargs):
         """
        A FieldSet is a container for a one or more Fields.
 
        :param fields: List of Field or (tag, value) tuples.
        """
-        self._group_templates = {}
-
-        templates = kwargs.get("group_templates", {})
-        for identifier, tags in templates.items():
-            self.add_group_template(identifier, *tags)
+        group_templates = kwargs.get("group_templates", {})
+        if len(group_templates) > 0:
+            self.add_group_templates(group_templates)
 
         self._fields = collections.OrderedDict(
             (field.tag, field) for field in self._parse_fields(fields)
@@ -411,24 +408,6 @@ class OrderedDictFieldSet(FieldSet):
     def append(self, field):
         return self.__setitem__(field[0], field[1])
 
-    def add_group_template(self, identifier_tag, *tags):
-        if len(tags) == 0:
-            raise ValidationError(
-                f"At least one group instance tag needs to be defined for group {identifier_tag}."
-            )
-
-        self._group_templates[identifier_tag] = tags
-
-    def remove_group_template(self, identifier_tag):
-        del self._group_templates[identifier_tag]
-
-    def is_template_tag(self, tag):
-        if tag in self._group_templates:
-            return True
-
-        for template in self._group_templates.values():
-            return tag in template
-
     # TODO: refactor and simplify!
     def _parse_fields(self, fields, **kwargs):
         """
@@ -450,7 +429,7 @@ class OrderedDictFieldSet(FieldSet):
             group_identifier = Field(fields[idx][0], fields[idx][1])
 
             # Retrieve the template for this repeating group
-            template = self._group_templates[group_identifier.tag]
+            template = self.group_templates[group_identifier.tag]
 
             # Add the group identifier as the first field in the list.
             parsed_fields.append(group_identifier)
@@ -468,7 +447,7 @@ class OrderedDictFieldSet(FieldSet):
                     f"No repeating group template defined for duplicate tag {tag} in {fields}.",
                 )
 
-            if tag in self._group_templates:
+            if tag in self.group_templates:
                 # Tag denotes the start of a new repeating group.
                 group_fields = self._parse_fields(fields, group_index=idx)
                 group = Group(group_fields[0], *group_fields[1:])

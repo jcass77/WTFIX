@@ -1,20 +1,17 @@
 from wtfix.apps.base import BaseApp
 from wtfix.conf import settings, logger
+from wtfix.core.utils import GroupTemplateMixin
 from wtfix.message.field import Field
 from wtfix.message.message import RawMessage, generic_message_factory
 from wtfix.protocol.common import Tag
 
 
-class BasicMessageParserApp(BaseApp):
+class BasicMessageParserApp(BaseApp, GroupTemplateMixin):
     """
     Parses RawMessage instances into GenericMessage instances.
     """
 
     name = "basic_message_parser"
-
-    def __init__(self, pipeline, *args, **kwargs):
-        super().__init__(pipeline, *args, **kwargs)
-        self._group_templates = {}
 
     def on_receive(self, message: RawMessage):
         data = message.encoded_body.rstrip(settings.SOH).split(
@@ -29,7 +26,7 @@ class BasicMessageParserApp(BaseApp):
             message[Tag.CheckSum],
         ]
 
-        message = generic_message_factory(*fields)
+        message = generic_message_factory(*fields, group_templates=self.group_templates)
         logger.info(f" <-- {message}")
 
         return message
