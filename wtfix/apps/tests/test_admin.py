@@ -88,7 +88,7 @@ class TestHeartbeatApp:
             heartbeat_app.on_heartbeat(heartbeat_message)
 
     def test_on_receive_updated_timestamp(self, heartbeat_app):
-        assert heartbeat_app._last_receive is None
+        prev_timestamp = heartbeat_app._last_receive
 
         heartbeat_app.on_receive(TestRequest("test123"))
-        assert heartbeat_app._last_receive is not None
+        assert heartbeat_app._last_receive != prev_timestamp

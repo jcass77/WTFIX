@@ -20,8 +20,8 @@ class HeartbeatApp(MessageTypeHandlerApp):
     name = "heartbeat"
 
     def __init__(self, pipeline, *args, **kwargs):
-        self._heartbeat = None
-        self._last_receive = None
+        self._heartbeat = 30
+        self._last_receive = datetime.utcnow()
         self._test_request_id = (
             None
         )  # A waiting TestRequest message for which no response has been received.

@@ -5,6 +5,7 @@ from collections import OrderedDict
 
 from unsync import unsync
 
+from wtfix.apps.sessions import SessionApp
 from wtfix.conf import logger
 from wtfix.conf import settings
 from wtfix.core.exceptions import (
@@ -26,6 +27,7 @@ class BasePipeline:
     def __init__(self, installed_apps=None):
         self._installed_apps = self._load_apps(installed_apps=installed_apps)
         logger.info(f"Created new FIX application pipeline: {list(self.apps.keys())}.")
+        self._session_app = None
 
     @property
     def apps(self):
@@ -55,6 +57,9 @@ class BasePipeline:
 
             loaded_apps[instance.name] = instance
 
+            if isinstance(instance, SessionApp):
+                self._session_app = instance  # Keep reference to session in order to monitor connections.
+
         return loaded_apps
 
     @unsync
@@ -72,6 +77,9 @@ class BasePipeline:
         await self.initialize()
         for app in reversed(self.apps.values()):
             await app.start()
+
+        # Block for as long as we are connected to the server.
+        await self._session_app._disconnected.wait()
 
         logger.info("Pipeline stopped.")
 

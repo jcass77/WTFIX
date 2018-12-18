@@ -105,9 +105,6 @@ class ClientSessionApp(SessionApp):
         self.listen()  # Intentional non-blocking call
         self.logon()  # Intentional non-blocking call
 
-        # Block for as long as we are connected to the server.
-        await self._disconnected.wait()
-
     @unsync
     async def listen(self):
         """
