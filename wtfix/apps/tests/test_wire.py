@@ -3,7 +3,7 @@ import pytest
 from wtfix.apps.wire import DecoderApp
 from wtfix.conf import settings
 from wtfix.core.exceptions import ValidationError, ParsingError
-from wtfix.message.message import GenericMessage
+from wtfix.message.message import GenericMessage, generic_message_factory
 from wtfix.core import utils
 from wtfix.protocol.common import Tag, MsgType
 
@@ -22,10 +22,10 @@ class TestEncoderApp:
 
     def test_encode_message_invalid(self, encoder_app):
         with pytest.raises(ValidationError):
-            encoder_app.encode_message(GenericMessage((1, "a"), (2, "b")))
+            encoder_app.encode_message(generic_message_factory((1, "a"), (2, "b")))
 
     def test_encode_message_nested_group(self, encoder_app, nested_parties_group):
-        m = GenericMessage((35, "a"), (2, "bb"))
+        m = generic_message_factory((35, "a"), (2, "bb"))
         m.set_group(nested_parties_group)
 
         # Compare just the group-related bytes.
@@ -85,8 +85,9 @@ class TestDecoderApp:
             encoded_msg = simple_encoded_msg[:-4] + b"123" + settings.SOH
             DecoderApp.check_checksum(encoded_msg, 0, 19)
 
-    def test_decode_message(self, encoder_app, decoder_app, sdr_message):
-        m = decoder_app.decode_message(encoder_app.encode_message(sdr_message))
+    def test_decode_message(self, encoder_app, decoder_app, generic_message_class, sdr_message_fields):
+        m = generic_message_class(*sdr_message_fields)
+        m = decoder_app.decode_message(encoder_app.encode_message(m))
         assert m[Tag.BeginString] == b"FIX.4.4"
         assert m[Tag.BodyLength] == b"113"
         assert m[Tag.MsgType] == b"c"
@@ -96,7 +97,7 @@ class TestDecoderApp:
 
     def test_decode_message_raises_exception_if_no_beginstring(self, encoder_app, decoder_app):
         with pytest.raises(ParsingError):
-            m = GenericMessage((Tag.MsgType, MsgType.TestRequest), (Tag.TestReqID, "a"))
+            m = generic_message_factory((Tag.MsgType, MsgType.TestRequest), (Tag.TestReqID, "a"))
             data = encoder_app.encode_message(m).replace(b"8=" + utils.encode(settings.BEGIN_STRING), b"")
             decoder_app.decode_message(data)
 

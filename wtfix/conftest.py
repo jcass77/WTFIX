@@ -2,7 +2,7 @@ import pytest
 from unsync import unsync
 
 from wtfix.protocol.common import MsgType
-from wtfix.message.message import GenericMessage
+from wtfix.message.message import GenericMessage, OptimizedGenericMessage, generic_message_factory
 from wtfix.message.fieldset import Group
 
 from pytest_socket import socket_allow_hosts
@@ -56,10 +56,15 @@ def nested_parties_group():
     return nested_party
 
 
+@pytest.fixture(params=[GenericMessage, OptimizedGenericMessage])
+def generic_message_class(request):
+    return request.param
+
+
 @pytest.fixture
 def logon_message():
     """Sample logon message"""
-    return GenericMessage(
+    return generic_message_factory(
         (35, MsgType.Logon),
         (34, "1"),
         (49, "SENDER"),
@@ -74,9 +79,9 @@ def logon_message():
 
 
 @pytest.fixture
-def sdr_message():
-    """Sample of a security definition request message"""
-    return GenericMessage(
+def sdr_message_fields():
+    """Sample of a security definition request message fields"""
+    return [
         (35, MsgType.SecurityDefinitionRequest),
         (34, "1"),  # MsgSeqNum: 1
         (49, "SENDER"),  # SenderCompID
@@ -86,7 +91,7 @@ def sdr_message():
         (167, "CS"),  # SecurityType: CommonStock
         (320, "37a0b5c8afb543ec8f29eca2a44be2ec"),  # SecurityReqID
         (321, "3"),  # SecurityRequestType: all
-    )
+    ]
 
 
 @pytest.fixture(scope="session")

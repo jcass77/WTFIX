@@ -99,7 +99,16 @@ class Field(collections.namedtuple("Field", ["tag", "value_ref"])):
         return _tuple.__new__(_cls, (tag, FieldValue(value)))
 
     def __eq__(self, other):
-        return self.value_ref == other
+        try:
+            # Try to compare as Field
+            return self.value_ref == other.value_ref
+        except AttributeError:
+            # Perhaps it is a tuple?
+            if isinstance(other, tuple):
+                return self.value_ref == other[1]
+            else:
+                # Fallback to comparing field values
+                return self.value_ref == other
 
     def __repr__(self):
         """

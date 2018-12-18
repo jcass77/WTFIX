@@ -1,13 +1,13 @@
-import collections
+import abc
 
 from wtfix.conf import settings
 from wtfix.core import utils
-from wtfix.core.exceptions import ValidationError, TagNotFound, UnknownType
+from wtfix.core.exceptions import ValidationError, TagNotFound, UnknownType, DuplicateTags
 from wtfix.protocol.common import Tag, MsgType
-from .fieldset import FieldSet
+from .fieldset import OrderedDictFieldSet, ListFieldSet
 
 
-class FixMessageMixin(collections.OrderedDict):
+class FixMessage(abc.ABC):
     """
     Mixin class that allows easy lookups of often-used Fields.
     """
@@ -74,8 +74,28 @@ class FixMessageMixin(collections.OrderedDict):
     def target_id(self, value):
         self[Tag.TargetCompID] = value
 
+    def clear(self):
+        """
+        Clear the message of all Fields.
+        """
+        self._fields.clear()
 
-class RawMessage(FixMessageMixin, FieldSet):
+    def validate(self):
+        """
+        A well-formed message should, at minimum, contain tag 35.
+
+        :return: A valid Message.
+        :raises: ValidationError if the message is not valid.
+        """
+        try:
+            self[Tag.MsgType]
+        except TagNotFound as e:
+            raise ValidationError(f"No 'MsgType (35)' specified for {self}.") from e
+
+        return self
+
+
+class RawMessage(FixMessage, OrderedDictFieldSet):
     """
     A raw message with most of its content still in byte-encoded format.
 
@@ -112,22 +132,22 @@ class RawMessage(FixMessageMixin, FieldSet):
         return f"{super().__str__()}, with content - {self.encoded_body}"
 
 
-class GenericMessage(FixMessageMixin, FieldSet):
+def generic_message_factory(*fields):
+    try:
+        return OptimizedGenericMessage(*fields)
+    except DuplicateTags:
+        return GenericMessage(*fields)
+
+
+class GenericMessage(FixMessage, ListFieldSet):
     """
     The most basic type of FIX Message, consisting of one or more Fields in a FieldSet.
 
     We think of FIX messages as lists of (tag, value) pairs, where tag is a number and value is a bytestring.
     """
-    def validate(self):
-        """
-        A well-formed message should, at minimum, contain tag 35.
 
-        :return: A valid Message.
-        :raises: ValidationError if the message is not valid.
-        """
-        try:
-            self[Tag.MsgType]
-        except TagNotFound as e:
-            raise ValidationError(f"No 'MsgType (35)' specified for {self}.") from e
 
-        return self
+class OptimizedGenericMessage(FixMessage, OrderedDictFieldSet):
+    """
+    An optimized implementation based on storing fields in a dictionary instead of a list.
+    """

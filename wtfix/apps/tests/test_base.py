@@ -7,7 +7,7 @@ from wtfix.apps.base import BaseApp
 from wtfix.core.exceptions import ValidationError
 from wtfix.pipeline import BasePipeline
 
-from wtfix.message.message import GenericMessage
+from wtfix.message.message import GenericMessage, generic_message_factory
 from wtfix.apps.base import on
 from wtfix.apps.base import MessageTypeHandlerApp
 
@@ -39,8 +39,8 @@ class TestMessageTypeHandlerApp:
 
         app = MockApp("mock_app")
 
-        app.on_receive(GenericMessage((35, "a")))
-        app.on_receive(GenericMessage((35, "b")))
+        app.on_receive(generic_message_factory((35, "a")))
+        app.on_receive(generic_message_factory((35, "b")))
 
         assert app.counter["a"] == 1
         assert app.counter["b"] == 0

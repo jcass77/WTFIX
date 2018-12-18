@@ -79,6 +79,9 @@ class TestField:
     def test_eq_field(self):
         assert Field(1, "a") == Field(1, "a")
 
+    def test_eq_tuple(self):
+        assert Field(1, "a") == (1, "a")
+
     def test_repr(self):
         assert repr(Field(35, "k")) == "(35, k)"
 

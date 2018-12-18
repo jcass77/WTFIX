@@ -69,7 +69,7 @@ class EncoderApp(BaseApp):
             + settings.SOH
         )
 
-        for field in message.values():
+        for field in message.fields:
             if field.tag in self.DYNAMIC_TAGS:  # These tags will be generated - ignore.
                 continue
             body += field.raw

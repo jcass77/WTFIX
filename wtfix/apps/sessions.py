@@ -7,7 +7,7 @@ from wtfix.conf import logger
 from wtfix.apps.base import BaseApp
 from wtfix.conf import settings
 from wtfix.core.exceptions import MessageProcessingError
-from wtfix.message.message import GenericMessage
+from wtfix.message.message import GenericMessage, generic_message_factory
 from wtfix.core import utils
 from wtfix.protocol.common import Tag, MsgType
 
@@ -156,7 +156,7 @@ class ClientSessionApp(SessionApp):
         Log on to the FIX server using the provided credentials.
         :return:
         """
-        logon_msg = GenericMessage(
+        logon_msg = generic_message_factory(
             (Tag.MsgType, MsgType.Logon),
             (Tag.EncryptMethod, "0"),  # TODO: should this be a configurable value?
             (Tag.HeartBtInt, self.heartbeat_time),
@@ -195,7 +195,7 @@ class ClientSessionApp(SessionApp):
         Log out of the FIX server.
         :return:
         """
-        logout_msg = GenericMessage((Tag.MsgType, MsgType.Logout))
+        logout_msg = generic_message_factory((Tag.MsgType, MsgType.Logout))
         self.pipeline.send(logout_msg)
 
     @unsync

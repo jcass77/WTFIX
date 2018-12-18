@@ -1,20 +1,15 @@
+import abc
 import collections
 import itertools
+import numbers
 
-from wtfix.core.exceptions import TagNotFound, InvalidGroup, UnknownTag, DuplicateTags
-from .field import Field
-from ..protocol import common
+from wtfix.core.exceptions import TagNotFound, InvalidGroup, UnknownTag, DuplicateTags, ValidationError, ParsingError
+from wtfix.message.field import Field
+from wtfix.protocol import common
 
 
-class FieldSet(collections.OrderedDict):
-    def __init__(self, *fields):
-        """
-        A FieldSet is a container for a one or more Fields.
-
-        :param fields: List of Field or (tag, value) tuples.
-        """
-        super().__init__((field.tag, field) for field in self._parse_fields(fields))
-
+class FieldSet(abc.ABC):
+    @abc.abstractmethod
     def __add__(self, other):
         """
         Concatenate two FieldSets, add a Field to a Fieldset, or add a (tag, value) tuple to the FieldSet.
@@ -22,45 +17,30 @@ class FieldSet(collections.OrderedDict):
         :param other: Another FieldSet, Field, (tag, value) tuple, or list of these.
         :return: A new FieldSet, which contains the concatenation of the FieldSet with other.
         """
-        try:
-            return self.__class__(*itertools.chain(self.values(), other.values()))
-        except AttributeError:
-            # Other is not a valid Fieldset, explode list of fields to construct
-            if isinstance(other, tuple):
-                other = [other]
 
-            fields = list(self.values()) + other
-            return self.__class__(*fields)
+    def __eq__(self, other):
+        """
+        Compare this FieldSet to other.
+        :param other: Another Fieldset, tuple, or list of tuples.
+        :return: True if other is equivalent to this FieldSet, False otherwise.
+        """
+        if len(self) == len(other):
+            if isinstance(other, FieldSet):
+                return self.fields == other.fields
+            if isinstance(other, tuple):
+                return all(field in self for field in other)
+            if isinstance(other, list):
+                return self.fields == other
+
+        return False
 
     def __len__(self):
         """
         :return: Number of fields in this FieldSet, including all fields in repeating groups.
         """
-        length = 0
-        for field in self.values():
-            length += 1
-            if isinstance(field, Group):
-                length += (
-                    len(field) - 1
-                )  # Deduct group identifier field already counted
+        return len(self.fields)
 
-        return length
-
-    def __getitem__(self, tag):
-        """
-        Tries to retrieve a Field with the given tag number from this FieldSet.
-
-        Translates 'KeyErrors' into 'TagNotFound' errors.
-
-        :param tag: The tag number of the Field to look up.
-        :return: A Field object.
-        :raises: TagNotFound if a Field with the specified tag number could not be found.
-        """
-        try:
-            return super().__getitem__(tag)
-        except KeyError as e:
-            raise TagNotFound(tag, self) from e
-
+    @abc.abstractmethod
     def __setitem__(self, tag, value):
         """
         Sets a Field in the FieldSet with the specified tag number and value..
@@ -69,11 +49,36 @@ class FieldSet(collections.OrderedDict):
         :param value: The value of the Field.
         :return:
         """
-        if not (isinstance(value, Field) or isinstance(value, Group)):
-            # Create a new Field if value is not a Field or Group already.
-            value = Field(tag, value)
 
-        return super().__setitem__(tag, value)
+    @abc.abstractmethod
+    def __getitem__(self, tag):
+        """
+        Tries to retrieve a Field with the given tag number from this FieldSet.
+
+        :param tag: The tag number of the Field to look up.
+        :return: A Field object.
+        :raises: TagNotFound if a Field with the specified tag number could not be found.
+        """
+
+    @abc.abstractmethod
+    def __delitem__(self, tag):
+        """
+        Tries to remove a Field with the given tag number from this FieldSet.
+
+        :param tag: The tag number of the Field to remove.
+        :raises: TagNotFound if a Field with the specified tag number could not be found.
+        """
+
+    def __contains__(self, tag):
+        """
+        :return: True if the Fieldset contains a Field with the given tag number, False otherwise.
+        """
+        if isinstance(tag, numbers.Integral):
+            for elem in self.fields:
+                if elem[0] == tag:
+                    return True
+
+        return False
 
     def __getattr__(self, name):
         """
@@ -103,24 +108,50 @@ class FieldSet(collections.OrderedDict):
                 f"for a group tag? If so, use 'get_group' instead.",
             ) from e
 
-    def __repr__(self):
+    @abc.abstractmethod
+    def append(self, field):
         """
-        :return: (tag_1, value_1), (tag_2, value_2)
+        Append a field to the FieldSet
+        :param field: The Field to append
+        :return: a new FieldSet containing field.
+        """
+
+    @property
+    @abc.abstractmethod
+    def fields(self):
+        """
+        :return: A list of Fields that this FieldSet contains
+        """
+
+    @property
+    @abc.abstractmethod
+    def raw(self):
+        """
+        :return: The FIX-compliant, raw binary string representation for this FieldSet.
+        """
+
+    def _repr(self, fields):
+        """
+        Shared implementation for printing a list of fields
+        :param fields: The list of Fields to render
+        :return: repr(Field) separated by |
         """
         fields_repr = ""
-        for field in self.values():
+        for field in fields:
             fields_repr += f"{repr(field)}, "
         else:
             fields_repr = fields_repr[:-2]
 
         return f"{fields_repr}"
 
-    def __str__(self):
+    def _str(self, fields):
         """
-        :return: 'tag_name_1:value_1 | tag_name_2:value_2'
+        Shared implementation for printing a list of fields
+        :param fields: The list of Fields to render
+        :return: str(Field) separated by |
         """
         fields_str = ""
-        for field in self.values():
+        for field in fields:
             fields_str += f"{str(field)} | "
 
         else:
@@ -128,52 +159,30 @@ class FieldSet(collections.OrderedDict):
 
         return f"{fields_str}"
 
-    @property
-    def raw(self):
+    def _fields(self, fields):
         """
-        :return: The FIX-compliant, raw binary string representation for this FieldSet.
+        Shared implementation for returning a list of all Fields within the FieldSet. Group fields will be
+        unpacked into their constituent Fields.
+        :param fields: The list of Fields to unpack
+        :return: a list of Field instances
         """
-        buf = b""
-        for field in self.values():
-            buf += field.raw
+        all_fields = fields
+        idx = 0
+        for field in fields:
+            if isinstance(field, Group):
+                all_fields = all_fields[:idx] + [field.identifier] + field.fields
+            idx += 1
 
-        return buf
+        return all_fields
 
-    @classmethod
-    def _parse_fields(cls, fields):
+    @abc.abstractmethod
+    def _parse_fields(cls, fields, **kwargs):
         """
         Creates a list of Fields from the provided (tag, value) pairs.
 
         :param fields: Any combination of (tag, value) pairs or other Field objects.
         :return: An list of Fields.
         """
-        parsed_fields = []
-        tags_seen = set()
-
-        for field in fields:
-            # For each field in the fieldset
-            if isinstance(field, Field) or isinstance(field, Group):
-                # Add field as-is
-                if field.tag in tags_seen:
-                    raise DuplicateTags(field.tag, *fields)
-
-                parsed_fields.append(field)
-                tags_seen.add(field.tag)
-                continue
-
-            # Add new field
-            if field[0] in tags_seen:
-                raise DuplicateTags(field[0], fields)
-
-            parsed_fields.append(
-                Field(*field)  # Make sure that this is an actual, well-formed Field.
-            )
-            tags_seen.add(field[0])
-
-        return parsed_fields
-
-    def get_field(self, item):
-        return
 
     def set_group(self, group):
         """
@@ -203,8 +212,293 @@ class FieldSet(collections.OrderedDict):
         else:
             raise InvalidGroup(tag, self)
 
+    def __repr__(self):
+        """
+        :return: (tag_1, value_1), (tag_2, value_2)
+        """
 
-class GroupInstance(FieldSet):
+    def __str__(self):
+        """
+        :return: 'tag_name_1:value_1 | tag_name_2:value_2'
+        """
+
+
+class ListFieldSet(FieldSet):
+    def __init__(self, *fields, **kwargs):
+        """
+        A FieldSet is a container for a one or more Fields.
+
+        :param fields: List of Field or (tag, value) tuples.
+        """
+        self._fields = self._parse_fields(fields)
+
+    def __add__(self, other):
+        try:
+            return self.__class__(*itertools.chain(self._fields, other.fields))
+        except AttributeError:
+            # Other is not a valid ListFieldset, explode list of fields to construct
+            if isinstance(other, tuple):
+                other = [other]
+            elif not isinstance(other, list):
+                raise TypeError(
+                    f"Can only concatenate tuples, lists of tuples, or other Fieldsets, not {type(other).__name__}."
+                )
+
+            fields = self._fields + other
+            return self.__class__(*fields)
+
+    def __setitem__(self, tag, value):
+        if not (isinstance(value, Field) or isinstance(value, Group)):
+            # Create a new Field if value is not a Field or Group already.
+            value = Field(tag, value)
+
+        if tag in self:
+            # Update value, retaining the Field's position in the list
+            self._fields = [value if field.tag == tag else field for field in self._fields]
+        else:
+            self._fields.append(value)
+
+        return self
+
+    def __getitem__(self, tag):
+        for field in self._fields:
+            if field.tag == tag:
+                return field
+
+        raise TagNotFound(tag, self)
+
+    def __delitem__(self, tag):
+        idx = 0
+        for field in self._fields:
+            if field.tag == tag:
+                del self._fields[idx]
+                return
+            idx += 1
+
+        raise TagNotFound(tag, self)
+
+    @property
+    def fields(self):
+        return super()._fields(self._fields)
+
+    @property
+    def raw(self):
+        buf = b""
+        for field in self._fields:
+            buf += field.raw
+
+        return buf
+
+    def append(self, field):
+        return self.__setitem__(field[0], field[1])
+
+    @classmethod
+    def _parse_fields(cls, fields, **kwargs):
+        parsed_fields = []
+        for field in fields:
+            # For each field in the fieldset
+            if isinstance(field, Field) or isinstance(field, Group):
+                # Add field as-is
+                parsed_fields.append(field)
+                continue
+
+            # Add new field
+            parsed_fields.append(
+                Field(*field)  # Make sure that this is an actual, well-formed Field.
+            )
+
+        return parsed_fields
+
+    def __repr__(self):
+        """
+        :return: [(tag_1, value_1), (tag_2, value_2)]
+        """
+        return f"[{FieldSet._repr(self, self._fields)}]"
+
+    def __str__(self):
+        """
+        :return: '[tag_name_1:value_1 | tag_name_2:value_2]'
+        """
+        return f"[{FieldSet._str(self, self._fields)}]"
+
+
+class OrderedDictFieldSet(FieldSet):
+    def __init__(self, *fields, **kwargs):
+        """
+       A FieldSet is a container for a one or more Fields.
+
+       :param fields: List of Field or (tag, value) tuples.
+       """
+        self._group_templates = {}
+
+        templates = kwargs.get("group_templates", {})
+        for identifier, tags in templates.items():
+            self.add_group_template(identifier, *tags)
+
+        self._fields = collections.OrderedDict((field.tag, field) for field in self._parse_fields(fields))
+
+    def __add__(self, other):
+        try:
+            return self.__class__(*itertools.chain(self._fields.values(), other.fields))
+        except AttributeError:
+            # Other is not a valid OrderedDictFieldSet, explode list of fields to construct
+            if isinstance(other, tuple):
+                other = [other]
+            elif not isinstance(other, list):
+                raise TypeError(
+                    f"Can only concatenate tuples, lists of tuples, or other Fieldsets, not {type(other).__name__}."
+                )
+
+            fields = list(self._fields.values()) + other
+            return self.__class__(*fields)
+
+    def __setitem__(self, tag, value):
+        if not (isinstance(value, Field) or isinstance(value, Group)):
+            # Create a new Field if value is not a Field or Group already.
+            value = Field(tag, value)
+
+        self._fields[tag] = value
+        return self
+
+    def __getitem__(self, tag):
+        try:
+            return self._fields[tag]
+        except KeyError as e:
+            raise TagNotFound(tag, self) from e
+
+    def __delitem__(self, tag):
+        try:
+            del self._fields[tag]
+        except KeyError:
+            raise TagNotFound(tag, self)
+
+    def __contains__(self, tag):
+        # Optimization, look for tag in dictionary first
+        if isinstance(tag, numbers.Integral):
+            if tag in self._fields:
+                return True
+
+            # Fallback, might be a group tag - search in list
+            return FieldSet.__contains__(self, tag)
+
+        return False
+
+    @property
+    def fields(self):
+        return super()._fields(list(self._fields.values()))
+
+    @property
+    def raw(self):
+        buf = b""
+        for field in self._fields.values():
+            buf += field.raw
+
+        return buf
+
+    def append(self, field):
+        return self.__setitem__(field[0], field[1])
+
+    def add_group_template(self, identifier_tag, *tags):
+        if len(tags) == 0:
+            raise ValidationError(
+                f"At least one group instance tag needs to be defined for group {identifier_tag}."
+            )
+
+        self._group_templates[identifier_tag] = tags
+
+    def remove_group_template(self, identifier_tag):
+        del self._group_templates[identifier_tag]
+
+    def is_template_tag(self, tag):
+        if tag in self._group_templates:
+            return True
+
+        for template in self._group_templates.values():
+            return tag in template
+
+    # TODO: refactor and simplify!
+    def _parse_fields(self, fields, **kwargs):
+        """
+        Parses the raw list of encoded field pairs recursively into Field instances.
+
+        :param raw_pairs: A string of bytes in format b'tag=value'
+        :param group_index: The index at which the previous repeating group was detected.
+        :return: A list of parsed Field objects.
+        """
+        parsed_fields = []
+        tags_seen = set()
+        idx = 0
+        template = []
+        group_index = kwargs.get("group_index", None)
+
+        if group_index is not None:
+            # Parsing a repeating group - skip over previously parsed pairs.
+            idx = group_index
+            group_identifier = Field(fields[idx][0], fields[idx][1])
+
+            # Retrieve the template for this repeating group
+            template = self._group_templates[group_identifier.tag]
+
+            # Add the group identifier as the first field in the list.
+            parsed_fields.append(group_identifier)
+            idx += 1  # Skip over identifier tag that was just processed.
+
+        template_tags = iter(template)
+
+        while idx < len(fields):
+            tag, value = fields[idx][0], fields[idx][1]
+            tag = int(tag)
+            if tag in tags_seen and tag not in template:
+                raise DuplicateTags(
+                    tag,
+                    fields[idx],
+                    f"No repeating group template defined for duplicate tag {tag} in {fields}."
+                )
+
+            if tag in self._group_templates:
+                # Tag denotes the start of a new repeating group.
+                group_fields = self._parse_fields(fields, group_index=idx)
+                group = Group(group_fields[0], *group_fields[1:])
+
+                parsed_fields.append(group)
+                # Skip over all of the fields that were processed as part of the group.
+                idx += len(group)
+                continue
+
+            if group_index is not None:
+                # Busy parsing a template, see if the current tag forms part of it.
+                if tag == next(template_tags):
+                    parsed_fields.append(Field(tag, value))
+                    if tag == template[-1]:
+                        # We've reached the last tag in the template, reset iterator
+                        # so that it is ready to parse next group instance (if any).
+                        template_tags = iter(template)
+                else:
+                    # All group fields processed - done.
+                    break
+            else:
+                # Busy parsing a non-group tag.
+                parsed_fields.append(Field(tag, value))
+                tags_seen.add(tag)
+
+            idx += 1
+
+        return parsed_fields
+
+    def __repr__(self):
+        """
+        :return: {(tag_1, value_1), (tag_2, value_2)}
+        """
+        return f"{{{FieldSet._repr(self, self._fields.values())}}}"
+
+    def __str__(self):
+        """
+        :return: '{tag_name_1:value_1 | tag_name_2:value_2}'
+        """
+        return f"{{{FieldSet._str(self, self._fields.values())}}}"
+
+
+class GroupInstance(ListFieldSet):
     """
     A special type of Fieldset used to denote the unique sequence of Fields that form part of a repeating Group.
 
@@ -214,18 +508,18 @@ class GroupInstance(FieldSet):
     pass
 
 
-class Group(collections.UserList):
+class Group:
     """
     A repeating group of GroupInstances that form the Group.
     """
 
-    def __init__(self, identifier, *fields):
+    def __init__(self, identifier, *fields, **kwargs):
         """
         :param identifier: A Field that identifies the repeating Group. The value of the 'identifier' Field
         indicates the number of times that GroupInstance repeats in this Group.
         :param fields: A GroupInstance or list of (tag, value) tuples.
         """
-        super().__init__()
+        self._instances = []
         self.identifier = Field(*identifier)
 
         num_fields = len(fields)
@@ -251,22 +545,25 @@ class Group(collections.UserList):
 
         instance_length = int(instance_length)
         for idx in range(0, num_fields, instance_length):  # Loop over group instances
-            self.append(GroupInstance(*fields[idx : idx + instance_length]))
+            self._instances.append(GroupInstance(*fields[idx : idx + instance_length]))
 
     def __len__(self):
         length = 1  # Count identifier field
-        for instance in self:
+        for instance in self._instances:
             # Count all fields in each group instance
             length += len(instance)
 
         return length
+
+    def __getitem__(self, item):
+        return self._instances[item]
 
     def __repr__(self):
         """
         :return: [(identifier tag, num instances)]:((tag_1, value_1), (tag_2, value_2)), ((tag_1, value_1), (tag_2, value_2))
         """
         group_instances_repr = ""
-        for instance in self:
+        for instance in self._instances:
             group_instances_repr += f"{repr(instance)}, "
         else:
             group_instances_repr = group_instances_repr[:-2]
@@ -278,7 +575,7 @@ class Group(collections.UserList):
         :return: [identifier_tag_name:num_instances] | tag_1_name:value_1 | tag_2_name:value_2 | tag_1_name:value_1) | tag_2_name:value_2
         """
         group_instances_str = ""
-        for instance in self:
+        for instance in self._instances:
             group_instances_str += f"{str(instance)} | "
         else:
             group_instances_str = group_instances_str[:-3]
@@ -286,12 +583,25 @@ class Group(collections.UserList):
         return f"[{str(self.identifier)}] | {group_instances_str}"
 
     @property
+    def instances(self):
+        return self._instances
+
+    @property
+    def fields(self):
+        group_fields = []
+        for instance in self._instances:
+            for field in instance.fields:
+                group_fields.append(field)
+
+        return group_fields
+
+    @property
     def raw(self):
         """
         :return: The FIX-compliant, raw binary string representation for this Group.
         """
         buf = b""
-        for instance in self:
+        for instance in self._instances:
             buf += instance.raw
 
         return self.identifier.raw + buf

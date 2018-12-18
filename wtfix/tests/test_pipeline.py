@@ -50,22 +50,22 @@ class TestBasePipeline:
     async def test_receive(self, unsync_event_loop, three_level_app_chain):
         pipeline = BasePipeline(installed_apps=three_level_app_chain)
 
-        assert pipeline.receive("Test").result() == "Test r1 r2 r3"
+        assert await pipeline.receive("Test") == "Test r1 r2 r3"
 
     @pytest.mark.asyncio
     async def test_receive_stop(self, unsync_event_loop, three_level_stop_app_chain):
         pipeline = BasePipeline(installed_apps=three_level_stop_app_chain)
 
-        assert pipeline.receive("Test").result() == "Test r1"
+        assert await pipeline.receive("Test") == "Test r1"
 
     @pytest.mark.asyncio
     async def test_send(self, unsync_event_loop, three_level_app_chain):
         pipeline = BasePipeline(installed_apps=three_level_app_chain)
 
-        assert pipeline.send("Test").result() == "Test s3 s2 s1"
+        assert await pipeline.send("Test") == "Test s3 s2 s1"
 
     @pytest.mark.asyncio
     async def test_send_stop(self, unsync_event_loop, three_level_stop_app_chain):
         pipeline = BasePipeline(installed_apps=three_level_stop_app_chain)
 
-        assert pipeline.send("Test").result() == "Test s3"
+        assert await pipeline.send("Test") == "Test s3"
