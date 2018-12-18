@@ -2,7 +2,11 @@ import pytest
 from unsync import unsync
 
 from wtfix.protocol.common import MsgType
-from wtfix.message.message import GenericMessage, OptimizedGenericMessage, generic_message_factory
+from wtfix.message.message import (
+    GenericMessage,
+    OptimizedGenericMessage,
+    generic_message_factory,
+)
 from wtfix.message.fieldset import Group
 
 from pytest_socket import socket_allow_hosts

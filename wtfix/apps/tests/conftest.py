@@ -27,6 +27,7 @@ def basic_parser_app():
 
 class HeartbeatTestApp(HeartbeatApp):
     """Heartbeat app with all delays set to zero for test purposes."""
+
     def __init__(self, pipeline, *args, **kwargs):
         super().__init__(pipeline, *args, **kwargs)
 
@@ -52,9 +53,7 @@ def failing_server_heartbeat_app():
         nonlocal num_responses
 
         if num_responses < 3:
-            app.on_heartbeat(
-                {Tag.TestReqID: message[Tag.TestReqID].as_str}
-            )
+            app.on_heartbeat({Tag.TestReqID: message[Tag.TestReqID].as_str})
         num_responses += 1
 
     app.pipeline.send.side_effect = simulate_heartbeat_response

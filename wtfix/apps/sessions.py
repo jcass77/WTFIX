@@ -16,6 +16,7 @@ class SessionApp(BaseApp):
     """
     Base class for apps that manage client / server connections.
     """
+
     def __init__(self, pipeline, sender=None, heartbeat_time=None, *args, **kwargs):
         super().__init__(pipeline, *args, **kwargs)
         self.reader = None
@@ -90,7 +91,9 @@ class ClientSessionApp(SessionApp):
         Connect to the FIX server, obtaining StreamReader and StreamWriter instances for receiving messages
         from and sending messages to the server.
         """
-        logger.info(f"{self.name}: Establishing connection to {settings.HOST}:{settings.PORT}...")
+        logger.info(
+            f"{self.name}: Establishing connection to {settings.HOST}:{settings.PORT}..."
+        )
         self.reader, self.writer = await asyncio.open_connection(
             settings.HOST, settings.PORT
         )

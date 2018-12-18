@@ -51,7 +51,9 @@ class TestDecoderApp:
             DecoderApp.check_begin_string(b"34=0" + settings.SOH + simple_encoded_msg)
 
     def test_check_body_length(self, simple_encoded_msg):
-        assert DecoderApp.check_body_length(simple_encoded_msg, start=0, body_end=19) == (5, 13)
+        assert DecoderApp.check_body_length(
+            simple_encoded_msg, start=0, body_end=19
+        ) == (5, 13)
 
     def test_check_body_length_body_end_not_provided(self, simple_encoded_msg):
         assert DecoderApp.check_body_length(simple_encoded_msg) == (5, 13)
@@ -80,12 +82,16 @@ class TestDecoderApp:
             message = simple_encoded_msg + b"34=1" + settings.SOH
             DecoderApp.check_checksum(message)
 
-    def test_check_checksum_raises_exception_if_checksum_invalid(self, simple_encoded_msg):
+    def test_check_checksum_raises_exception_if_checksum_invalid(
+        self, simple_encoded_msg
+    ):
         with pytest.raises(ParsingError):
             encoded_msg = simple_encoded_msg[:-4] + b"123" + settings.SOH
             DecoderApp.check_checksum(encoded_msg, 0, 19)
 
-    def test_decode_message(self, encoder_app, decoder_app, generic_message_class, sdr_message_fields):
+    def test_decode_message(
+        self, encoder_app, decoder_app, generic_message_class, sdr_message_fields
+    ):
         m = generic_message_class(*sdr_message_fields)
         m = decoder_app.decode_message(encoder_app.encode_message(m))
         assert m[Tag.BeginString] == b"FIX.4.4"
@@ -93,12 +99,21 @@ class TestDecoderApp:
         assert m[Tag.MsgType] == b"c"
         # Compare body, skipping timestamp and checksum
         assert m.encoded_body[:18] == b"34=1\x0149=SENDER\x0152="
-        assert m.encoded_body[40:] == b"56=TARGET\x0155=^.*$\x01167=CS\x01320=37a0b5c8afb543ec8f29eca2a44be2ec\x01321=3\x01"
+        assert (
+            m.encoded_body[40:]
+            == b"56=TARGET\x0155=^.*$\x01167=CS\x01320=37a0b5c8afb543ec8f29eca2a44be2ec\x01321=3\x01"
+        )
 
-    def test_decode_message_raises_exception_if_no_beginstring(self, encoder_app, decoder_app):
+    def test_decode_message_raises_exception_if_no_beginstring(
+        self, encoder_app, decoder_app
+    ):
         with pytest.raises(ParsingError):
-            m = generic_message_factory((Tag.MsgType, MsgType.TestRequest), (Tag.TestReqID, "a"))
-            data = encoder_app.encode_message(m).replace(b"8=" + utils.encode(settings.BEGIN_STRING), b"")
+            m = generic_message_factory(
+                (Tag.MsgType, MsgType.TestRequest), (Tag.TestReqID, "a")
+            )
+            data = encoder_app.encode_message(m).replace(
+                b"8=" + utils.encode(settings.BEGIN_STRING), b""
+            )
             decoder_app.decode_message(data)
 
     def test_decode_message_raises_exception_on_leading_junk(self, decoder_app):

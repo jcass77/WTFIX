@@ -23,11 +23,11 @@ def test_rfind(simple_encoded_msg):
 
 def test_checksum():
     assert (
-            utils.calculate_checksum(
-                b"8=FIXT.1.1\x019=75\x0135=A\x0134=1\x0149=ROFX\x0152=20170417-18:29:09.599\x0156=eco\x0198=0\x01"
-                + b"108=20\x01141=Y\x011137=9\x01",
-                )
-            == 79
+        utils.calculate_checksum(
+            b"8=FIXT.1.1\x019=75\x0135=A\x0134=1\x0149=ROFX\x0152=20170417-18:29:09.599\x0156=eco\x0198=0\x01"
+            + b"108=20\x01141=Y\x011137=9\x01"
+        )
+        == 79
     )
 
 

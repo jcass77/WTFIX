@@ -2,11 +2,7 @@ from datetime import datetime
 
 from wtfix.apps.base import BaseApp
 from wtfix.conf import settings
-from wtfix.core.exceptions import (
-    ParsingError,
-    MessageProcessingError,
-    TagNotFound,
-)
+from wtfix.core.exceptions import ParsingError, MessageProcessingError, TagNotFound
 from wtfix.message.message import RawMessage
 from wtfix.core import utils
 from wtfix.protocol.common import Tag
@@ -84,7 +80,9 @@ class EncoderApp(BaseApp):
         )
 
         trailer = (
-            b"10=" + utils.encode(f"{utils.calculate_checksum(header + body):03}") + settings.SOH
+            b"10="
+            + utils.encode(f"{utils.calculate_checksum(header + body):03}")
+            + settings.SOH
         )
 
         return header + body + trailer
@@ -123,7 +121,9 @@ class DecoderApp(BaseApp):
         try:
             begin_string, start, tag_end = utils.index_tag(8, data, start=start)
         except TagNotFound as e:
-            raise ParsingError(f"BeginString (8) not found in {utils.decode(data)}.") from e
+            raise ParsingError(
+                f"BeginString (8) not found in {utils.decode(data)}."
+            ) from e
 
         if start != 0:
             # Begin string was not found at start of Message
@@ -154,7 +154,9 @@ class DecoderApp(BaseApp):
 
             body_length, _, tag_end = utils.index_tag(9, data, start=start)
         except TagNotFound as e:
-            raise ParsingError(f"BodyLength (9) not found in {utils.decode(data)}.") from e
+            raise ParsingError(
+                f"BodyLength (9) not found in {utils.decode(data)}."
+            ) from e
 
         body_length = int(body_length)
         actual_length = body_end - tag_end - 1
@@ -225,15 +227,19 @@ class DecoderApp(BaseApp):
         )
 
         # MsgType must be the third field in the message
-        msg_type, _, msg_type_end_tag = utils.index_tag(Tag.MsgType, data, body_length_tag_end)
+        msg_type, _, msg_type_end_tag = utils.index_tag(
+            Tag.MsgType, data, body_length_tag_end
+        )
 
-        checksum, _ = self.check_checksum(data, body_start=0, body_end=checksum_tag_start)
+        checksum, _ = self.check_checksum(
+            data, body_start=0, body_end=checksum_tag_start
+        )
 
         message = RawMessage(
             begin_string,
             body_length=body_length,
             message_type=msg_type,
-            encoded_body=data[msg_type_end_tag + 1:checksum_tag_start],
+            encoded_body=data[msg_type_end_tag + 1 : checksum_tag_start],
             checksum=checksum,
         )
         return message

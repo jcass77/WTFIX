@@ -10,7 +10,9 @@ from wtfix.conf import settings
 from wtfix.core.exceptions import (
     MessageProcessingError,
     StopMessageProcessing,
-    ValidationError, ImproperlyConfigured)
+    ValidationError,
+    ImproperlyConfigured,
+)
 
 
 class BasePipeline:
@@ -48,7 +50,7 @@ class BasePipeline:
             last_dot = app.rfind(".")
             module = importlib.import_module(app[:last_dot])
 
-            class_ = getattr(module, app[last_dot + 1:])
+            class_ = getattr(module, app[last_dot + 1 :])
             instance = class_(self)
 
             loaded_apps[instance.name] = instance
@@ -82,7 +84,9 @@ class BasePipeline:
 
             logger.info("Pipeline stopped.")
         except futures.TimeoutError:
-            logger.error(f"Timeout waiting for app {app} to stop - session terminated abnormally!")
+            logger.error(
+                f"Timeout waiting for app {app} to stop - session terminated abnormally!"
+            )
 
     def _prep_processing_pipeline(self, direction):
         if direction is self.INBOUND:
@@ -112,7 +116,9 @@ class BasePipeline:
                 message = getattr(app, process_func)(message)
 
         except MessageProcessingError as e:
-            logger.exception(f"Error processing message {message}. Processing stopped at '{app.name}': {e}.")
+            logger.exception(
+                f"Error processing message {message}. Processing stopped at '{app.name}': {e}."
+            )
         except StopMessageProcessing:
             logger.info(f"Processing of message {message} interrupted at '{app.name}'.")
 

@@ -72,12 +72,14 @@ class TestBasicMessage:
             encoded_body=b"12345" + settings.SOH + b"67890" + settings.SOH,
         )
 
-        assert str(bm) == "QuoteStatusRequest (a): {BeginString (8):FIX.4.4 | BodyLength (9):12 | "\
-                          "MsgType (35):a | CheckSum (10):15}, with content - b'12345\\x0167890\\x01'"
+        assert (
+            str(bm)
+            == "QuoteStatusRequest (a): {BeginString (8):FIX.4.4 | BodyLength (9):12 | "
+            "MsgType (35):a | CheckSum (10):15}, with content - b'12345\\x0167890\\x01'"
+        )
 
 
 class TestGenericMessage:
-
     def test_add_returns_message_instance(self):
         m = GenericMessage((35, "a"), (2, "bb"))
         m += Field(3, "ccc")
@@ -88,4 +90,7 @@ class TestGenericMessage:
         m = GenericMessage((35, "a"), (2, "bb"))
         m += Field(3, "ccc")
 
-        assert str(m) == "QuoteStatusRequest (a): [MsgType (35):a | AdvId (2):bb | AdvRefID (3):ccc]"
+        assert (
+            str(m)
+            == "QuoteStatusRequest (a): [MsgType (35):a | AdvId (2):bb | AdvRefID (3):ccc]"
+        )

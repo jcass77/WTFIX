@@ -104,6 +104,7 @@ def on(message_type):
     :param message_type: The type of message to be processed.
     :return: a decorator that can be used with a MessageTypeHandlerApp method.
     """
+
     @wraps(message_type)
     def wrapper(f):
         f.on_type = message_type

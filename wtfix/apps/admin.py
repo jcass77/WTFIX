@@ -22,7 +22,9 @@ class HeartbeatApp(MessageTypeHandlerApp):
     def __init__(self, pipeline, *args, **kwargs):
         self._heartbeat = None
         self._last_receive = None
-        self._test_request_id = None  # A waiting TestRequest message for which no response has been received.
+        self._test_request_id = (
+            None
+        )  # A waiting TestRequest message for which no response has been received.
         self._test_request_response_delay = None
         self._server_not_responding = asyncio.Event()
 
@@ -57,7 +59,9 @@ class HeartbeatApp(MessageTypeHandlerApp):
 
         self._test_request_response_delay = response_delay
 
-        logger.info(f"{self.name}: Starting heartbeat monitor ({self._heartbeat} second interval)...")
+        logger.info(
+            f"{self.name}: Starting heartbeat monitor ({self._heartbeat} second interval)..."
+        )
 
         while not self._server_not_responding.is_set():
             # Keep sending heartbeats until the server stops responding.
@@ -139,7 +143,9 @@ class HeartbeatApp(MessageTypeHandlerApp):
             # Response received - reset
             self._test_request_id = None
         else:
-            raise MessageProcessingError(f"Received an unexpected heartbeat message: {message}.")
+            raise MessageProcessingError(
+                f"Received an unexpected heartbeat message: {message}."
+            )
 
         return message
 
@@ -148,5 +154,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
         Update the timestamp whenever any message is received.
         :param message:
         """
-        self._last_receive = datetime.utcnow()  # Update timestamp on every message received
+        self._last_receive = (
+            datetime.utcnow()
+        )  # Update timestamp on every message received
         return super().on_receive(message)

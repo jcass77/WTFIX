@@ -4,11 +4,17 @@ from wtfix.conf import settings
 from wtfix.protocol.common import Tag
 from ..field import Field
 from ..fieldset import OrderedDictFieldSet, Group, ListFieldSet
-from wtfix.core.exceptions import TagNotFound, DuplicateTags, InvalidGroup, ValidationError
+from wtfix.core.exceptions import (
+    TagNotFound,
+    DuplicateTags,
+    InvalidGroup,
+    ValidationError,
+)
 
 
 class TestFieldSet:
     """Base class to test all implementations of 'FieldSet' interface."""
+
     def test_add(self, fieldset_class, fieldset_impl_ab):
         fs = fieldset_impl_ab + fieldset_class((3, "ccc"), (4, "dddd"))
 
@@ -37,7 +43,7 @@ class TestFieldSet:
         fs = fieldset_impl_ab + [(3, "ccc"), (4, "dddd")]
         assert len(fs) == 4
         assert fs[4] == "dddd"
-        
+
     def test_add_not_a_tuple_raises_error(self, fieldset_impl_ab):
         with pytest.raises(TypeError):
             fieldset_impl_ab + 1
@@ -191,7 +197,6 @@ class TestFieldSet:
 
 
 class TesListFieldSet:
-
     def test_repr_list(self):
         fs = ListFieldSet()
         assert repr(fs) == "[]"
@@ -204,19 +209,23 @@ class TesListFieldSet:
         assert str(fs) == "[]"
 
         fs = ListFieldSet((34, "a"), (35, "bb"), (1, "ccc"))
-        assert (
-            str(fs) == "[MsgSeqNum (34):a | MsgType (35):bb | Account (1):ccc]"
-        )
+        assert str(fs) == "[MsgSeqNum (34):a | MsgType (35):bb | Account (1):ccc]"
 
 
 class TestOrderedDictFieldSet:
-
     def test_parse_fields_duplicate_tags_raises_exception(self):
         with pytest.raises(DuplicateTags):
             OrderedDictFieldSet((1, "a"), (1, "b"))
 
     def test_parse_repeating_group(self, routing_id_group):
-        fs = OrderedDictFieldSet((1, "a"), (2, "b"), routing_id_group.identifier, *routing_id_group.fields, (3, "c"), group_templates={215: [216, 217]})
+        fs = OrderedDictFieldSet(
+            (1, "a"),
+            (2, "b"),
+            routing_id_group.identifier,
+            *routing_id_group.fields,
+            (3, "c"),
+            group_templates={215: [216, 217]}
+        )
 
         assert 215 in fs
         assert fs[1] == "a"
@@ -235,7 +244,14 @@ class TestOrderedDictFieldSet:
         assert fs[3] == "c"
 
     def test_parse_nested_repeating_group(self, nested_parties_group):
-        fs = OrderedDictFieldSet((1, "a"), (2, "b"), nested_parties_group.identifier, *nested_parties_group.fields, (3, "c"), group_templates={539: [524, 525, 538], 804: [545, 805]})
+        fs = OrderedDictFieldSet(
+            (1, "a"),
+            (2, "b"),
+            nested_parties_group.identifier,
+            *nested_parties_group.fields,
+            (3, "c"),
+            group_templates={539: [524, 525, 538], 804: [545, 805]}
+        )
         # fs = OrderedDictFieldSet((1, 'a'), (2, 'b'), (539, 2), (524, "a"), (525, "aa"), (538, "aaa"), (804, 2), (545, "c"), (805, "cc"), (545, "d"), (805, "dd"), (524, "b"), (525, "bb"), (538, "bbb"), (804, 2), (545, "e"), (805, "ee"), (545, "f"), (805, "ff"), (3, "c"), group_templates={539: [524, 525, 538], 804: [545, 805]})
 
         group = fs.get_group(539)
@@ -285,9 +301,7 @@ class TestOrderedDictFieldSet:
         assert str(fs) == "{}"
 
         fs = OrderedDictFieldSet((34, "a"), (35, "bb"), (1, "ccc"))
-        assert (
-            str(fs) == "{MsgSeqNum (34):a | MsgType (35):bb | Account (1):ccc}"
-        )
+        assert str(fs) == "{MsgSeqNum (34):a | MsgType (35):bb | Account (1):ccc}"
 
 
 class TestGroup:

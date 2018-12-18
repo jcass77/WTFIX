@@ -15,7 +15,9 @@ class TestBasePipeline:
         pipeline = BasePipeline()
         assert len(pipeline.apps) == len(settings.PIPELINE_APPS)
         assert all(
-            f"{app.__class__.__module__}.{app.__class__.__name__}" in settings.PIPELINE_APPS for app in pipeline.apps.values()
+            f"{app.__class__.__module__}.{app.__class__.__name__}"
+            in settings.PIPELINE_APPS
+            for app in pipeline.apps.values()
         )
 
     def test_load_apps_raises_exception_if_no_apps_installed(self):

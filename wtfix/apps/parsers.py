@@ -21,8 +21,13 @@ class BasicMessageParserApp(BaseApp):
             settings.SOH
         )  # Remove last SOH at end of byte stream and split into fields
 
-        fields = [message[Tag.BeginString], message[Tag.BodyLength], message[Tag.MsgType], *self._parse_fields(data),
-                  message[Tag.CheckSum]]
+        fields = [
+            message[Tag.BeginString],
+            message[Tag.BodyLength],
+            message[Tag.MsgType],
+            *self._parse_fields(data),
+            message[Tag.CheckSum],
+        ]
 
         message = generic_message_factory(*fields)
         logger.info(f" <-- {message}")

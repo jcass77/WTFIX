@@ -2,7 +2,12 @@ import abc
 
 from wtfix.conf import settings
 from wtfix.core import utils
-from wtfix.core.exceptions import ValidationError, TagNotFound, UnknownType, DuplicateTags
+from wtfix.core.exceptions import (
+    ValidationError,
+    TagNotFound,
+    UnknownType,
+    DuplicateTags,
+)
 from wtfix.protocol.common import Tag, MsgType
 from .fieldset import OrderedDictFieldSet, ListFieldSet
 
@@ -11,6 +16,7 @@ class FixMessage(abc.ABC):
     """
     Mixin class that allows easy lookups of often-used Fields.
     """
+
     def __str__(self):
         """
         :return: name (type): ((tag_name_1, value_1), (tag_name_2, value_2))
@@ -102,7 +108,15 @@ class RawMessage(FixMessage, OrderedDictFieldSet):
     Useful for situations where only the standard header fields and checksum is required, and the
     overhead that will be incurred in parsing each tag is unnecessary.
     """
-    def __init__(self, begin_string=None, body_length=None, message_type=None, encoded_body=None, checksum=None):
+
+    def __init__(
+        self,
+        begin_string=None,
+        body_length=None,
+        message_type=None,
+        encoded_body=None,
+        checksum=None,
+    ):
 
         if begin_string is None:
             begin_string = settings.BEGIN_STRING

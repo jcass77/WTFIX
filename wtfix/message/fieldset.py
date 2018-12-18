@@ -3,7 +3,14 @@ import collections
 import itertools
 import numbers
 
-from wtfix.core.exceptions import TagNotFound, InvalidGroup, UnknownTag, DuplicateTags, ValidationError, ParsingError
+from wtfix.core.exceptions import (
+    TagNotFound,
+    InvalidGroup,
+    UnknownTag,
+    DuplicateTags,
+    ValidationError,
+    ParsingError,
+)
 from wtfix.message.field import Field
 from wtfix.protocol import common
 
@@ -95,7 +102,9 @@ class FieldSet(abc.ABC):
             tag = common.Tag.get_tag(name)
         except UnknownTag as e:
             # No tag
-            raise AttributeError(f"{self.__class__.__name__} instance has no attribute '{name}'.") from e
+            raise AttributeError(
+                f"{self.__class__.__name__} instance has no attribute '{name}'."
+            ) from e
 
         try:
             # Then, see if a Field with that tag number is available in this FieldSet.
@@ -254,7 +263,9 @@ class ListFieldSet(FieldSet):
 
         if tag in self:
             # Update value, retaining the Field's position in the list
-            self._fields = [value if field.tag == tag else field for field in self._fields]
+            self._fields = [
+                value if field.tag == tag else field for field in self._fields
+            ]
         else:
             self._fields.append(value)
 
@@ -335,7 +346,9 @@ class OrderedDictFieldSet(FieldSet):
         for identifier, tags in templates.items():
             self.add_group_template(identifier, *tags)
 
-        self._fields = collections.OrderedDict((field.tag, field) for field in self._parse_fields(fields))
+        self._fields = collections.OrderedDict(
+            (field.tag, field) for field in self._parse_fields(fields)
+        )
 
     def __add__(self, other):
         try:
@@ -452,7 +465,7 @@ class OrderedDictFieldSet(FieldSet):
                 raise DuplicateTags(
                     tag,
                     fields[idx],
-                    f"No repeating group template defined for duplicate tag {tag} in {fields}."
+                    f"No repeating group template defined for duplicate tag {tag} in {fields}.",
                 )
 
             if tag in self._group_templates:
