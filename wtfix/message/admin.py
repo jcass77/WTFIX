@@ -1,8 +1,8 @@
-from wtfix.message.message import GenericMessage
+from wtfix.message.message import OptimizedGenericMessage
 from wtfix.protocol.common import MsgType, Tag
 
 
-class Heartbeat(GenericMessage):
+class Heartbeat(OptimizedGenericMessage):
     """Generic Heartbeat message"""
 
     def __init__(self, test_request_id):
@@ -11,7 +11,7 @@ class Heartbeat(GenericMessage):
         )
 
 
-class TestRequest(GenericMessage):
+class TestRequest(OptimizedGenericMessage):
     """Generic TestRequest message"""
 
     def __init__(self, test_request_id):
