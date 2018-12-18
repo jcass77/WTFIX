@@ -146,11 +146,11 @@ class RawMessage(FixMessage, OrderedDictFieldSet):
         return f"{super().__str__()}, with content - {self.encoded_body}"
 
 
-def generic_message_factory(*fields):
+def generic_message_factory(*fields, **kwargs):
     try:
-        return OptimizedGenericMessage(*fields)
+        return OptimizedGenericMessage(*fields, **kwargs)
     except DuplicateTags:
-        return GenericMessage(*fields)
+        return GenericMessage(*fields, **kwargs)
 
 
 class GenericMessage(FixMessage, ListFieldSet):
