@@ -15,6 +15,10 @@ from wtfix.protocol import common
 
 
 class FieldSet(abc.ABC):
+    """
+    A FieldSet is a collection of a one or more Fields. This class provides the interface that all FieldSets
+    should implement in order to support the Python builtins that are typically used for collections.
+    """
     @abc.abstractmethod
     def __add__(self, other):
         """
@@ -234,9 +238,14 @@ class FieldSet(abc.ABC):
 class ListFieldSet(FieldSet):
     def __init__(self, *fields, **kwargs):
         """
-        A FieldSet is a container for a one or more Fields.
+        A simple FieldSet that stores all of its Fields in a list.
+
+        This type of FieldSet is easy to instantiate as it does not require any knowledge of the intended
+        message structure. The downside is that the internal list structure is not very efficient when it comes
+        to performing Field lookups.
 
         :param fields: List of Field or (tag, value) tuples.
+        :param kwargs: Unused.
         """
         self._fields = self._parse_fields(fields)
 
@@ -335,10 +344,18 @@ class ListFieldSet(FieldSet):
 class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
     def __init__(self, *fields, **kwargs):
         """
-       A FieldSet is a container for a one or more Fields.
+        A FieldSet that stores all of its Fields in an OrderedDict.
 
-       :param fields: List of Field or (tag, value) tuples.
-       """
+        This type of FieldSet should be faster at doing Field lookups and manipulating the FieldSet in general.
+
+        If 'fields' contain one or more repeating groups then you *have* to provide the corresponding repeating group
+        template(s) in order for the FieldSet to know how to parse and store those groups.
+
+        :param fields: List of Field or (tag, value) tuples.
+        :param kwargs: Should contain a 'group_templates' keyword argument that defines the templates that can be
+        used to parse repeating groups in the format group_templates={identifier_tag: [instance_tag_1,..instance_tag_n]}.
+        :raises: DuplicateTags if 'fields' contain repeating Fields for which no group_template has been provided.
+        """
         group_templates = kwargs.get("group_templates", {})
         if len(group_templates) > 0:
             self.add_group_templates(group_templates)
@@ -411,11 +428,11 @@ class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
     # TODO: refactor and simplify!
     def _parse_fields(self, fields, **kwargs):
         """
-        Parses the raw list of encoded field pairs recursively into Field instances.
+        Parses the list of field tuples recursively into Field instances.
 
-        :param raw_pairs: A string of bytes in format b'tag=value'
-        :param group_index: The index at which the previous repeating group was detected.
-        :return: A list of parsed Field objects.
+        :param fields: A list of (tag, value) tuples
+        :return: A list of parsed Field and repeating Group objects.
+        :raises: DuplicateTags if 'fields' contain repeating Fields for which no group_template has been provided.
         """
         parsed_fields = []
         tags_seen = set()
