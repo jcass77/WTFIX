@@ -7,37 +7,47 @@ from wtfix.apps.base import BaseApp
 from wtfix.core.exceptions import ValidationError
 from wtfix.pipeline import BasePipeline
 
-from wtfix.message.message import GenericMessage, generic_message_factory
+from wtfix.message.message import generic_message_factory
 from wtfix.apps.base import on
 from wtfix.apps.base import MessageTypeHandlerApp
 
 
 class TestBaseApp:
+    class MockApp(MessageTypeHandlerApp):
+        name = "mock_app"
+
     def test_check_name_on_init(self):
         with pytest.raises(ValidationError):
             BaseApp(mock.MagicMock(BasePipeline))
 
+    def test_str(self):
 
-class MockApp(MessageTypeHandlerApp):
-    name = "mock_app"
+        app = self.MockApp("mock_app")
+        app.name = "mock_app"
 
-    def __init__(self, name, *args, **kwargs):
-        super().__init__(name, *args, **kwargs)
-
-        self.counter = Counter()
-
-    @on("a")
-    def on_a(self, _message):
-        self.counter["a"] += 1
-
-    def on_unhandled(self, _message):
-        self.counter["unhandled"] += 1
+        assert str(app) == "mock_app"
 
 
 class TestMessageTypeHandlerApp:
+
+    class MockApp(MessageTypeHandlerApp):
+        name = "mock_app"
+
+        def __init__(self, name, *args, **kwargs):
+            super().__init__(name, *args, **kwargs)
+
+            self.counter = Counter()
+
+        @on("a")
+        def on_a(self, _message):
+            self.counter["a"] += 1
+
+        def on_unhandled(self, _message):
+            self.counter["unhandled"] += 1
+
     def test_on_receive_handler(self):
 
-        app = MockApp("mock_app")
+        app = self.MockApp("mock_app")
 
         app.on_receive(generic_message_factory((35, "a")))
         app.on_receive(generic_message_factory((35, "b")))

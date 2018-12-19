@@ -24,11 +24,17 @@ class BaseApp:
 
         self.pipeline = pipeline
 
+    def __str__(self):
+        return self.name
+
     @unsync
     async def initialize(self, *args, **kwargs):
         """
         Initialization that needs to be performed when the app is first loaded as part of an application processing
         pipeline.
+
+        All apps are initialized concurrently and need to complete their initialization routines within the
+        timeout specified by INIT_TIMEOUT.
         """
         pass
 
@@ -37,6 +43,12 @@ class BaseApp:
         """
         Override this method for any app-specific routines that should be performed when the application
         pipeline is started.
+
+        Apps are started in the order that they were added to the pipeline and it is safe to assume that
+        apps lower down in the pipeline would have been initialized and started by the time that this method
+        is executed.
+
+        App startup is subject to the STARTUP_TIMEOUT timeout.
         """
         pass
 
@@ -45,6 +57,9 @@ class BaseApp:
         """
         Override this method for any app-specific routines that should be performed when the application
         pipeline is stopped.
+
+        Apps are stopped sequentially in the order that they were added to the pipeline and each app is subject
+        to the STOP_TIMEOUT timeout.
         """
         pass
 

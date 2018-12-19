@@ -1,3 +1,4 @@
+import asyncio
 from unittest import mock
 
 import pytest
@@ -15,7 +16,7 @@ class TestHeartbeatApp:
     async def test_server_stops_responding_after_three_test_requests(
         self, unsync_event_loop, failing_server_heartbeat_app
     ):
-        await failing_server_heartbeat_app.start(heartbeat=0, response_delay=0)
+        await failing_server_heartbeat_app.monitor_heartbeat()
 
         assert failing_server_heartbeat_app.pipeline.send.call_count == 4
         assert failing_server_heartbeat_app.pipeline.stop.called
@@ -24,24 +25,34 @@ class TestHeartbeatApp:
     async def test_monitor_heartbeat_test_request_not_necessary(
         self, unsync_event_loop, heartbeat_app
     ):
-        """Simulate normal heartbeat rythm - message just received"""
+        """Simulate normal heartbeat rhythm - message just received"""
         with mock.patch.object(
             HeartbeatApp, "send_test_request", return_value=Unfuture.from_value(None)
         ) as check:
+
             heartbeat_app.sec_since_last_receive.return_value = 0
-            await heartbeat_app.monitor_heartbeat()
+            try:
+                await asyncio.wait_for(heartbeat_app.monitor_heartbeat(), 0.1)
+            except asyncio.futures.TimeoutError:
+                pass
+
             assert check.call_count == 0
 
     @pytest.mark.asyncio
     async def test_monitor_heartbeat_heartbeat_exceeded(
         self, unsync_event_loop, heartbeat_app
     ):
-        """Simulate normal heartbeat rythm - heartbeat exceeded since last message was received"""
+        """Simulate normal heartbeat rhythm - heartbeat exceeded since last message was received"""
         with mock.patch.object(
             HeartbeatApp, "send_test_request", return_value=Unfuture.from_value(None)
         ) as check:
-            await heartbeat_app.monitor_heartbeat()
-            assert check.call_count == 1
+
+            try:
+                await asyncio.wait_for(heartbeat_app.monitor_heartbeat(), 0.1)
+            except asyncio.futures.TimeoutError:
+                pass
+
+            assert check.call_count > 1
 
     @pytest.mark.asyncio
     async def test_send_test_request(self, unsync_event_loop, heartbeat_app):
@@ -50,7 +61,11 @@ class TestHeartbeatApp:
 
         heartbeat_app.pipeline.send.side_effect = simulate_heartbeat_response
 
-        await heartbeat_app.send_test_request()
+        try:
+            await asyncio.wait_for(heartbeat_app.monitor_heartbeat(), 0.1)
+        except asyncio.futures.TimeoutError:
+            pass
+
         assert not heartbeat_app._server_not_responding.is_set()
 
     @pytest.mark.asyncio

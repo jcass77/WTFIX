@@ -171,6 +171,7 @@ class FieldSet(abc.ABC):
 
         return f"{fields_str}"
 
+    # TODO: cache this result until the message changes.
     def _fields(self, fields):
         """
         Shared implementation for returning a list of all Fields within the FieldSet. Group fields will be
@@ -178,12 +179,12 @@ class FieldSet(abc.ABC):
         :param fields: The list of Fields to unpack
         :return: a list of Field instances
         """
-        all_fields = fields
-        idx = 0
+        all_fields = []
         for field in fields:
             if isinstance(field, Group):
-                all_fields = all_fields[:idx] + [field.identifier] + field.fields
-            idx += 1
+                all_fields = all_fields + [field.identifier] + field.fields
+            else:
+                all_fields.append(field)
 
         return all_fields
 

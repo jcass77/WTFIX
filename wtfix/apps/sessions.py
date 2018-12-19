@@ -7,7 +7,7 @@ from wtfix.conf import logger
 from wtfix.apps.base import BaseApp
 from wtfix.conf import settings
 from wtfix.core.exceptions import MessageProcessingError
-from wtfix.message.message import GenericMessage, generic_message_factory
+from wtfix.message.message import generic_message_factory
 from wtfix.core import utils
 from wtfix.protocol.common import Tag, MsgType
 
@@ -74,8 +74,8 @@ class ClientSessionApp(SessionApp):
         self.reset_seq_nums = reset_seq_nums
         self.test_mode = test_mode
 
-        self._disconnecting = asyncio.Event()
-        self._disconnected = asyncio.Event()
+        self.disconnecting_event = asyncio.Event()
+        self.disconnected_event = asyncio.Event()
 
     @unsync
     async def initialize(self, *args, **kwargs):
@@ -95,21 +95,25 @@ class ClientSessionApp(SessionApp):
             f"{self.name}: Establishing connection to {settings.HOST}:{settings.PORT}..."
         )
         self.reader, self.writer = await asyncio.open_connection(
-            settings.HOST, settings.PORT
+            settings.HOST, settings.PORT, limit=2**26  # 64Mb
         )
         logger.info(f"{self.name}: Connected!")
 
     @unsync
     async def start(self, *args, **kwargs):
+        """
+        Start listening for messages and log on to the server.
+        """
         await super().start(*args, **kwargs)
-        self.listen()  # Intentional non-blocking call
-        self.logon()  # Intentional non-blocking call
+        self.listen()
+        # Wait to make sure that we are listening before logging in so that we do not miss any rejection messages.
+        await asyncio.sleep(1)
+        self.logon()
 
     @unsync
     async def listen(self):
         """
         Listen for new messages that are sent by the server.
-        :return:
         """
         begin_string = b"8=" + utils.encode(settings.BEGIN_STRING)
         checksum_start = settings.SOH + b"10="
@@ -140,8 +144,8 @@ class ClientSessionApp(SessionApp):
                     logger.info(f"{self.name}: Last message received: {data}. ")
                     self.pipeline.receive(data)
 
-                elif self._disconnecting.is_set():
-                    self._disconnected.set()
+                elif self.disconnecting_event.is_set():
+                    self.disconnected_event.set()
                 else:
                     # We did not initiate the disconnect - error!
                     raise MessageProcessingError(
@@ -175,17 +179,26 @@ class ClientSessionApp(SessionApp):
 
     @unsync
     async def stop(self, *args, **kwargs):
+        """
+        Try to terminate the existing session in an orderly fashion.
+
+        This usually involves:
+            1. send a logout message
+            2. receive a logout confirmation from the server
+            3. the server closes the TCP socket
+
+        This is a blocking method. The caller should set a timeout to handle situations where the session
+        stops responding for whatever reason.
+        """
         await super().stop(*args, **kwargs)
 
         logger.info(f"{self.name}: Initiating disconnect...")
 
-        self._disconnecting.set()
-        await self.logout()
+        self.disconnecting_event.set()
+        self.logout()
 
-        wait_time = 0
-        while not self._disconnected.is_set() and wait_time < 5:
-            await asyncio.sleep(1)
-            wait_time += 1
+        while not self.disconnected_event.is_set():
+            await asyncio.sleep(0.1)
 
         logger.info(f"{self.name}: Server disconnect request completed successfully!")
 

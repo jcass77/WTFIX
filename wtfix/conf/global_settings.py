@@ -41,5 +41,10 @@ SOH_BYTE = ord(SOH)
 # List of strings representing installed apps.
 PIPELINE_APPS = []
 
+# Timeouts for app initialization and startup
+INIT_TIMEOUT = 10
+STARTUP_TIMEOUT = 5
+STOP_TIMEOUT = 5
+
 # Default formatting for datetime objects.
 DATETIME_FORMAT = "%Y%m%d-%H:%M:%S.%f"

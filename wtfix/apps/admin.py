@@ -20,7 +20,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
     name = "heartbeat"
 
     def __init__(self, pipeline, *args, **kwargs):
-        self._heartbeat = 30
+        self._heartbeat = None
         self._last_receive = datetime.utcnow()
         self._test_request_id = (
             None
@@ -59,13 +59,27 @@ class HeartbeatApp(MessageTypeHandlerApp):
 
         self._test_request_response_delay = response_delay
 
+        self.monitor_heartbeat()
+
         logger.info(
-            f"{self.name}: Starting heartbeat monitor ({self._heartbeat} second interval)..."
+            f"{self.name}: Started heartbeat monitor with {self._heartbeat} second interval."
         )
 
+    @unsync
+    async def monitor_heartbeat(self):
+        """
+        Monitors the heartbeat, sending TestRequest messages as necessary.
+        """
         while not self._server_not_responding.is_set():
             # Keep sending heartbeats until the server stops responding.
-            await self.monitor_heartbeat()
+            next_check = max(self._heartbeat - self.sec_since_last_receive(), 0)
+            await asyncio.sleep(
+                next_check
+            )  # Wait until the next scheduled heartbeat check.
+
+            if self.sec_since_last_receive() > self._heartbeat:
+                # Heartbeat exceeded, send test message
+                await self.send_test_request()
 
         # No response received, force logout!
         logger.error(
@@ -73,20 +87,6 @@ class HeartbeatApp(MessageTypeHandlerApp):
             f"initiating shutdown..."
         )
         self.pipeline.stop()
-
-    @unsync
-    async def monitor_heartbeat(self):
-        """
-        Monitors the heartbeat, sending TestRequest messages as necessary.
-        """
-        next_check = max(self._heartbeat - self.sec_since_last_receive(), 0)
-        await asyncio.sleep(
-            next_check
-        )  # Wait until the next scheduled heartbeat check.
-
-        if self.sec_since_last_receive() > self._heartbeat:
-            # Heartbeat exceeded, send test message
-            await self.send_test_request()
 
     @unsync
     async def send_test_request(self):

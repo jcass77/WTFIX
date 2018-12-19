@@ -1,4 +1,5 @@
 import logging
+from asyncio import futures
 
 from unsync import unsync  # Import unsync to set event loop and start ambient unsync thread
 
@@ -18,3 +19,5 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         logger.info("Received keyboard interrupt!")
         fix_pipeline.stop().result()
+    except futures.CancelledError:
+        logger.error("Cancelled: session terminated abnormally!")

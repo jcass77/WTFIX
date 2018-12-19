@@ -1,7 +1,11 @@
+import uuid
+from datetime import datetime
+
 import pytest
 
 from wtfix.conf import settings
-from wtfix.protocol.common import Tag
+from wtfix.message.message import generic_message_factory
+from wtfix.protocol.common import Tag, MsgType
 from ..field import Field
 from ..fieldset import OrderedDictFieldSet, Group, ListFieldSet
 from wtfix.core.exceptions import (
@@ -123,6 +127,12 @@ class TestFieldSet:
 
     def test_fields_getter(self, fieldset_impl_ab):
         assert fieldset_impl_ab.fields == [(1, "a"), (2, "bb")]
+
+    def test_nested_fields_getter(self, fieldset_impl_ab, nested_parties_group):
+        fieldset_impl_ab.set_group(nested_parties_group)
+        fieldset_impl_ab[3] = "c"
+
+        assert len(fieldset_impl_ab.fields) == 20
 
     def test_raw_getter(self, fieldset_impl_ab):
         assert fieldset_impl_ab.raw == b"1=a" + settings.SOH + b"2=bb" + settings.SOH
@@ -282,6 +292,42 @@ class TestOrderedDictFieldSet:
         fs = OrderedDictFieldSet((34, "a"), (35, "bb"), (1, "ccc"))
         assert str(fs) == "{MsgSeqNum (34):a | MsgType (35):bb | Account (1):ccc}"
 
+    def test_regression_for_getting_fields_for_message_with_repeating_groups(self):
+        """
+        Regression where repeating group fields for market data request messages (type V) were not extracted correctly
+        """
+        mdr_message = generic_message_factory(
+            (Tag.MsgType, MsgType.MarketDataRequest),
+            (Tag.MDReqID, uuid.uuid4().hex),
+            (Tag.SubscriptionRequestType, "h"),  # Historical request
+            (Tag.MarketDepth, 0),
+        )
+
+        mdr_message.set_group(
+            Group(
+                (Tag.NoRelatedSym, 1), (Tag.SecurityID, "test123")
+            )
+        )
+
+        mdr_message.set_group(
+            Group(
+                (Tag.NoMDEntryTypes, 1), (Tag.MDEntryType, "h")
+            )
+        )
+
+        mdr_message[9956] = 1
+        mdr_message[9957] = 3
+        mdr_message[9958] = int(datetime.utcnow().timestamp())
+        mdr_message[9959] = int(datetime.utcnow().timestamp())
+        mdr_message[9960] = 1
+
+        assert len(mdr_message) == 13
+        assert len(mdr_message.fields) == 13
+
+        assert all(
+            field in mdr_message for field in [35, 262, 263, 264, 146, 48, 267, 269, 9956, 9957, 9958, 9959, 9960]
+        )
+
 
 class TestGroup:
     def test_group(self):
@@ -299,6 +345,10 @@ class TestGroup:
     def test_invalid_group(self):
         with pytest.raises(InvalidGroup):
             Group((215, "2"), (216, "a"), (217, "b"), (216, "c"))
+
+    def test_poorly_formed_arguments_raises_exception(self):
+        with pytest.raises(AttributeError):
+            Group((1, "1"), *(2, "a"))
 
     def test_len(self, routing_id_group):
         assert len(routing_id_group) == 5

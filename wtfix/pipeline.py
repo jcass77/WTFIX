@@ -27,15 +27,32 @@ class BasePipeline:
     def __init__(self, installed_apps=None):
         self._installed_apps = self._load_apps(installed_apps=installed_apps)
         logger.info(f"Created new FIX application pipeline: {list(self.apps.keys())}.")
+
         self._session_app = None
 
     @property
     def apps(self):
         return self._installed_apps
 
+    @property
+    def session_app(self):
+        """
+        Keeps a reference to the SessionApp instance for monitoring connection status.
+        :return: The SessionApp instance, if one has been defined for this pipeline.
+
+        """
+        if self._session_app is None:
+            for app in reversed(self.apps.values()):
+                if isinstance(app, SessionApp):
+                    self._session_app = app  # Keep reference to session in order to monitor connections.
+                    break
+
+        return self._session_app
+
     def _load_apps(self, installed_apps=None):
         """
         Loads the list of apps to be used for processing messages.
+
         :param installed_apps: The list of class paths for the installed apps.
         """
         loaded_apps = OrderedDict()
@@ -57,44 +74,75 @@ class BasePipeline:
 
             loaded_apps[instance.name] = instance
 
-            if isinstance(instance, SessionApp):
-                self._session_app = instance  # Keep reference to session in order to monitor connections.
-
         return loaded_apps
 
     @unsync
     async def initialize(self):
-        for app in reversed(self.apps.values()):
-            logger.info(f"Initializing app '{app.name}'...")
-            await app.initialize()
+        """
+        Initialize all applications that have been configured for this pipeline.
+        """
+        logger.info(f"Initializing applications...")
+
+        init_calls = (app.initialize for app in reversed(self.apps.values()))
+        await asyncio.gather(*(call() for call in init_calls))
 
         logger.info("All apps initialized!")
 
     @unsync
     async def start(self):
+        """
+        Starts each of the applications in turn.
+
+        :raises: TimeoutError if either INIT_TIMEOUT or STARTUP_TIMEOUT is exceeded.
+        """
         logger.info("Starting pipeline...")
 
-        await self.initialize()
+        try:
+            await asyncio.wait_for(self.initialize(), settings.INIT_TIMEOUT)
+        except futures.TimeoutError as e:
+            logger.error(
+                f"Timeout waiting for apps to initialize!"
+            )
+            raise e
+
         for app in reversed(self.apps.values()):
-            await app.start()
+            logger.info(f"Starting app '{app}'...")
+
+            try:
+                await asyncio.wait_for(app.start(), settings.STARTUP_TIMEOUT)
+            except futures.TimeoutError as e:
+                logger.error(
+                    f"Timeout waiting for app '{app}' to start!"
+                )
+                raise e
+
+        logger.info("All apps in pipeline have been started!")
 
         # Block for as long as we are connected to the server.
-        await self._session_app._disconnected.wait()
+        await self.session_app.disconnected_event.wait()
 
         logger.info("Pipeline stopped.")
 
     @unsync
     async def stop(self):
+        """
+        Tries to shut down the pipeline in an orderly fashion.
+
+        :raises: TimeoutError if STOP_TIMEOUT is exceeded.
+        """
         logger.info("Shutting down pipeline...")
         try:
             for app in self.apps.values():
-                await asyncio.wait_for(app.stop(), 5)
+                await asyncio.wait_for(app.stop(), settings.STOP_TIMEOUT)
 
             logger.info("Pipeline stopped.")
         except futures.TimeoutError:
             logger.error(
-                f"Timeout waiting for app {app} to stop - session terminated abnormally!"
+                f"Timeout waiting for app '{app}' to stop, cancelling all outstanding tasks..."
             )
+            # Stop all asyncio tasks
+            for task in asyncio.Task.all_tasks():
+                task.cancel()
 
     def _prep_processing_pipeline(self, direction):
         if direction is self.INBOUND:
