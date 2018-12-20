@@ -205,7 +205,6 @@ class DecoderApp(BaseApp):
 
         return checksum, checksum_end
 
-    # TODO: check length and checksum!
     def decode_message(self, data):
         """
         Constructs a GenericMessage from the provided data. Also uses the BeginString (8), BodyLength (9),
