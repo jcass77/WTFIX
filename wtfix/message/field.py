@@ -150,3 +150,7 @@ class Field(collections.namedtuple("Field", ["tag", "value_ref"])):
     @property
     def as_int(self):
         return int(self.as_str)
+
+    @property
+    def as_bool(self):
+        return strtobool(self.as_str) == 1
