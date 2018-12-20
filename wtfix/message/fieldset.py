@@ -594,10 +594,16 @@ class Group:
 
     @property
     def instances(self):
+        """
+        :return: A list of GroupInstances that make up this Group.
+        """
         return self._instances
 
     @property
     def fields(self):
+        """
+        :return: The Fields that are part of this group, including the Fields of any nested sub-Groups.
+        """
         group_fields = []
         for instance in self._instances:
             for field in instance.fields:

@@ -341,6 +341,8 @@ class TestGroup:
         )
 
         assert repr(g) == "[(267, 2)]:[(269, 5)], [(269, B)]"
+        assert g[0] == [(269, 5)]
+        assert g[1] == [(269, "B")]
 
     def test_invalid_group(self):
         with pytest.raises(InvalidGroup):
@@ -350,8 +352,12 @@ class TestGroup:
         with pytest.raises(AttributeError):
             Group((1, "1"), *(2, "a"))
 
-    def test_len(self, routing_id_group):
+    def test_len(self, routing_id_group, nested_parties_group):
         assert len(routing_id_group) == 5
+        assert len(nested_parties_group) == 17
+        assert len(nested_parties_group[0]) == 8
+        assert len(nested_parties_group[0][804]) == 5
+        assert len(nested_parties_group[0][804][0]) == 2
 
     def test_len_nested_group(self, nested_parties_group):
         assert len(nested_parties_group) == 17
@@ -369,6 +375,36 @@ class TestGroup:
             "[RoutingType (216):c | RoutingID (217):d]"
         )
 
+    def test_instances_getter(self, nested_parties_group):
+        assert len(nested_parties_group.instances) == 2
+        assert nested_parties_group.instances[0] == [
+            (524, "a"), (525, "aa"), (538, "aaa"),
+            (804, 2), (545, "c"), (805, "cc"), (545, "d"), (805, "dd")
+        ]
+
+        assert nested_parties_group.instances[0].get_group(804).fields == [
+            (545, "c"), (805, "cc"), (545, "d"), (805, "dd")
+        ]
+
+        assert nested_parties_group.instances[1] == [
+            (524, "b"), (525, "bb"), (538, "bbb"),
+            (804, 2), (545, "e"), (805, "ee"), (545, "f"), (805, "ff")
+        ]
+
+        assert nested_parties_group.instances[1].get_group(804).fields == [
+            (545, "e"), (805, "ee"), (545, "f"), (805, "ff")
+        ]
+
+    def test_fields_getter(self, nested_parties_group):
+        assert len(nested_parties_group.fields) == 16
+        assert nested_parties_group.fields == [
+            (524, "a"), (525, "aa"), (538, "aaa"),
+            (804, 2), (545, "c"), (805, "cc"), (545, "d"), (805, "dd"),
+
+            (524, "b"), (525, "bb"), (538, "bbb"),
+            (804, 2), (545, "e"), (805, "ee"), (545, "f"), (805, "ff")
+        ]
+
     def test_raw_getter(self, routing_id_group):
         assert routing_id_group.raw == b"215=2\x01216=a\x01217=b\x01216=c\x01217=d\x01"
 
@@ -378,5 +414,8 @@ class TestGroup:
     def test_value_getter(self, routing_id_group):
         assert routing_id_group.value == "2"
 
-    def test_size_getter(self, routing_id_group):
+    def test_size_getter(self, routing_id_group, nested_parties_group):
         assert routing_id_group.size == 2
+        assert nested_parties_group.size == 2
+        assert nested_parties_group[0][804].size == 2  # Get sub group by tag notation
+        assert nested_parties_group.instances[1].get_group(804).size == 2  # Get sub group using explicit call
