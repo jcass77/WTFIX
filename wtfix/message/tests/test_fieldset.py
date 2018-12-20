@@ -88,6 +88,23 @@ class TestFieldSet:
         with pytest.raises(TagNotFound):
             fieldset_impl_ab[3]
 
+    def test_iter(self, fieldset_impl_ab):
+        fields = [field for field in fieldset_impl_ab]
+        assert fields == [(1, "a"), (2, "bb")]
+
+        values = [field.as_str for field in fieldset_impl_ab]
+        assert values == ["a", "bb"]
+
+        tags = [field.tag for field in fieldset_impl_ab]
+        assert tags == [1, 2]
+
+    def test_iter_nested_groups(self, fieldset_impl_ab, nested_parties_group):
+        fieldset_impl_ab.set_group(nested_parties_group)
+        fieldset_impl_ab[3] = "c"
+
+        fields = [field for field in fieldset_impl_ab]
+        assert fields == fieldset_impl_ab.fields
+
     def test_delitem(self, fieldset_impl_ab):
         assert len(fieldset_impl_ab) == 2
 

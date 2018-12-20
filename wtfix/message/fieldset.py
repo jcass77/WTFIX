@@ -70,6 +70,12 @@ class FieldSet(abc.ABC):
         :raises: TagNotFound if a Field with the specified tag number could not be found.
         """
 
+    def __iter__(self):
+        """
+        Enable iteration over the Fields in a FieldSet
+        """
+        yield from self.fields
+
     @abc.abstractmethod
     def __delitem__(self, tag):
         """
