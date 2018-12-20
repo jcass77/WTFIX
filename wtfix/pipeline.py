@@ -177,6 +177,8 @@ class BasePipeline:
             )
         except StopMessageProcessing:
             logger.info(f"Processing of message {message} interrupted at '{app.name}'.")
+        except Exception:
+            logger.exception(f"Unhandled exception while doing {process_func} for message {message}.")
 
         return message
 
