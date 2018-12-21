@@ -1,7 +1,7 @@
 import numbers
 from builtins import tuple as _tuple
 import collections
-from collections import Sequence
+from collections import abc
 from distutils.util import strtobool
 
 import wtfix.conf.global_settings
@@ -12,7 +12,7 @@ from ..protocol import common
 from wtfix.core import utils
 
 
-class FieldValue(Sequence):
+class FieldValue(abc.Sequence):
     """
     Used to store Field values (i.e. strings or bytes). Adds some convenience methods for making comparison
     checks easier.
