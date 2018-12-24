@@ -29,7 +29,6 @@ class TestBaseApp:
 
 
 class TestMessageTypeHandlerApp:
-
     class MockApp(MessageTypeHandlerApp):
         name = "mock_app"
 

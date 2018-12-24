@@ -11,10 +11,11 @@ class TestBasicMessageParser:
         rm = basic_parser_app.on_receive(rm)
         assert rm.raw == raw_encoding
 
-    def test_parse_uses_group_template_to_create_optimized_messages(self, basic_parser_app):
+    def test_parse_uses_group_template_to_create_optimized_messages(
+        self, basic_parser_app
+    ):
         basic_parser_app.add_group_templates({1: [2]})
         rm = RawMessage(encoded_body=b"1=2\x012=a\x012=b\x01")
 
         rm = basic_parser_app.on_receive(rm)
         assert isinstance(rm, OptimizedGenericMessage)
-

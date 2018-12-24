@@ -3,12 +3,7 @@ import collections
 import itertools
 import numbers
 
-from wtfix.core.exceptions import (
-    TagNotFound,
-    InvalidGroup,
-    UnknownTag,
-    DuplicateTags,
-)
+from wtfix.core.exceptions import TagNotFound, InvalidGroup, UnknownTag, DuplicateTags
 from wtfix.core.utils import GroupTemplateMixin
 from wtfix.message.field import Field
 from wtfix.protocol import common
@@ -19,6 +14,7 @@ class FieldSet(abc.ABC):
     A FieldSet is a collection of a one or more Fields. This class provides the interface that all FieldSets
     should implement in order to support the Python builtins that are typically used for collections.
     """
+
     @abc.abstractmethod
     def __add__(self, other):
         """

@@ -2,7 +2,12 @@ import pytest
 
 from wtfix.conf import settings
 from ..field import Field
-from ..message import GenericMessage, RawMessage, generic_message_factory, OptimizedGenericMessage
+from ..message import (
+    GenericMessage,
+    RawMessage,
+    generic_message_factory,
+    OptimizedGenericMessage,
+)
 from wtfix.core.exceptions import ValidationError
 from ...protocol.common import MsgType, Tag
 
@@ -107,5 +112,7 @@ def test_message_factory_falls_back_to_generic_if_no_group_template_is_defined()
 
 
 def test_message_factory_uses_group_template_to_create_optimized_messages():
-    m = generic_message_factory((1, "a"), (2, 2), (3, "b"), (3, "c"), group_templates={2: [3]})
+    m = generic_message_factory(
+        (1, "a"), (2, 2), (3, "b"), (3, "c"), group_templates={2: [3]}
+    )
     assert isinstance(m, OptimizedGenericMessage)

@@ -95,7 +95,7 @@ class ClientSessionApp(SessionApp):
             f"{self.name}: Establishing connection to {settings.HOST}:{settings.PORT}..."
         )
         self.reader, self.writer = await asyncio.open_connection(
-            settings.HOST, settings.PORT, limit=2**26  # 64Mb
+            settings.HOST, settings.PORT, limit=2 ** 26  # 64Mb
         )
         logger.info(f"{self.name}: Connected!")
 

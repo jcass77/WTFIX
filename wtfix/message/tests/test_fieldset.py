@@ -8,11 +8,7 @@ from wtfix.message.message import generic_message_factory
 from wtfix.protocol.common import Tag, MsgType
 from ..field import Field
 from ..fieldset import OrderedDictFieldSet, Group, ListFieldSet
-from wtfix.core.exceptions import (
-    TagNotFound,
-    DuplicateTags,
-    InvalidGroup,
-)
+from wtfix.core.exceptions import TagNotFound, DuplicateTags, InvalidGroup
 
 
 class TestFieldSet:
@@ -320,17 +316,9 @@ class TestOrderedDictFieldSet:
             (Tag.MarketDepth, 0),
         )
 
-        mdr_message.set_group(
-            Group(
-                (Tag.NoRelatedSym, 1), (Tag.SecurityID, "test123")
-            )
-        )
+        mdr_message.set_group(Group((Tag.NoRelatedSym, 1), (Tag.SecurityID, "test123")))
 
-        mdr_message.set_group(
-            Group(
-                (Tag.NoMDEntryTypes, 1), (Tag.MDEntryType, "h")
-            )
-        )
+        mdr_message.set_group(Group((Tag.NoMDEntryTypes, 1), (Tag.MDEntryType, "h")))
 
         mdr_message[9956] = 1
         mdr_message[9957] = 3
@@ -342,7 +330,22 @@ class TestOrderedDictFieldSet:
         assert len(mdr_message.fields) == 13
 
         assert all(
-            field in mdr_message for field in [35, 262, 263, 264, 146, 48, 267, 269, 9956, 9957, 9958, 9959, 9960]
+            field in mdr_message
+            for field in [
+                35,
+                262,
+                263,
+                264,
+                146,
+                48,
+                267,
+                269,
+                9956,
+                9957,
+                9958,
+                9959,
+                9960,
+            ]
         )
 
 
@@ -395,31 +398,60 @@ class TestGroup:
     def test_instances_getter(self, nested_parties_group):
         assert len(nested_parties_group.instances) == 2
         assert nested_parties_group.instances[0] == [
-            (524, "a"), (525, "aa"), (538, "aaa"),
-            (804, 2), (545, "c"), (805, "cc"), (545, "d"), (805, "dd")
+            (524, "a"),
+            (525, "aa"),
+            (538, "aaa"),
+            (804, 2),
+            (545, "c"),
+            (805, "cc"),
+            (545, "d"),
+            (805, "dd"),
         ]
 
         assert nested_parties_group.instances[0].get_group(804).fields == [
-            (545, "c"), (805, "cc"), (545, "d"), (805, "dd")
+            (545, "c"),
+            (805, "cc"),
+            (545, "d"),
+            (805, "dd"),
         ]
 
         assert nested_parties_group.instances[1] == [
-            (524, "b"), (525, "bb"), (538, "bbb"),
-            (804, 2), (545, "e"), (805, "ee"), (545, "f"), (805, "ff")
+            (524, "b"),
+            (525, "bb"),
+            (538, "bbb"),
+            (804, 2),
+            (545, "e"),
+            (805, "ee"),
+            (545, "f"),
+            (805, "ff"),
         ]
 
         assert nested_parties_group.instances[1].get_group(804).fields == [
-            (545, "e"), (805, "ee"), (545, "f"), (805, "ff")
+            (545, "e"),
+            (805, "ee"),
+            (545, "f"),
+            (805, "ff"),
         ]
 
     def test_fields_getter(self, nested_parties_group):
         assert len(nested_parties_group.fields) == 16
         assert nested_parties_group.fields == [
-            (524, "a"), (525, "aa"), (538, "aaa"),
-            (804, 2), (545, "c"), (805, "cc"), (545, "d"), (805, "dd"),
-
-            (524, "b"), (525, "bb"), (538, "bbb"),
-            (804, 2), (545, "e"), (805, "ee"), (545, "f"), (805, "ff")
+            (524, "a"),
+            (525, "aa"),
+            (538, "aaa"),
+            (804, 2),
+            (545, "c"),
+            (805, "cc"),
+            (545, "d"),
+            (805, "dd"),
+            (524, "b"),
+            (525, "bb"),
+            (538, "bbb"),
+            (804, 2),
+            (545, "e"),
+            (805, "ee"),
+            (545, "f"),
+            (805, "ff"),
         ]
 
     def test_raw_getter(self, routing_id_group):
@@ -435,4 +467,6 @@ class TestGroup:
         assert routing_id_group.size == 2
         assert nested_parties_group.size == 2
         assert nested_parties_group[0][804].size == 2  # Get sub group by tag notation
-        assert nested_parties_group.instances[1].get_group(804).size == 2  # Get sub group using explicit call
+        assert (
+            nested_parties_group.instances[1].get_group(804).size == 2
+        )  # Get sub group using explicit call

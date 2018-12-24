@@ -44,7 +44,9 @@ class BasePipeline:
         if self._session_app is None:
             for app in reversed(self.apps.values()):
                 if isinstance(app, SessionApp):
-                    self._session_app = app  # Keep reference to session in order to monitor connections.
+                    self._session_app = (
+                        app
+                    )  # Keep reference to session in order to monitor connections.
                     break
 
         return self._session_app
@@ -100,9 +102,7 @@ class BasePipeline:
         try:
             await asyncio.wait_for(self.initialize(), settings.INIT_TIMEOUT)
         except futures.TimeoutError as e:
-            logger.error(
-                f"Timeout waiting for apps to initialize!"
-            )
+            logger.error(f"Timeout waiting for apps to initialize!")
             raise e
 
         for app in reversed(self.apps.values()):
@@ -111,9 +111,7 @@ class BasePipeline:
             try:
                 await asyncio.wait_for(app.start(), settings.STARTUP_TIMEOUT)
             except futures.TimeoutError as e:
-                logger.error(
-                    f"Timeout waiting for app '{app}' to start!"
-                )
+                logger.error(f"Timeout waiting for app '{app}' to start!")
                 raise e
 
         logger.info("All apps in pipeline have been started!")
@@ -178,7 +176,9 @@ class BasePipeline:
         except StopMessageProcessing:
             logger.info(f"Processing of message {message} interrupted at '{app.name}'.")
         except Exception:
-            logger.exception(f"Unhandled exception while doing {process_func} for message {message}.")
+            logger.exception(
+                f"Unhandled exception while doing {process_func} for message {message}."
+            )
 
         return message
 

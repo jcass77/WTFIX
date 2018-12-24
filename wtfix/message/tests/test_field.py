@@ -26,10 +26,10 @@ class TestFieldValue:
         assert FieldValue(1) == 1
 
     def test_eq_boolean(self):
-        true_vals = ('y', 'yes', 't', 'true', 'on', '1')
+        true_vals = ("y", "yes", "t", "true", "on", "1")
         assert all(FieldValue(value) == True for value in true_vals)
 
-        false_vals = ('n', 'no', 'f', 'false', 'off', '0')
+        false_vals = ("n", "no", "f", "false", "off", "0")
         assert all(FieldValue(value) == False for value in false_vals)
 
     def test_eq_str_string(self):
@@ -116,8 +116,8 @@ class TestField:
         assert f.as_int == 123
 
     def test_as_bool(self):
-        true_values = ('y', 'yes', 't', 'true', 'on', '1')
+        true_values = ("y", "yes", "t", "true", "on", "1")
         assert all(Field(1, value).as_bool is True for value in true_values)
 
-        false_values = ('n', 'no', 'f', 'false', 'off', '0')
+        false_values = ("n", "no", "f", "false", "off", "0")
         assert all(Field(1, value).as_bool is False for value in false_values)
