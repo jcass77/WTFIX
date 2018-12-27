@@ -428,7 +428,6 @@ class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
     def append(self, field):
         return self.__setitem__(field[0], field[1])
 
-    # TODO: refactor and simplify!
     def _parse_fields(self, fields, **kwargs):
         """
         Parses the list of field tuples recursively into Field instances.
@@ -526,15 +525,19 @@ class Group:
         indicates the number of times that GroupInstance repeats in this Group.
         :param fields: A GroupInstance or list of (tag, value) tuples.
         """
-        self._instances = []
         self.identifier = Field(*identifier)
         self._instance_template = instance_template
 
+        self._instances = self._parse_fields(fields)
+
+    def _parse_fields(self, fields, **kwargs):
+
+        parsed_fields = []
         num_fields = len(fields)
 
         if num_fields == 0 and self.size == 0:
             # Empty group
-            return
+            return parsed_fields
 
         instance_tags = set(self._instance_template)
         instance_start = 0
@@ -547,7 +550,7 @@ class Group:
             if field.tag not in instance_tags:
                 if field.tag in self._instance_template:
                     # Tag belongs to the next instance. Append the current instance to this group.
-                    self._instances.append(GroupInstance(*fields[instance_start: instance_end]))
+                    parsed_fields.append(GroupInstance(*fields[instance_start: instance_end]))
 
                     instance_start = instance_end
                     instance_tags = set(self._instance_template)
@@ -560,14 +563,16 @@ class Group:
 
         else:
             # Add last instance
-            self._instances.append(GroupInstance(*fields[instance_start: instance_end]))
+            parsed_fields.append(GroupInstance(*fields[instance_start: instance_end]))
 
-        if len(self._instances) != self.size:
+        if len(parsed_fields) != self.size:
             raise InvalidGroup(
                     self.identifier.tag,
                     fields,
                     f"Cannot make {self.size} instances of {self._instance_template} with {fields}."
                 )
+
+        return parsed_fields
 
     def __len__(self):
         length = 1  # Count identifier field

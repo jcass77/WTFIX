@@ -446,7 +446,7 @@ class TestOrderedDictFieldSet:
 
 
 class TestGroup:
-    def test_group(self):
+    def test_parse_fields(self):
         g = Group(
             (Tag.NoMDEntryTypes, 3), [Tag.MDEntryType, Tag.MDEntryPx],
             (Tag.MDEntryType, "a"), (Tag.MDEntryPx, "abc"),
