@@ -113,7 +113,7 @@ class FieldSet(abc.ABC):
 
         try:
             # Then, see if a Field with that tag number is available in this FieldSet.
-            return self[tag].value_ref
+            return self[tag]
         except KeyError as e:
             raise TagNotFound(
                 tag,
@@ -536,6 +536,10 @@ class Group:
 
         num_fields = len(fields)
 
+        if num_fields == 0 and self.size == 0:
+            # Empty group
+            return
+
         tags = set()
         for field in fields:
             try:
@@ -555,7 +559,6 @@ class Group:
                 f"instances that are each {instance_length} fields long.",
             )
 
-        instance_length = int(instance_length)
         for idx in range(0, num_fields, instance_length):  # Loop over group instances
             self._instances.append(GroupInstance(*fields[idx : idx + instance_length]))
 

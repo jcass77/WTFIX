@@ -4,7 +4,7 @@ from collections import Counter
 import pytest
 
 from wtfix.apps.base import BaseApp
-from wtfix.core.exceptions import ValidationError
+from wtfix.core.exceptions import ValidationError, MessageProcessingError
 from wtfix.pipeline import BasePipeline
 
 from wtfix.message.message import generic_message_factory
@@ -38,11 +38,20 @@ class TestMessageTypeHandlerApp:
             self.counter = Counter()
 
         @on("a")
-        def on_a(self, _message):
+        def on_a(self, message):
             self.counter["a"] += 1
 
-        def on_unhandled(self, _message):
+            return message
+
+        @on("z")
+        def on_z(self, message):
+            pass
+
+        def on_unhandled(self, message):
+
             self.counter["unhandled"] += 1
+
+            return message
 
     def test_on_receive_handler(self):
 
@@ -54,3 +63,8 @@ class TestMessageTypeHandlerApp:
         assert app.counter["a"] == 1
         assert app.counter["b"] == 0
         assert app.counter["unhandled"] == 1
+
+    def test_on_receive_handler_raises_exception_if_message_not_returned(self):
+        with pytest.raises(MessageProcessingError):
+            app = self.MockApp("mock_app")
+            app.on_receive(generic_message_factory((35, "z")))

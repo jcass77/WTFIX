@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from wtfix.apps.admin import HeartbeatApp
-from wtfix.apps.parsers import BasicMessageParserApp
+from wtfix.apps.parsers import RawMessageParserApp
 from wtfix.apps.wire import EncoderApp, DecoderApp
 from wtfix.pipeline import BasePipeline
 from wtfix.protocol.common import Tag
@@ -21,8 +21,8 @@ def decoder_app():
 
 
 @pytest.fixture
-def basic_parser_app():
-    return BasicMessageParserApp(MagicMock(BasePipeline))
+def raw_msg_parser_app():
+    return RawMessageParserApp(MagicMock(BasePipeline))
 
 
 class HeartbeatTestApp(HeartbeatApp):

@@ -2,7 +2,7 @@ from functools import wraps
 
 from unsync import unsync
 
-from wtfix.core.exceptions import ValidationError
+from wtfix.core.exceptions import ValidationError, MessageProcessingError
 
 
 class BaseApp:
@@ -162,8 +162,19 @@ class MessageTypeHandlerApp(BaseApp):
 
         :param message: The message to process
         :return: The result after processing the on_<message_type> method.
+        :raises: MessageProcessingError if the handler does not return a valid FIX message.
         """
-        return self.type_handlers.get(message.type, self.on_unhandled)(message)
+        handler = self.type_handlers.get(message.type, self.on_unhandled)
+        message = handler(message)
+
+        if message is None:
+            raise MessageProcessingError(
+                f"{self.name}: message handler '{handler.__name__}' did not provide a message to propagate "
+                f"further up the pipeline. Perhaps you forgot to return a message instance in "
+                f"{self.__module__}.{self.__class__.__name__}.{handler.__name__}?"
+            )
+
+        return message
 
     def on_unhandled(self, message):
         """

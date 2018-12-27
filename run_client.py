@@ -19,7 +19,7 @@ if __name__ == "__main__":
     try:
         fix_pipeline.start().result()
     except KeyboardInterrupt:
-        logger.info("Received keyboard interrupt!")
+        logger.info("Received keyboard interrupt! Initiating shutdown...")
         fix_pipeline.stop().result()
     except futures.CancelledError:
         logger.error("Cancelled: session terminated abnormally!")

@@ -368,6 +368,15 @@ class TestGroup:
         with pytest.raises(InvalidGroup):
             Group((215, "2"), (216, "a"), (217, "b"), (216, "c"))
 
+    def test_empty_group(self):
+        g = Group(
+            (Tag.NoMDEntries, 0)
+        )
+
+        assert g.size == 0
+        assert len(g) == 1  # Should consist only of the identifier field.
+        assert len(g.instances) == 0
+
     def test_poorly_formed_arguments_raises_exception(self):
         with pytest.raises(AttributeError):
             Group((1, "1"), *(2, "a"))

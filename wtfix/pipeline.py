@@ -5,7 +5,6 @@ from collections import OrderedDict
 
 from unsync import unsync
 
-from wtfix.apps.sessions import SessionApp
 from wtfix.conf import logger
 from wtfix.conf import settings
 from wtfix.core.exceptions import (
@@ -21,35 +20,19 @@ class BasePipeline:
     Propagates inbound messages up and down the layers of configured message handling apps instances.
     """
 
-    INBOUND = 0
-    OUTBOUND = 1
+    INBOUND_PROCESSING = 0
+    OUTBOUND_PROCESSING = 1
 
     def __init__(self, installed_apps=None):
         self._installed_apps = self._load_apps(installed_apps=installed_apps)
         logger.info(f"Created new FIX application pipeline: {list(self.apps.keys())}.")
 
-        self._session_app = None
+        self.stop_lock = asyncio.Lock()
+        self.stopped_event = asyncio.Event()
 
     @property
     def apps(self):
         return self._installed_apps
-
-    @property
-    def session_app(self):
-        """
-        Keeps a reference to the SessionApp instance for monitoring connection status.
-        :return: The SessionApp instance, if one has been defined for this pipeline.
-
-        """
-        if self._session_app is None:
-            for app in reversed(self.apps.values()):
-                if isinstance(app, SessionApp):
-                    self._session_app = (
-                        app
-                    )  # Keep reference to session in order to monitor connections.
-                    break
-
-        return self._session_app
 
     def _load_apps(self, installed_apps=None):
         """
@@ -64,7 +47,7 @@ class BasePipeline:
 
         if len(installed_apps) == 0:
             raise ImproperlyConfigured(
-                f"At least one application needs to be added to the pipeline using the PIPELINE_APPS setting."
+                f"At least one application needs to be added to the pipeline by using the PIPELINE_APPS setting."
             )
 
         for app in installed_apps:
@@ -82,6 +65,8 @@ class BasePipeline:
     async def initialize(self):
         """
         Initialize all applications that have been configured for this pipeline.
+
+        All apps are initialized concurrently.
         """
         logger.info(f"Initializing applications...")
 
@@ -100,7 +85,9 @@ class BasePipeline:
         logger.info("Starting pipeline...")
 
         try:
+            # Initialize all apps first
             await asyncio.wait_for(self.initialize(), settings.INIT_TIMEOUT)
+
         except futures.TimeoutError as e:
             logger.error(f"Timeout waiting for apps to initialize!")
             raise e
@@ -116,10 +103,8 @@ class BasePipeline:
 
         logger.info("All apps in pipeline have been started!")
 
-        # Block for as long as we are connected to the server.
-        await self.session_app.disconnected_event.wait()
-
-        logger.info("Pipeline stopped.")
+        # Block until the pipeline has been stopped again.
+        await self.stopped_event.wait()
 
     @unsync
     async def stop(self):
@@ -128,25 +113,32 @@ class BasePipeline:
 
         :raises: TimeoutError if STOP_TIMEOUT is exceeded.
         """
-        logger.info("Shutting down pipeline...")
-        try:
-            for app in self.apps.values():
-                await asyncio.wait_for(app.stop(), settings.STOP_TIMEOUT)
+        async with self.stop_lock:  # Ensure that more than one app does not attempt to initiate a shutdown at once
+            if self.stopped_event.is_set():
+                # Pipeline has already been sotpped - nothing more to do.
+                return
 
-            logger.info("Pipeline stopped.")
-        except futures.TimeoutError:
-            logger.error(
-                f"Timeout waiting for app '{app}' to stop, cancelling all outstanding tasks..."
-            )
-            # Stop all asyncio tasks
-            for task in asyncio.Task.all_tasks():
-                task.cancel()
+            logger.info("Shutting down pipeline...")
+            try:
+                for app in self.apps.values():
+                    logger.info(f"Stopping app '{app}'...")
+                    await asyncio.wait_for(app.stop(), settings.STOP_TIMEOUT)
+
+                logger.info("Pipeline stopped.")
+                self.stopped_event.set()
+            except futures.TimeoutError:
+                logger.error(
+                    f"Timeout waiting for app '{app}' to stop, cancelling all outstanding tasks..."
+                )
+                # Stop all asyncio tasks
+                for task in asyncio.Task.all_tasks():
+                    task.cancel()
 
     def _prep_processing_pipeline(self, direction):
-        if direction is self.INBOUND:
+        if direction is self.INBOUND_PROCESSING:
             return "on_receive", reversed(self.apps.values())
 
-        if direction is self.OUTBOUND:
+        if direction is self.OUTBOUND_PROCESSING:
             return "on_send", iter(self.apps.values())
 
         raise ValidationError(
@@ -157,16 +149,18 @@ class BasePipeline:
     async def _process_message(self, message, direction):
         """
         Process a message by passing it on to the various apps in the pipeline.
+
         :param message: The GenericMessage instance to process
         :param direction: 0 if this is an inbound message, 1 otherwise.
 
-        :return: The processed message or None if processing was halted somewhere in the apps stack.
+        :return: The processed message.
         """
 
         process_func, app_chain = self._prep_processing_pipeline(direction)
 
         try:
             for app in app_chain:
+                # Call the relevant 'on_send' or 'on_receive' method for each application
                 message = getattr(app, process_func)(message)
 
         except MessageProcessingError as e:
@@ -175,20 +169,22 @@ class BasePipeline:
             )
         except StopMessageProcessing:
             logger.info(f"Processing of message {message} interrupted at '{app.name}'.")
-        except Exception:
+        except Exception as e:
+            # Log exception in case it is not handled properly in the Future object.
             logger.exception(
                 f"Unhandled exception while doing {process_func} for message {message}."
             )
+            raise e
 
         return message
 
     @unsync
     async def receive(self, message):
         """Receives a new message to be processed"""
-        return await self._process_message(message, self.INBOUND)
+        return await self._process_message(message, self.INBOUND_PROCESSING)
 
     @unsync
     async def send(self, message):
         """Processes a new message to be sent"""
         logger.info(f" --> {message}")
-        return await self._process_message(message, self.OUTBOUND)
+        return await self._process_message(message, self.OUTBOUND_PROCESSING)

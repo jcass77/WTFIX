@@ -6,12 +6,12 @@ from wtfix.message.message import RawMessage, generic_message_factory
 from wtfix.protocol.common import Tag
 
 
-class BasicMessageParserApp(BaseApp, GroupTemplateMixin):
+class RawMessageParserApp(BaseApp, GroupTemplateMixin):
     """
     Parses RawMessage instances into GenericMessage instances.
     """
 
-    name = "basic_message_parser"
+    name = "raw_message_parser"
 
     def on_receive(self, message: RawMessage):
         data = message.encoded_body.rstrip(settings.SOH).split(
