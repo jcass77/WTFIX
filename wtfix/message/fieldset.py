@@ -438,40 +438,43 @@ class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
         :raises: DuplicateTags if 'fields' contain repeating Fields for which no group_template has been provided.
         """
         parsed_fields = []
-        tags_seen = set()
+
         idx = 0
         instance_template = []
         group_index = kwargs.get("group_index", None)
+        busy_parsing_group = group_index is not None
 
-        if group_index is not None:
-            # Parsing a repeating group - skip over previously parsed pairs.
-            idx = group_index
-            group_identifier = Field(fields[idx][0], fields[idx][1])
-
+        if busy_parsing_group:
             # Retrieve the template for this repeating group
-            instance_template = self.group_templates[group_identifier.tag]
+            instance_template = self.group_templates[fields[group_index][0]]
+            idx = group_index + 1
 
-            # Add the group identifier as the first field in the list.
-            parsed_fields.append(group_identifier)
-            idx += 1  # Skip over identifier tag that was just processed.
+        tags_seen = set()
 
         while idx < len(fields):
-            tag, value = fields[idx][0], fields[idx][1]
-            tag = int(tag)
-            if tag in tags_seen:
+            field = fields[idx]
+
+            if type(fields[idx]) is tuple:
+                field = Field(*fields[idx])
+
+            if field.tag in tags_seen:
                 raise DuplicateTags(
-                    tag,
+                    field.tag,
                     fields[idx],
-                    f"No repeating group template defined for duplicate tag {tag} in {fields}.",
+                    f"No repeating group template defined for duplicate tag {field.tag} in {fields}.",
                 )
 
-            if tag in self.group_templates:
+            if busy_parsing_group and field.tag not in instance_template:
+                # No more group fields to process - done.
+                break
+
+            if field.tag in self.group_templates:
                 # Tag denotes the start of a new repeating group.
                 group_fields = self._parse_fields(fields, group_index=idx)
                 group = Group(
-                    group_fields[0],
-                    self.group_templates[tag],
-                    *group_fields[1:],
+                    field,
+                    self.group_templates[field.tag],
+                    *group_fields,
                 )
 
                 parsed_fields.append(group)
@@ -479,17 +482,11 @@ class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
                 idx += len(group)
                 continue
 
-            if group_index is not None:
-                # Busy parsing a template, see if the current tag forms part of it.
-                if tag in instance_template:
-                    parsed_fields.append(Field(tag, value))
-                else:
-                    # All group fields processed - done.
-                    break
-            else:
+            parsed_fields.append(field)
+
+            if not busy_parsing_group:
                 # Busy parsing a non-group tag.
-                parsed_fields.append(Field(tag, value))
-                tags_seen.add(tag)
+                tags_seen.add(field.tag)
 
             idx += 1
 
