@@ -3,7 +3,7 @@ import collections
 import itertools
 import numbers
 
-from wtfix.core.exceptions import TagNotFound, InvalidGroup, UnknownTag, DuplicateTags
+from wtfix.core.exceptions import TagNotFound, InvalidGroup, UnknownTag, DuplicateTags, ParsingError
 from wtfix.core.utils import GroupTemplateMixin
 from wtfix.message.field import Field
 from wtfix.protocol import common
@@ -440,7 +440,7 @@ class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
         parsed_fields = []
         tags_seen = set()
         idx = 0
-        template = []
+        instance_template = []
         group_index = kwargs.get("group_index", None)
 
         if group_index is not None:
@@ -449,18 +449,16 @@ class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
             group_identifier = Field(fields[idx][0], fields[idx][1])
 
             # Retrieve the template for this repeating group
-            template = self.group_templates[group_identifier.tag]
+            instance_template = self.group_templates[group_identifier.tag]
 
             # Add the group identifier as the first field in the list.
             parsed_fields.append(group_identifier)
             idx += 1  # Skip over identifier tag that was just processed.
 
-        template_tags = iter(template)
-
         while idx < len(fields):
             tag, value = fields[idx][0], fields[idx][1]
             tag = int(tag)
-            if tag in tags_seen and tag not in template:
+            if tag in tags_seen:
                 raise DuplicateTags(
                     tag,
                     fields[idx],
@@ -470,7 +468,11 @@ class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
             if tag in self.group_templates:
                 # Tag denotes the start of a new repeating group.
                 group_fields = self._parse_fields(fields, group_index=idx)
-                group = Group(group_fields[0], *group_fields[1:])
+                group = Group(
+                    group_fields[0],
+                    self.group_templates[tag],
+                    *group_fields[1:],
+                )
 
                 parsed_fields.append(group)
                 # Skip over all of the fields that were processed as part of the group.
@@ -479,12 +481,8 @@ class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
 
             if group_index is not None:
                 # Busy parsing a template, see if the current tag forms part of it.
-                if tag == next(template_tags):
+                if tag in instance_template:
                     parsed_fields.append(Field(tag, value))
-                    if tag == template[-1]:
-                        # We've reached the last tag in the template, reset iterator
-                        # so that it is ready to parse next group instance (if any).
-                        template_tags = iter(template)
                 else:
                     # All group fields processed - done.
                     break
@@ -525,7 +523,7 @@ class Group:
     A repeating group of GroupInstances that form the Group.
     """
 
-    def __init__(self, identifier, *fields, **kwargs):
+    def __init__(self, identifier, instance_template, *fields):
         """
         :param identifier: A Field that identifies the repeating Group. The value of the 'identifier' Field
         indicates the number of times that GroupInstance repeats in this Group.
@@ -533,6 +531,7 @@ class Group:
         """
         self._instances = []
         self.identifier = Field(*identifier)
+        self._instance_template = instance_template
 
         num_fields = len(fields)
 
@@ -540,27 +539,37 @@ class Group:
             # Empty group
             return
 
-        tags = set()
-        for field in fields:
-            try:
-                tags.add(field[0])
-            except TypeError:
-                # Must be a nested group, add the identifier's tag.
-                tags.add(field.tag)
+        instance_tags = set(self._instance_template)
+        instance_start = 0
+        instance_end = 0
 
-        instance_length = len(tags)
+        for field in fields:  # Loop over group instances
+            if type(field) is tuple:
+                field = Field(*field)
 
-        if num_fields != (instance_length * self.size):
-            # Not enough fields to construct the required number of group instances
+            if field.tag in instance_tags:
+                instance_tags.remove(field.tag)
+
+            elif field.tag in self._instance_template:
+                # Tag belongs to the next instance. Append the current instance to this group.
+                self._instances.append(GroupInstance(*fields[instance_start: instance_end]))
+                instance_start = instance_end
+                instance_tags = set(self._instance_template)
+            else:
+                raise ParsingError(f"Unknown tag {field.tag} found while parsing group fields {self._instance_template}.")
+
+            instance_end += 1
+
+        else:
+            # Add last instance
+            self._instances.append(GroupInstance(*fields[instance_start: instance_end]))
+
+        if len(self._instances) != self.size:
             raise InvalidGroup(
-                self.identifier.tag,
-                fields,
-                f"Not enough fields in {fields} to make {self.size} "
-                f"instances that are each {instance_length} fields long.",
-            )
-
-        for idx in range(0, num_fields, instance_length):  # Loop over group instances
-            self._instances.append(GroupInstance(*fields[idx : idx + instance_length]))
+                    self.identifier.tag,
+                    fields,
+                    f"Cannot make {self.size} instances of {self._instance_template} with {fields}."
+                )
 
     def __len__(self):
         length = 1  # Count identifier field

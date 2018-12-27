@@ -245,7 +245,7 @@ class TestOrderedDictFieldSet:
             (2, "b"),
             routing_id_group.identifier,
             *routing_id_group.fields,
-            (3, "c"),
+            (3, "e"),
             group_templates={215: [216, 217]}
         )
 
@@ -259,11 +259,107 @@ class TestOrderedDictFieldSet:
         assert group[0][216] == "a"
         assert group[0][217] == "b"
 
-        assert len(group[0]) == 2
+        assert len(group[1]) == 2
         assert group[1][216] == "c"
         assert group[1][217] == "d"
 
-        assert fs[3] == "c"
+        assert fs[3] == "e"
+
+    def test_parse_incomplete_repeating_group(self):
+        fs = OrderedDictFieldSet(
+            (1, "a"),
+            (2, "b"),
+            (215, 2),
+            (216, "a"),
+            # (217, "b"),  <-- Simulated one instance not containing all template fields
+            (216, "c"),
+            (217, "d"),
+            (3, "e"),
+            group_templates={215: [216, 217]}
+        )
+
+        assert 215 in fs
+        assert fs[1] == "a"
+
+        group = fs.get_group(215)
+        assert group.size == 2
+
+        assert len(group[0]) == 1
+        assert group[0][216] == "a"
+
+        assert len(group[1]) == 2
+        assert group[1][216] == "c"
+        assert group[1][217] == "d"
+
+        assert fs[3] == "e"
+
+    def test_parse_repeating_group_wrong_order(self):
+        fs = OrderedDictFieldSet(
+            (1, "a"),
+            (2, "b"),
+            (3, 2),
+            (6, "x"),  # <-- Switch tag order
+            (4, "b"),
+            (5, "a"),
+            (4, "c"),
+            (6, "y"),  # <-- Switch tag order
+            (5, "d"),
+            (7, "e"),
+            group_templates={3: [4, 5, 6]}
+        )
+
+        assert 3 in fs
+        assert fs[1] == "a"
+
+        group = fs.get_group(3)
+        assert group.size == 2
+
+        assert len(group[0]) == 3
+        assert group[0][4] == "b"
+        assert group[0][5] == "a"
+        assert group[0][6] == "x"
+
+        assert len(group[1]) == 3
+        assert group[1][4] == "c"
+        assert group[1][5] == "d"
+        assert group[1][6] == "y"
+
+        assert fs[7] == "e"
+
+    def test_parse_repeating_group_duplicate_tags(self):
+        with pytest.raises(InvalidGroup):
+            fs = OrderedDictFieldSet(
+                (1, "a"),
+                (2, "b"),
+                (3, 2),
+                (4, "b"),
+                (5, "a"),
+                (5, "a"),  # <-- Duplicate
+                (6, "x"),
+                (4, "c"),
+                (5, "d"),
+                (6, "y"),
+                (7, "e"),
+                group_templates={3: [4, 5, 6]}
+            )
+
+            assert 3 in fs
+            assert fs[1] == "a"
+
+            group = fs.get_group(3)
+            assert group.size == 2
+
+            assert len(group[0]) == 3
+            assert group[0][4] == "b"
+            assert group[0][5] == "a"
+            assert group[0][6] == "x"
+
+            assert len(group[1]) == 3
+            assert group[1][4] == "c"
+            assert group[1][5] == "d"
+            assert group[1][6] == "y"
+
+            assert fs[7] == "e"
 
     def test_parse_nested_repeating_group(self, nested_parties_group):
         fs = OrderedDictFieldSet(
@@ -272,7 +368,7 @@ class TestOrderedDictFieldSet:
             nested_parties_group.identifier,
             *nested_parties_group.fields,
             (3, "c"),
-            group_templates={539: [524, 525, 538], 804: [545, 805]}
+            group_templates={539: [524, 525, 538, 804], 804: [545, 805]}
         )
         # fs = OrderedDictFieldSet((1, 'a'), (2, 'b'), (539, 2), (524, "a"), (525, "aa"), (538, "aaa"), (804, 2), (545, "c"), (805, "cc"), (545, "d"), (805, "dd"), (524, "b"), (525, "bb"), (538, "bbb"), (804, 2), (545, "e"), (805, "ee"), (545, "f"), (805, "ff"), (3, "c"), group_templates={539: [524, 525, 538], 804: [545, 805]})
 
@@ -316,9 +412,9 @@ class TestOrderedDictFieldSet:
             (Tag.MarketDepth, 0),
         )
 
-        mdr_message.set_group(Group((Tag.NoRelatedSym, 1), (Tag.SecurityID, "test123")))
+        mdr_message.set_group(Group((Tag.NoRelatedSym, 1), [Tag.SecurityID], (Tag.SecurityID, "test123")))
 
-        mdr_message.set_group(Group((Tag.NoMDEntryTypes, 1), (Tag.MDEntryType, "h")))
+        mdr_message.set_group(Group((Tag.NoMDEntryTypes, 1), [Tag.MDEntryType], (Tag.MDEntryType, "h")))
 
         mdr_message[9956] = 1
         mdr_message[9957] = 3
@@ -357,7 +453,7 @@ class TestGroup:
             instances.append((Tag.MDEntryType, et))
 
         g = Group(
-            (Tag.NoMDEntryTypes, 2), *((Tag.MDEntryType, et) for et in entry_types)
+            (Tag.NoMDEntryTypes, 2), [Tag.MDEntryType], *((Tag.MDEntryType, et) for et in entry_types)
         )
 
         assert repr(g) == "[(267, 2)]:[(269, 5)], [(269, B)]"
@@ -366,11 +462,12 @@ class TestGroup:
 
     def test_invalid_group(self):
         with pytest.raises(InvalidGroup):
-            Group((215, "2"), (216, "a"), (217, "b"), (216, "c"))
+            Group((215, "2"), [217, 216], (217, "b"), (216, "c"))
 
     def test_empty_group(self):
         g = Group(
-            (Tag.NoMDEntries, 0)
+            (Tag.NoMDEntries, 0),
+            [Tag.MDEntryType],
         )
 
         assert g.size == 0
@@ -379,7 +476,7 @@ class TestGroup:
 
     def test_poorly_formed_arguments_raises_exception(self):
         with pytest.raises(AttributeError):
-            Group((1, "1"), *(2, "a"))
+            Group((1, "1"), [2], *(2, "a"))
 
     def test_len(self, routing_id_group, nested_parties_group):
         assert len(routing_id_group) == 5

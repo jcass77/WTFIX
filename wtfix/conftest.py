@@ -32,7 +32,7 @@ def unsync_event_loop(event_loop):
 @pytest.fixture(scope="session")
 def routing_id_group():
     """Example of a RoutingID repeating group"""
-    return Group((215, "2"), (216, "a"), (217, "b"), (216, "c"), (217, "d"))
+    return Group((215, "2"), [216, 217], (216, "a"), (217, "b"), (216, "c"), (217, "d"))
 
 
 @pytest.fixture(scope="session")
@@ -40,6 +40,7 @@ def nested_parties_group():
     """Sample of a nested group based on NoNestedPartyIDs"""
     nested_party = Group(
         (539, "2"),
+        [524, 525, 538, 804],
         (524, "a"),
         (525, "aa"),
         (538, "aaa"),
@@ -48,10 +49,10 @@ def nested_parties_group():
         (538, "bbb"),
     )
     nested_sub_party_1 = Group(
-        (804, "2"), (545, "c"), (805, "cc"), (545, "d"), (805, "dd")
+        (804, "2"), [545, 805], (545, "c"), (805, "cc"), (545, "d"), (805, "dd")
     )
     nested_sub_party_2 = Group(
-        (804, "2"), (545, "e"), (805, "ee"), (545, "f"), (805, "ff")
+        (804, "2"), [545, 805], (545, "e"), (805, "ee"), (545, "f"), (805, "ff")
     )
 
     nested_party[0].set_group(nested_sub_party_1)
