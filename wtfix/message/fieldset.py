@@ -544,17 +544,18 @@ class Group:
             if type(field) is tuple:
                 field = Field(*field)
 
-            if field.tag in instance_tags:
-                instance_tags.remove(field.tag)
+            if field.tag not in instance_tags:
+                if field.tag in self._instance_template:
+                    # Tag belongs to the next instance. Append the current instance to this group.
+                    self._instances.append(GroupInstance(*fields[instance_start: instance_end]))
 
-            elif field.tag in self._instance_template:
-                # Tag belongs to the next instance. Append the current instance to this group.
-                self._instances.append(GroupInstance(*fields[instance_start: instance_end]))
-                instance_start = instance_end
-                instance_tags = set(self._instance_template)
-            else:
-                raise ParsingError(f"Unknown tag {field.tag} found while parsing group fields {self._instance_template}.")
+                    instance_start = instance_end
+                    instance_tags = set(self._instance_template)
 
+                else:
+                    raise ParsingError(f"Unknown tag {field.tag} found while parsing group fields {self._instance_template}.")
+
+            instance_tags.remove(field.tag)
             instance_end += 1
 
         else:

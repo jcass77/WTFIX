@@ -447,18 +447,16 @@ class TestOrderedDictFieldSet:
 
 class TestGroup:
     def test_group(self):
-        entry_types = [5, "B"]
-        instances = []
-        for et in entry_types:
-            instances.append((Tag.MDEntryType, et))
-
         g = Group(
-            (Tag.NoMDEntryTypes, 2), [Tag.MDEntryType], *((Tag.MDEntryType, et) for et in entry_types)
+            (Tag.NoMDEntryTypes, 3), [Tag.MDEntryType, Tag.MDEntryPx],
+            (Tag.MDEntryType, "a"), (Tag.MDEntryPx, "abc"),
+            (Tag.MDEntryType, "b"), (Tag.MDEntryPx, "abc"),
+            (Tag.MDEntryType, "c"), (Tag.MDEntryPx, "abc"),
         )
 
-        assert repr(g) == "[(267, 2)]:[(269, 5)], [(269, B)]"
-        assert g[0] == [(269, 5)]
-        assert g[1] == [(269, "B")]
+        assert g[0] == [(269, "a"), (270, "abc")]
+        assert g[1] == [(269, "b"), (270, "abc")]
+        assert g[2] == [(269, "c"), (270, "abc")]
 
     def test_invalid_group(self):
         with pytest.raises(InvalidGroup):
