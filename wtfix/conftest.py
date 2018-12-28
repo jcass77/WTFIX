@@ -29,7 +29,12 @@ def unsync_event_loop(event_loop):
 
     # Stop the current unsync loop
     current_loop = unsync.loop
-    current_loop.call_soon_threadsafe(current_loop.stop)
+    if current_loop != event_loop:
+        try:
+            current_loop.call_soon_threadsafe(current_loop.stop)
+        except RuntimeError:
+            # Loop already closed.
+            pass
 
     # Use pytest-asyncio's event loop instead
     unsync.loop = event_loop
