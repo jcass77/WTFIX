@@ -26,6 +26,12 @@ def pytest_runtest_setup():
 def unsync_event_loop(event_loop):
     # Force unsync to use the same event loop as pytest-asyncio
     # See: https://github.com/pytest-dev/pytest-asyncio#event_loop
+
+    # Stop the current unsync loop
+    current_loop = unsync.loop
+    current_loop.call_soon_threadsafe(current_loop.stop)
+
+    # Use pytest-asyncio's event loop instead
     unsync.loop = event_loop
 
 
