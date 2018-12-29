@@ -23,7 +23,6 @@ class HeartbeatApp(MessageTypeHandlerApp):
     def __init__(self, pipeline, *args, **kwargs):
         self._last_receive = datetime.utcnow()
 
-        self._heartbeat = None
         self._test_request_id = (
             None
         )  # A waiting TestRequest message for which no response has been received.
@@ -35,10 +34,12 @@ class HeartbeatApp(MessageTypeHandlerApp):
 
     @property
     def heartbeat(self):
-        if self._heartbeat is None:
+        try:
+            return self._heartbeat
+        except AttributeError:
             self._heartbeat = 30
 
-        return self._heartbeat
+            return self._heartbeat
 
     @heartbeat.setter
     def heartbeat(self, value):
