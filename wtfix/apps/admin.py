@@ -21,19 +21,36 @@ class HeartbeatApp(MessageTypeHandlerApp):
     name = "heartbeat"
 
     def __init__(self, pipeline, *args, **kwargs):
-        self._heartbeat = None
         self._last_receive = datetime.utcnow()
 
+        self._heartbeat = None
         self._test_request_id = (
             None
         )  # A waiting TestRequest message for which no response has been received.
-
-        self._test_request_response_delay = None
 
         self._heartbeat_monitor_unfuture = None
         self._server_not_responding = asyncio.Event()
 
         super().__init__(pipeline, *args, **kwargs)
+
+    @property
+    def heartbeat(self):
+        if self._heartbeat is None:
+            self._heartbeat = 30
+
+        return self._heartbeat
+
+    @heartbeat.setter
+    def heartbeat(self, value):
+        logger.debug(f"{self.name}: Heartbeat changed to {value}.")
+        self._heartbeat = value
+
+    @property
+    def test_request_response_delay(self):
+        """
+        The amount of time to wait for a TestRequest response from the server.
+        """
+        return 2 * self.heartbeat + 4
 
     def sec_since_last_receive(self):
         """
@@ -49,27 +66,17 @@ class HeartbeatApp(MessageTypeHandlerApp):
         return self._test_request_id is not None
 
     @unsync
-    async def start(self, heartbeat=30, response_delay=None, *args, **kwargs):
+    async def start(self, *args, **kwargs):
         """
         Start the heartbeat monitor.
-
-        :param heartbeat: The heartbeat interval in seconds.
-        :param response_delay: The amount of time to wait for a TestRequest response from the server. Defaults
-        to 2 * heartbeat + 4.
         """
         await super().start(*args, **kwargs)
-        self._heartbeat = heartbeat
-
-        if response_delay is None:
-            response_delay = 2 * self._heartbeat + 4
-
-        self._test_request_response_delay = response_delay
 
         # Keep a reference to running monitor, so that we can cancel it if needed.
         self._heartbeat_monitor_unfuture = self.monitor_heartbeat()
 
         logger.info(
-            f"{self.name}: Started heartbeat monitor with {self._heartbeat} second interval."
+            f"{self.name}: Started heartbeat monitor with {self.heartbeat} second interval."
         )
 
     @unsync
@@ -87,12 +94,12 @@ class HeartbeatApp(MessageTypeHandlerApp):
         """
         while not self._server_not_responding.is_set():
             # Keep sending heartbeats until the server stops responding.
-            next_check = max(self._heartbeat - self.sec_since_last_receive(), 0)
+            next_check = max(self.heartbeat - self.sec_since_last_receive(), 0)
             await asyncio.sleep(
                 next_check
             )  # Wait until the next scheduled heartbeat check.
 
-            if self.sec_since_last_receive() > self._heartbeat:
+            if self.sec_since_last_receive() > self.heartbeat:
                 # Heartbeat exceeded, send test message
                 await self.send_test_request()
 
@@ -116,7 +123,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
         self.send(admin.TestRequest(utils.encode(self._test_request_id)))
 
         # Sleep while we wait for a response on the test request
-        await asyncio.sleep(self._test_request_response_delay)
+        await asyncio.sleep(self.test_request_response_delay)
 
         if self.is_waiting():
             self._server_not_responding.set()
