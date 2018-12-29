@@ -8,7 +8,7 @@ from wtfix.message.message import generic_message_factory
 from wtfix.protocol.common import Tag, MsgType
 from ..field import Field
 from ..fieldset import OrderedDictFieldSet, Group, ListFieldSet
-from wtfix.core.exceptions import TagNotFound, DuplicateTags, InvalidGroup
+from wtfix.core.exceptions import TagNotFound, DuplicateTags, InvalidGroup, ImproperlyConfigured
 
 
 class TestFieldSet:
@@ -184,7 +184,7 @@ class TestFieldSet:
     def test_set_group_instance_length_one(self, fieldset_class):
         fs = fieldset_class((1, "a"), (2, "bb"))
 
-        short_group = Group((Tag.NoMDEntryTypes, "1"), (Tag.MDEntryType, "a"))
+        short_group = Group((Tag.NoMDEntryTypes, "1"), (Tag.MDEntryType, "a"), template=[Tag.MDEntryType])
         fs.set_group(short_group)
 
         assert fs.get_group(Tag.NoMDEntryTypes) == short_group
@@ -246,22 +246,21 @@ class TestOrderedDictFieldSet:
             routing_id_group.identifier,
             *routing_id_group.fields,
             (3, "e"),
-            group_templates={215: [216, 217]}
         )
 
-        assert 215 in fs
+        assert Tag.NoRoutingIDs in fs
         assert fs[1] == "a"
 
-        group = fs.get_group(215)
+        group = fs.get_group(Tag.NoRoutingIDs)
         assert group.size == 2
 
         assert len(group[0]) == 2
-        assert group[0][216] == "a"
-        assert group[0][217] == "b"
+        assert group[0][Tag.RoutingType] == "a"
+        assert group[0][Tag.RoutingID] == "b"
 
         assert len(group[1]) == 2
-        assert group[1][216] == "c"
-        assert group[1][217] == "d"
+        assert group[1].RoutingType == "c"
+        assert group[1].RoutingID == "d"
 
         assert fs[3] == "e"
 
@@ -275,7 +274,6 @@ class TestOrderedDictFieldSet:
             (216, "c"),
             (217, "d"),
             (3, "e"),
-            group_templates={215: [216, 217]}
         )
 
         assert 215 in fs
@@ -370,7 +368,6 @@ class TestOrderedDictFieldSet:
             (3, "c"),
             group_templates={539: [524, 525, 538, 804], 804: [545, 805]}
         )
-        # fs = OrderedDictFieldSet((1, 'a'), (2, 'b'), (539, 2), (524, "a"), (525, "aa"), (538, "aaa"), (804, 2), (545, "c"), (805, "cc"), (545, "d"), (805, "dd"), (524, "b"), (525, "bb"), (538, "bbb"), (804, 2), (545, "e"), (805, "ee"), (545, "f"), (805, "ff"), (3, "c"), group_templates={539: [524, 525, 538], 804: [545, 805]})
 
         group = fs.get_group(539)
         assert group.size == 2
@@ -412,9 +409,9 @@ class TestOrderedDictFieldSet:
             (Tag.MarketDepth, 0),
         )
 
-        mdr_message.set_group(Group((Tag.NoRelatedSym, 1), [Tag.SecurityID], (Tag.SecurityID, "test123")))
+        mdr_message.set_group(Group((Tag.NoRelatedSym, 1), (Tag.SecurityID, "test123"), template=[Tag.SecurityID]))
 
-        mdr_message.set_group(Group((Tag.NoMDEntryTypes, 1), [Tag.MDEntryType], (Tag.MDEntryType, "h")))
+        mdr_message.set_group(Group((Tag.NoMDEntryTypes, 1), (Tag.MDEntryType, "h"), template=[Tag.MDEntryType]))
 
         mdr_message[9956] = 1
         mdr_message[9957] = 3
@@ -446,12 +443,27 @@ class TestOrderedDictFieldSet:
 
 
 class TestGroup:
+
+    def test_defaults_to_using_templates_configured_in_settings(self):
+        g = Group(
+            (Tag.NoRoutingIDs, 1),
+            (Tag.RoutingID, "a"),
+            (Tag.RoutingType, "b"),
+        )
+
+        assert g[0].RoutingID == "a"
+
+    def test_raises_exception_if_no_group_template_available(self):
+        with pytest.raises(ImproperlyConfigured):
+            Group((1234567890, 0))
+
     def test_parse_fields(self):
         g = Group(
-            (Tag.NoMDEntryTypes, 3), [Tag.MDEntryType, Tag.MDEntryPx],
+            (Tag.NoMDEntryTypes, 3),
             (Tag.MDEntryType, "a"), (Tag.MDEntryPx, "abc"),
             (Tag.MDEntryType, "b"), (Tag.MDEntryPx, "abc"),
             (Tag.MDEntryType, "c"), (Tag.MDEntryPx, "abc"),
+            template=[Tag.MDEntryType, Tag.MDEntryPx]
         )
 
         assert g[0] == [(269, "a"), (270, "abc")]
@@ -460,12 +472,12 @@ class TestGroup:
 
     def test_invalid_group(self):
         with pytest.raises(InvalidGroup):
-            Group((215, "2"), [217, 216], (217, "b"), (216, "c"))
+            Group((215, "2"), (217, "b"), (216, "c"))
 
     def test_empty_group(self):
         g = Group(
             (Tag.NoMDEntries, 0),
-            [Tag.MDEntryType],
+            template=[Tag.MDEntryType],
         )
 
         assert g.size == 0
@@ -474,7 +486,7 @@ class TestGroup:
 
     def test_poorly_formed_arguments_raises_exception(self):
         with pytest.raises(AttributeError):
-            Group((1, "1"), [2], *(2, "a"))
+            Group((1, "1"), *(2, "a"), template=[2])
 
     def test_len(self, routing_id_group, nested_parties_group):
         assert len(routing_id_group) == 5

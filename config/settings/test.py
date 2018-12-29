@@ -1,3 +1,4 @@
+from wtfix.protocol.common import Tag
 from .local import *  # noqa
 
 # GENERAL
@@ -14,3 +15,13 @@ TARGET_COMP_ID = "TARGET_ID"
 
 USERNAME = "TEST_USER"
 PASSWORD = "TEST_PASSWORD"
+
+# REPEATING GROUPS
+# ------------------------------------------------------------------------------
+GROUP_TEMPLATES = {
+    # Routing IDs
+    Tag.NoRoutingIDs: [
+        Tag.RoutingType,
+        Tag.RoutingID,
+    ],
+}

@@ -41,3 +41,7 @@ PIPELINE_APPS = [
     "wtfix.apps.wire.WireCommsApp",
     "wtfix.apps.sessions.ClientSessionApp",
 ]
+
+# REPEATING GROUPS
+# ------------------------------------------------------------------------------
+GROUP_TEMPLATES = {}

@@ -142,17 +142,20 @@ class GroupTemplateMixin:
     def group_templates(self):
         """
         :return: The dictionary of group templates that have been added for this object. Initializes the dictionary
-        if it does not exist yet.
+        from the GROUP_TEMPLATES setting if it does not exist yet.
         """
         try:
             return self._group_templates
         except AttributeError:
-            self._group_templates = {}
+            self._init_group_templates()
             return self._group_templates
 
     @group_templates.setter
     def group_templates(self, value):
         self._group_templates = value
+
+    def _init_group_templates(self):
+        self._group_templates = settings.GROUP_TEMPLATES
 
     def add_group_templates(self, templates):
         """

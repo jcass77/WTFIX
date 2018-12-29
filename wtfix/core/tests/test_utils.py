@@ -1,8 +1,10 @@
 import pytest
 
+from wtfix.conf import settings
 from wtfix.core import utils
 from wtfix.core.exceptions import TagNotFound, ValidationError
 from wtfix.core.utils import GroupTemplateMixin
+from wtfix.protocol.common import Tag
 
 
 def test_find_tag_start_of_message(simple_encoded_msg):
@@ -81,6 +83,23 @@ def test_decode_float():
 
 
 class TestGroupTemplateMixin:
+    def test_get_group_templates_initializes_from_settings(self):
+        assert GroupTemplateMixin().group_templates == settings.GROUP_TEMPLATES
+
+    def test_add_group_templates(self):
+        gt = GroupTemplateMixin()
+        gt.add_group_templates(
+            {
+                Tag.NoSecurityAltID: [
+                    Tag.SecurityAltID,
+                    Tag.SecurityAltIDSource
+                ]
+            }
+        )
+
+        assert Tag.NoRoutingIDs in gt.group_templates
+        assert Tag.NoSecurityAltID in gt.group_templates
+
     def test_add_group_template_too_short_raises_exception(self):
         with pytest.raises(ValidationError):
             GroupTemplateMixin().add_group_templates({35: []})

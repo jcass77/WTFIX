@@ -1,7 +1,7 @@
 import pytest
 from unsync import unsync
 
-from wtfix.protocol.common import MsgType
+from wtfix.protocol.common import MsgType, Tag
 from wtfix.message.message import (
     GenericMessage,
     OptimizedGenericMessage,
@@ -43,7 +43,13 @@ def unsync_event_loop(event_loop):
 @pytest.fixture(scope="session")
 def routing_id_group():
     """Example of a RoutingID repeating group"""
-    return Group((215, "2"), [216, 217], (216, "a"), (217, "b"), (216, "c"), (217, "d"))
+    return Group(
+        (Tag.NoRoutingIDs, "2"),
+        (Tag.RoutingType, "a"),
+        (Tag.RoutingID, "b"),
+        (Tag.RoutingType, "c"),
+        (Tag.RoutingID, "d"),
+    )
 
 
 @pytest.fixture(scope="session")
@@ -51,19 +57,19 @@ def nested_parties_group():
     """Sample of a nested group based on NoNestedPartyIDs"""
     nested_party = Group(
         (539, "2"),
-        [524, 525, 538, 804],
         (524, "a"),
         (525, "aa"),
         (538, "aaa"),
         (524, "b"),
         (525, "bb"),
         (538, "bbb"),
+        template=[524, 525, 538, 804]
     )
     nested_sub_party_1 = Group(
-        (804, "2"), [545, 805], (545, "c"), (805, "cc"), (545, "d"), (805, "dd")
+        (804, "2"), (545, "c"), (805, "cc"), (545, "d"), (805, "dd"), template=[545, 805]
     )
     nested_sub_party_2 = Group(
-        (804, "2"), [545, 805], (545, "e"), (805, "ee"), (545, "f"), (805, "ff")
+        (804, "2"), (545, "e"), (805, "ee"), (545, "f"), (805, "ff"), template=[545, 805]
     )
 
     nested_party[0].set_group(nested_sub_party_1)

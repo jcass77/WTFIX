@@ -3,7 +3,9 @@ import collections
 import itertools
 import numbers
 
-from wtfix.core.exceptions import TagNotFound, InvalidGroup, UnknownTag, DuplicateTags, ParsingError
+from wtfix.conf import settings
+from wtfix.core.exceptions import TagNotFound, InvalidGroup, UnknownTag, DuplicateTags, ParsingError, \
+    ImproperlyConfigured
 from wtfix.core.utils import GroupTemplateMixin
 from wtfix.message.field import Field
 from wtfix.protocol import common
@@ -355,13 +357,17 @@ class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
         template(s) in order for the FieldSet to know how to parse and store those groups.
 
         :param fields: List of Field or (tag, value) tuples.
-        :param kwargs: Should contain a 'group_templates' keyword argument that defines the templates that can be
-        used to parse repeating groups in the format group_templates={identifier_tag: [instance_tag_1,..instance_tag_n]}.
+        :param kwargs: Can optionally contain a 'group_templates' keyword argument in the format:
+
+            group_templates={identifier_tag: [instance_tag_1,..instance_tag_n]}
+
+        that defines the additional templates that can be used to parse repeating groups. Group templates are
+        automatically initialized from the GROUP_TEMPLATES setting.
         :raises: DuplicateTags if 'fields' contain repeating Fields for which no group_template has been provided.
         """
         group_templates = kwargs.get("group_templates", {})
         if len(group_templates) > 0:
-            self.add_group_templates(group_templates)
+            self.group_templates = group_templates
 
         self._fields = collections.OrderedDict(
             (field.tag, field) for field in self._parse_fields(fields)
@@ -472,8 +478,8 @@ class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
                 group_fields = self._parse_fields(fields, group_index=idx)
                 group = Group(
                     field,
-                    self.group_templates[field.tag],
                     *group_fields,
+                    template=self.group_templates[field.tag]
                 )
 
                 parsed_fields.append(group)
@@ -519,14 +525,23 @@ class Group:
     A repeating group of GroupInstances that form the Group.
     """
 
-    def __init__(self, identifier, instance_template, *fields):
+    def __init__(self, identifier, *fields, template=None):
         """
         :param identifier: A Field that identifies the repeating Group. The value of the 'identifier' Field
         indicates the number of times that GroupInstance repeats in this Group.
         :param fields: A GroupInstance or list of (tag, value) tuples.
+        :param template: Optional. The list of tags that this repeating group consists of. If no template is
+        provided then tries to find a template corresponding to identifier.tag in the GROUP_TEMPLATES setting.
+        :raises: ImproperlyConfigured if no template is specified and no template could be found in settings.
         """
         self.identifier = Field(*identifier)
-        self._instance_template = instance_template
+        if template is None:
+            try:
+                template = settings.GROUP_TEMPLATES[self.identifier.tag]
+            except KeyError:
+                raise(ImproperlyConfigured(f"No template available for repeating group identifier {self.identifier}."))
+
+        self._instance_template = template
 
         self._instances = self._parse_fields(fields)
 
