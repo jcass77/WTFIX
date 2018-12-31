@@ -174,6 +174,19 @@ class TestFieldSet:
         assert all([field in fs.fields for field in [(1, "a"), (2, "b")]])
         assert type(fs[1] is Field)
 
+    def test_get(self, fieldset_class):
+        fs = fieldset_class((1, "abc"))
+        assert fs.get(1) == "abc"
+
+    def test_get_falls_back_to_default(self, fieldset_class):
+        fs = fieldset_class()
+        assert fs.get(1, default="abc") == "abc"
+
+    def test_get_not_found_and_no_default_provided_raises_exception(self, fieldset_class):
+        with pytest.raises(TagNotFound):
+            fs = fieldset_class()
+            fs.get(1)
+
     def test_set_group(self, fieldset_class, routing_id_group):
         fs = fieldset_class((1, "a"), (2, "bb"))
         fs.set_group(routing_id_group)

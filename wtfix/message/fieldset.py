@@ -201,6 +201,23 @@ class FieldSet(abc.ABC):
         :return: An list of Fields.
         """
 
+    def get(self, tag, default=None):
+        """
+        Try to retrieve the given tag from the FieldSet.
+
+        :param tag: The tag value to retrieve.
+        :param default: Optional, the default value to use if the tag does not exist in this FieldSet.
+        :return: The value of the tag, or the value of default if the tag is not available.
+        :raises: TagNotFound if the tag does not exist in the FieldSet and no default value was provided.
+        """
+        try:
+            return self[tag]
+        except TagNotFound as e:
+            if default is None:
+                raise e
+
+            return default
+
     def set_group(self, group):
         """
         Sets the repeating Group of Fields for this FieldSet based on the tag number of the group's identifier Field.
