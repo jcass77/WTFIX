@@ -32,29 +32,54 @@ class TestFieldValue:
         false_vals = ("n", "no", "f", "false", "off", "0")
         assert all(FieldValue(value) == False for value in false_vals)
 
-    def test_eq_str_string(self):
+    def test_eq_boolean_inverse(self):
+        true_vals = ("y", "yes", "t", "true", "on", "1")
+        assert all(FieldValue(value) != False for value in true_vals)
+
+        false_vals = ("n", "no", "f", "false", "off", "0")
+        assert all(FieldValue(value) != True for value in false_vals)
+
+    def test_eq_str_string_true(self):
         assert str(FieldValue("abc")) == "abc"
 
-    def test_eq_bytes_str(self):
-        assert FieldValue(b"abc") == "abc"
+    def test_eq_str_string_false(self):
+        assert str(FieldValue("abc")) != "123"
 
-    def test_eq_bytes_int(self):
-        assert FieldValue(b"1") == 1
-
-    def test_eq_str_bytes(self):
+    def test_eq_str_bytes_true(self):
         assert FieldValue("abc") == b"abc"
 
-    def test_eq_str_int(self):
+    def test_eq_str_bytes_false(self):
+        assert FieldValue("abc") != b"123"
+
+    def test_eq_str_int_true(self):
         assert FieldValue("1") == 1
+
+    def test_eq_str_int_false(self):
+        assert FieldValue("2") != 1
+
+    def test_eq_bytes_str_true(self):
+        assert FieldValue(b"abc") == "abc"
+
+    def test_eq_bytes_str_false(self):
+        assert FieldValue(b"abc") != "123"
+
+    def test_eq_bytes_int_true(self):
+        assert FieldValue(b"1") == 1
+
+    def test_eq_bytes_int_false(self):
+        assert FieldValue(b"1") != "2"
+
+    def test_int_str_true(self):
+        assert FieldValue(1) == "1"
+
+    def test_int_str_false(self):
+        assert FieldValue(1) != "2"
+
+    def test_int_str_wrong_type(self):
+        assert FieldValue(1) != "abc"
 
     def test_eq_fieldvalue(self):
         assert FieldValue("abc") == FieldValue(b"abc")
-
-    def test_str_bytes(self):
-        assert str(FieldValue(b"abc")) == "abc"
-
-    def test_str_int(self):
-        assert str(FieldValue(1)) == "1"
 
     def test_contains(self):
         assert "a" in FieldValue("abc")

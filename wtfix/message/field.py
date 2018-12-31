@@ -49,9 +49,13 @@ class FieldValue(abc.Sequence):
             return utils.encode(self.value) == other
 
         if isinstance(other, numbers.Integral):
-            return int(self.value) == other
+            try:
+                return int(self.value) == other
+            except ValueError:
+                # self.value is not a numbers.Integral
+                return False
 
-        return utils.decode(self.value) == other
+        return str(utils.decode(self.value)) == other
 
     def __str__(self):
         """
