@@ -10,6 +10,14 @@ class TestFieldValue:
         fv = FieldValue(FieldValue("abc"))
         assert not isinstance(fv.value, FieldValue)
 
+    def test_init_converts_booleans(self):
+        fv = FieldValue(True)
+        assert fv.value == "Y"
+
+    def test_init_converts_booleans(self):
+        fv = FieldValue(False)
+        assert fv.value == "N"
+
     def test_getitem(self):
         assert FieldValue("abc")[1] == "b"
 

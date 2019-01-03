@@ -23,6 +23,12 @@ class FieldValue(abc.Sequence):
             # FieldValues should be terminal nodes - don't wrap FieldValues in other FieldValues
             self.value = value.value
         else:
+            if isinstance(value, bool):
+                if value is True:
+                    value = "Y"
+                else:
+                    value = "N"
+
             self.value = value
 
     def __getitem__(self, i: int):
