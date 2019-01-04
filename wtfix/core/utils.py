@@ -4,6 +4,8 @@ from functools import singledispatch
 from wtfix.conf import settings
 from wtfix.core.exceptions import TagNotFound, ValidationError
 
+null = -2_147_483_648  # FIX representation of 'null' or 'NoneType'
+
 
 def index_tag(tag, data, start=0):
     """
@@ -77,7 +79,7 @@ def calculate_checksum(bytes_):
 def encode(obj):
     """Encode an object to bytes"""
     if obj is None:
-        return b"None"
+        return encode(null)
 
     return obj.encode(settings.ENCODING, errors=settings.ENCODING_ERRORS)
 
@@ -131,6 +133,33 @@ def _(n):
 def _(r):
     """Floats do not need to be decoded"""
     return r
+
+
+@singledispatch
+def is_null(obj):
+    """Return True if obj is equivalent to the FIX null representation (-2_147_483_648), False otherwise."""
+    if obj is None:
+        return obj
+
+
+@is_null.register(str)
+def _(string):
+    return string == str(null)
+
+
+@is_null.register(numbers.Integral)
+def _(n):
+    return n == null
+
+
+@is_null.register(bytes)
+def _(b):
+    return b == encode(null)
+
+
+@is_null.register(bytearray)
+def _(ba):
+    return ba == encode(null)
 
 
 class GroupTemplateMixin:

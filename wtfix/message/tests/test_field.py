@@ -1,6 +1,7 @@
 import pytest
 
 from wtfix.conf import settings
+from wtfix.core import utils
 from ..field import Field, FieldValue
 from wtfix.core.exceptions import InvalidField
 
@@ -10,11 +11,11 @@ class TestFieldValue:
         fv = FieldValue(FieldValue("abc"))
         assert not isinstance(fv.value, FieldValue)
 
-    def test_init_converts_booleans(self):
+    def test_init_converts_booleans_true(self):
         fv = FieldValue(True)
         assert fv.value == "Y"
 
-    def test_init_converts_booleans(self):
+    def test_init_converts_booleans_false(self):
         fv = FieldValue(False)
         assert fv.value == "N"
 
@@ -96,6 +97,16 @@ class TestFieldValue:
     def test_iter(self):
         assert [i for i in iter(FieldValue("abc"))] == ["a", "b", "c"]
 
+    def test_value_setter_converts_null(self):
+        fv = FieldValue(123)
+        assert fv.value == 123
+
+        fv.value = utils.null
+        assert fv.value is None
+
+        fv.value = utils.encode(utils.null)
+        assert fv.value is None
+
     def test_raw(self):
         assert FieldValue("abc").raw == b"abc"
 
@@ -140,6 +151,9 @@ class TestField:
         f = Field(35, "k")
         assert f.raw == b"35=k" + settings.SOH
 
+        f = Field(1, None)
+        assert f.raw == b"1=" + utils.encode(utils.null) + settings.SOH
+
     def test_as_str(self):
         f = Field(1, 123)
         assert f.as_str == "123"
@@ -154,3 +168,14 @@ class TestField:
 
         false_values = ("n", "no", "f", "false", "off", "0")
         assert all(Field(1, value).as_bool is False for value in false_values)
+
+    def test_null_valueref_is_converted_to_none(self):
+        f = Field(1, utils.null)
+        assert f.as_str is None
+        assert f.as_int is None
+        assert f.as_bool is None
+
+        f = Field(1, str(utils.null))
+        assert f.as_str is None
+        assert f.as_int is None
+        assert f.as_bool is None

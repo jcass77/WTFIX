@@ -51,7 +51,7 @@ def test_encode_bytearray():
 
 
 def test_encode_none():
-    assert utils.encode(None) == b"None"
+    assert utils.encode(None) == utils.encode(utils.null)
 
 
 def test_encode_float():
@@ -80,6 +80,22 @@ def test_decode_none():
 
 def test_decode_float():
     assert utils.decode(1.23) == 1.23
+
+
+def test_is_null_str():
+    assert utils.is_null("-2147483648")
+
+
+def test_is_null_int():
+    assert utils.is_null(-2147483648)
+
+
+def test_is_null_bytes():
+    assert utils.is_null(b"-2147483648")
+
+
+def test_is_null_bytearray():
+    assert utils.is_null(bytearray("-2147483648", encoding="utf-8"))
 
 
 class TestGroupTemplateMixin:
