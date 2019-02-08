@@ -2,7 +2,9 @@ import numbers
 from functools import singledispatch
 
 from wtfix.conf import settings
-from wtfix.core.exceptions import TagNotFound
+from wtfix.core.exceptions import TagNotFound, ValidationError
+
+null = -2_147_483_648  # FIX representation of 'null' or 'NoneType'
 
 
 def index_tag(tag, data, start=0):
@@ -31,7 +33,7 @@ def index_tag(tag, data, start=0):
     end_of_field = data.find(settings.SOH, start_of_field + 1)
 
     return (
-        data[start_of_field + len(search_bytes): end_of_field],
+        data[start_of_field + len(search_bytes) : end_of_field],
         start_of_field,
         end_of_field,
     )
@@ -57,7 +59,7 @@ def rindex_tag(tag, data, start=0):
     end_of_field = data.find(settings.SOH, start_of_field + 1)
 
     return (
-        data[start_of_field + len(search_bytes): end_of_field],
+        data[start_of_field + len(search_bytes) : end_of_field],
         start_of_field,
         end_of_field,
     )
@@ -77,7 +79,7 @@ def calculate_checksum(bytes_):
 def encode(obj):
     """Encode an object to bytes"""
     if obj is None:
-        return b"None"
+        return encode(null)
 
     return obj.encode(settings.ENCODING, errors=settings.ENCODING_ERRORS)
 
@@ -86,6 +88,12 @@ def encode(obj):
 def _(n):
     """Encode an numeric value"""
     return encode(str(n))
+
+
+@encode.register(numbers.Real)
+def _(r):
+    """Encode a float value"""
+    return encode(str(r))
 
 
 @encode.register(bytes)
@@ -119,3 +127,91 @@ def _(string):
 def _(n):
     """Numbers do not need to be decoded"""
     return n
+
+
+@decode.register(numbers.Real)
+def _(r):
+    """Floats do not need to be decoded"""
+    return r
+
+
+@singledispatch
+def is_null(obj):
+    """Return True if obj is equivalent to the FIX null representation (-2_147_483_648), False otherwise."""
+    if obj is None:
+        return obj
+
+
+@is_null.register(str)
+def _(string):
+    return string == str(null)
+
+
+@is_null.register(numbers.Integral)
+def _(n):
+    return n == null
+
+
+@is_null.register(bytes)
+def _(b):
+    return b == encode(null)
+
+
+@is_null.register(bytearray)
+def _(ba):
+    return ba == encode(null)
+
+
+class GroupTemplateMixin:
+    """
+    Mixin for maintaining a dictionary of repeating group templates.
+    """
+
+    @property
+    def group_templates(self):
+        """
+        :return: The dictionary of group templates that have been added for this object. Initializes the dictionary
+        from the GROUP_TEMPLATES setting if it does not exist yet.
+        """
+        try:
+            return self._group_templates
+        except AttributeError:
+            self._init_group_templates()
+            return self._group_templates
+
+    @group_templates.setter
+    def group_templates(self, value):
+        self._group_templates = value
+
+    def _init_group_templates(self):
+        self._group_templates = settings.GROUP_TEMPLATES
+
+    def add_group_templates(self, templates):
+        """
+        Performs some basic validation checks when adding new group templates.
+
+        :param templates: A dictionary of templates in the format {identifier tag: [tag_1,...,tag_n]}
+        """
+        if len(templates) == 0 or len(list(templates.values())[0]) == 0:
+            raise ValidationError(
+                f"At least one group instance tag needs to be defined for group {templates}."
+            )
+
+        self.group_templates = {**self.group_templates, **templates}
+
+    def remove_group_template(self, identifier_tag):
+        """
+        Safely remove a group template.
+        :param identifier_tag: The identifier tag number of the group that should be removed.
+        """
+        del self.group_templates[identifier_tag]
+
+    def is_template_tag(self, tag):
+        """
+        :return: True if the tag occurs in one of the group templates. False otherwise.
+        """
+        if tag in self.group_templates:
+            return True
+
+        for template in self.group_templates.values():
+            return tag in template

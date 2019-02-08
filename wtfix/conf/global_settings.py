@@ -41,5 +41,24 @@ SOH_BYTE = ord(SOH)
 # List of strings representing installed apps.
 PIPELINE_APPS = []
 
+# Dictionary of repeating group templates.
+# The format is:
+#
+#   {
+#       <identifier_tag_number>: [
+#             <tag_1>,
+#             <tag_2>,
+#            ...,
+#             <tag_n>
+#         ]
+#   }
+#
+GROUP_TEMPLATES = {}
+
+# Timeouts for app initialization and startup
+INIT_TIMEOUT = 10
+STARTUP_TIMEOUT = 5
+STOP_TIMEOUT = 5
+
 # Default formatting for datetime objects.
 DATETIME_FORMAT = "%Y%m%d-%H:%M:%S.%f"

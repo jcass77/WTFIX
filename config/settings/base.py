@@ -36,7 +36,12 @@ PASSWORD = os.getenv("PASSWORD")
 # ------------------------------------------------------------------------------
 PIPELINE_APPS = [
     "wtfix.apps.admin.HeartbeatApp",
-    "wtfix.apps.parsers.BasicMessageParserApp",
+    "wtfix.apps.admin.AuthenticationApp",
+    "wtfix.apps.parsers.RawMessageParserApp",
     "wtfix.apps.wire.WireCommsApp",
     "wtfix.apps.sessions.ClientSessionApp",
 ]
+
+# REPEATING GROUPS
+# ------------------------------------------------------------------------------
+GROUP_TEMPLATES = {}

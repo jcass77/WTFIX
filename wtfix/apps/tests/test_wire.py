@@ -3,7 +3,7 @@ import pytest
 from wtfix.apps.wire import DecoderApp
 from wtfix.conf import settings
 from wtfix.core.exceptions import ValidationError, ParsingError
-from wtfix.message.message import GenericMessage
+from wtfix.message.message import GenericMessage, generic_message_factory
 from wtfix.core import utils
 from wtfix.protocol.common import Tag, MsgType
 
@@ -22,14 +22,14 @@ class TestEncoderApp:
 
     def test_encode_message_invalid(self, encoder_app):
         with pytest.raises(ValidationError):
-            encoder_app.encode_message(GenericMessage((1, "a"), (2, "b")))
+            encoder_app.encode_message(generic_message_factory((1, "a"), (2, "b")))
 
     def test_encode_message_nested_group(self, encoder_app, nested_parties_group):
-        m = GenericMessage((35, "a"), (2, "bb"))
+        m = generic_message_factory((35, "a"), (2, "bb"))
         m.set_group(nested_parties_group)
 
         # Compare just the group-related bytes.
-        assert encoder_app.encode_message(m)[92:-7] == (
+        assert encoder_app.encode_message(m)[82:-7] == (
             b"539=2\x01"  # Header
             + b"524=a\x01525=aa\x01538=aaa\x01"  # Group identifier
             + b"804=2\x01545=c\x01805=cc\x01545=d\x01805=dd\x01"  # First group
@@ -51,7 +51,9 @@ class TestDecoderApp:
             DecoderApp.check_begin_string(b"34=0" + settings.SOH + simple_encoded_msg)
 
     def test_check_body_length(self, simple_encoded_msg):
-        assert DecoderApp.check_body_length(simple_encoded_msg, start=0, body_end=19) == (5, 13)
+        assert DecoderApp.check_body_length(
+            simple_encoded_msg, start=0, body_end=19
+        ) == (5, 13)
 
     def test_check_body_length_body_end_not_provided(self, simple_encoded_msg):
         assert DecoderApp.check_body_length(simple_encoded_msg) == (5, 13)
@@ -80,24 +82,38 @@ class TestDecoderApp:
             message = simple_encoded_msg + b"34=1" + settings.SOH
             DecoderApp.check_checksum(message)
 
-    def test_check_checksum_raises_exception_if_checksum_invalid(self, simple_encoded_msg):
+    def test_check_checksum_raises_exception_if_checksum_invalid(
+        self, simple_encoded_msg
+    ):
         with pytest.raises(ParsingError):
             encoded_msg = simple_encoded_msg[:-4] + b"123" + settings.SOH
             DecoderApp.check_checksum(encoded_msg, 0, 19)
 
-    def test_decode_message(self, encoder_app, decoder_app, sdr_message):
-        m = decoder_app.decode_message(encoder_app.encode_message(sdr_message))
+    def test_decode_message(
+        self, encoder_app, decoder_app, generic_message_class, sdr_message_fields
+    ):
+        m = generic_message_class(*sdr_message_fields)
+        m = decoder_app.decode_message(encoder_app.encode_message(m))
         assert m[Tag.BeginString] == b"FIX.4.4"
         assert m[Tag.BodyLength] == b"113"
         assert m[Tag.MsgType] == b"c"
         # Compare body, skipping timestamp and checksum
         assert m.encoded_body[:18] == b"34=1\x0149=SENDER\x0152="
-        assert m.encoded_body[40:] == b"56=TARGET\x0155=^.*$\x01167=CS\x01320=37a0b5c8afb543ec8f29eca2a44be2ec\x01321=3\x01"
+        assert (
+            m.encoded_body[40:]
+            == b"56=TARGET\x0155=^.*$\x01167=CS\x01320=37a0b5c8afb543ec8f29eca2a44be2ec\x01321=3\x01"
+        )
 
-    def test_decode_message_raises_exception_if_no_beginstring(self, encoder_app, decoder_app):
+    def test_decode_message_raises_exception_if_no_beginstring(
+        self, encoder_app, decoder_app
+    ):
         with pytest.raises(ParsingError):
-            m = GenericMessage((Tag.MsgType, MsgType.TestRequest), (Tag.TestReqID, "a"))
-            data = encoder_app.encode_message(m).replace(b"8=" + utils.encode(settings.BEGIN_STRING), b"")
+            m = generic_message_factory(
+                (Tag.MsgType, MsgType.TestRequest), (Tag.TestReqID, "a")
+            )
+            data = encoder_app.encode_message(m).replace(
+                b"8=" + utils.encode(settings.BEGIN_STRING), b""
+            )
             decoder_app.decode_message(data)
 
     def test_decode_message_raises_exception_on_leading_junk(self, decoder_app):

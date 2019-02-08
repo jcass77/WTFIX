@@ -1,7 +1,8 @@
 from functools import wraps
 
-from wtfix.conf import logger
-from wtfix.core.exceptions import ValidationError
+from unsync import unsync
+
+from wtfix.core.exceptions import ValidationError, MessageProcessingError
 
 
 class BaseApp:
@@ -22,6 +23,45 @@ class BaseApp:
             )
 
         self.pipeline = pipeline
+
+    def __str__(self):
+        return self.name
+
+    @unsync
+    async def initialize(self, *args, **kwargs):
+        """
+        Initialization that needs to be performed when the app is first loaded as part of an application processing
+        pipeline.
+
+        All apps are initialized concurrently and need to complete their initialization routines within the
+        timeout specified by INIT_TIMEOUT.
+        """
+        pass
+
+    @unsync
+    async def start(self, *args, **kwargs):
+        """
+        Override this method for any app-specific routines that should be performed when the application
+        pipeline is started.
+
+        Apps are started in the order that they were added to the pipeline and it is safe to assume that
+        apps lower down in the pipeline would have been initialized and started by the time that this method
+        is executed.
+
+        App startup is subject to the STARTUP_TIMEOUT timeout.
+        """
+        pass
+
+    @unsync
+    async def stop(self, *args, **kwargs):
+        """
+        Override this method for any app-specific routines that should be performed when the application
+        pipeline is stopped.
+
+        Apps are stopped sequentially in the order that they were added to the pipeline and each app is subject
+        to the STOP_TIMEOUT timeout.
+        """
+        pass
 
     def on_receive(self, message):
         """
@@ -63,12 +103,6 @@ class BaseApp:
         """
         self.pipeline.send(message)
 
-    def initialize(self, *args, **kwargs):
-        """
-        Initialization that needs to be performed before this apps can start processing messages.
-        """
-        pass
-
 
 def on(message_type):
     """
@@ -85,6 +119,7 @@ def on(message_type):
     :param message_type: The type of message to be processed.
     :return: a decorator that can be used with a MessageTypeHandlerApp method.
     """
+
     @wraps(message_type)
     def wrapper(f):
         f.on_type = message_type
@@ -127,8 +162,19 @@ class MessageTypeHandlerApp(BaseApp):
 
         :param message: The message to process
         :return: The result after processing the on_<message_type> method.
+        :raises: MessageProcessingError if the handler does not return a valid FIX message.
         """
-        return self.type_handlers.get(message.type, self.on_unhandled)(message)
+        handler = self.type_handlers.get(message.type, self.on_unhandled)
+        message = handler(message)
+
+        if message is None:
+            raise MessageProcessingError(
+                f"{self.name}: message handler '{handler.__name__}' did not provide a message to propagate "
+                f"further up the pipeline. Perhaps you forgot to return a message instance in "
+                f"{self.__module__}.{self.__class__.__name__}.{handler.__name__}?"
+            )
+
+        return message
 
     def on_unhandled(self, message):
         """

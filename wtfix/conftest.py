@@ -1,21 +1,55 @@
 import pytest
+from unsync import unsync
 
-from wtfix.protocol.common import MsgType
-from wtfix.message.message import GenericMessage
+from wtfix.protocol.common import MsgType, Tag
+from wtfix.message.message import (
+    GenericMessage,
+    OptimizedGenericMessage,
+    generic_message_factory,
+)
 from wtfix.message.fieldset import Group
 
-from pytest_socket import disable_socket
+from pytest_socket import socket_allow_hosts
 
 
 # https://github.com/miketheman/pytest-socket#usage
 def pytest_runtest_setup():
-    disable_socket()
+    # Restrict all socket calls in order to prevent unintended web traffic during test runs. Use
+    # @pytest.mark.enable_socket to enable socket connections on a per-test basis, or
+    # @pytest.mark.allow_hosts(['<ip address>]) to allow connections to specific hosts.
+    #
+    # See: https://github.com/miketheman/pytest-socket for details.
+    socket_allow_hosts(allowed=["localhost", "127.0.0.1", "::1"])
+
+
+@pytest.fixture
+def unsync_event_loop(event_loop):
+    # Force unsync to use the same event loop as pytest-asyncio
+    # See: https://github.com/pytest-dev/pytest-asyncio#event_loop
+
+    # Stop the current unsync loop
+    current_loop = unsync.loop
+    if current_loop != event_loop:
+        try:
+            current_loop.call_soon_threadsafe(current_loop.stop)
+        except RuntimeError:
+            # Loop already closed.
+            pass
+
+    # Use pytest-asyncio's event loop instead
+    unsync.loop = event_loop
 
 
 @pytest.fixture(scope="session")
 def routing_id_group():
     """Example of a RoutingID repeating group"""
-    return Group((215, "2"), (216, "a"), (217, "b"), (216, "c"), (217, "d"))
+    return Group(
+        (Tag.NoRoutingIDs, "2"),
+        (Tag.RoutingType, "a"),
+        (Tag.RoutingID, "b"),
+        (Tag.RoutingType, "c"),
+        (Tag.RoutingID, "d"),
+    )
 
 
 @pytest.fixture(scope="session")
@@ -29,12 +63,13 @@ def nested_parties_group():
         (524, "b"),
         (525, "bb"),
         (538, "bbb"),
+        template=[524, 525, 538, 804]
     )
     nested_sub_party_1 = Group(
-        (804, "2"), (545, "c"), (805, "cc"), (545, "d"), (805, "dd")
+        (804, "2"), (545, "c"), (805, "cc"), (545, "d"), (805, "dd"), template=[545, 805]
     )
     nested_sub_party_2 = Group(
-        (804, "2"), (545, "e"), (805, "ee"), (545, "f"), (805, "ff")
+        (804, "2"), (545, "e"), (805, "ee"), (545, "f"), (805, "ff"), template=[545, 805]
     )
 
     nested_party[0].set_group(nested_sub_party_1)
@@ -43,10 +78,15 @@ def nested_parties_group():
     return nested_party
 
 
+@pytest.fixture(params=[GenericMessage, OptimizedGenericMessage])
+def generic_message_class(request):
+    return request.param
+
+
 @pytest.fixture
 def logon_message():
     """Sample logon message"""
-    return GenericMessage(
+    return generic_message_factory(
         (35, MsgType.Logon),
         (34, "1"),
         (49, "SENDER"),
@@ -61,9 +101,9 @@ def logon_message():
 
 
 @pytest.fixture
-def sdr_message():
-    """Sample of a security definition request message"""
-    return GenericMessage(
+def sdr_message_fields():
+    """Sample of a security definition request message fields"""
+    return [
         (35, MsgType.SecurityDefinitionRequest),
         (34, "1"),  # MsgSeqNum: 1
         (49, "SENDER"),  # SenderCompID
@@ -73,7 +113,7 @@ def sdr_message():
         (167, "CS"),  # SecurityType: CommonStock
         (320, "37a0b5c8afb543ec8f29eca2a44be2ec"),  # SecurityReqID
         (321, "3"),  # SecurityRequestType: all
-    )
+    ]
 
 
 @pytest.fixture(scope="session")

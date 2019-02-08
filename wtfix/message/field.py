@@ -1,7 +1,7 @@
 import numbers
 from builtins import tuple as _tuple
 import collections
-from collections import Sequence
+from collections import abc
 from distutils.util import strtobool
 
 import wtfix.conf.global_settings
@@ -12,24 +12,33 @@ from ..protocol import common
 from wtfix.core import utils
 
 
-class FieldValue(Sequence):
+class FieldValue(abc.Sequence):
     """
     Used to store Field values (i.e. strings or bytes). Adds some convenience methods for making comparison
     checks easier.
     """
 
     def __init__(self, value):
-        if isinstance(value, FieldValue):
+        if utils.is_null(value):
+            # Convert FIX negative limit values to Python equivalent (i.e. NoneType).
+            value = None
+
+        elif isinstance(value, FieldValue):
             # FieldValues should be terminal nodes - don't wrap FieldValues in other FieldValues
-            self.value = value.value
-        else:
-            self.value = value
+            value = value.value
+        elif isinstance(value, bool):
+            if value is True:
+                value = "Y"
+            else:
+                value = "N"
+
+        self._value = value
 
     def __getitem__(self, i: int):
-        return self.value[i]
+        return self._value[i]
 
     def __len__(self) -> int:
-        return len(self.value)
+        return len(self._value)
 
     def __eq__(self, other):
         """
@@ -42,35 +51,53 @@ class FieldValue(Sequence):
         comparison of this FieldValue's value against other in all other instances.
         :raises ValueError: if comparison cannot be made.
         """
+        if self._value is None:
+            return other is None
+
         if isinstance(other, bool):
-            return strtobool(str(self.value)) == other
+            return strtobool(str(self._value)) == other
 
         if isinstance(other, bytes):
-            return utils.encode(self.value) == other
+            return utils.encode(self._value) == other
 
         if isinstance(other, numbers.Integral):
-            return int(self.value) == other
+            try:
+                return int(self._value) == other
+            except ValueError:
+                # self._value is not a numbers.Integral
+                return False
 
-        return utils.decode(self.value) == other
+        return str(utils.decode(self._value)) == other
 
     def __str__(self):
         """
         :return: The decoded string representation of this FieldValue.
         """
-        return str(utils.decode(self.value))
+        return str(utils.decode(self._value))
 
     def __contains__(self, item):
-        return item in self.value
+        return item in self._value
 
     def __iter__(self):
-        return iter(self.value)
+        return iter(self._value)
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        if utils.is_null(value):
+            value = None
+
+        self._value = value
 
     @property
     def raw(self):
         """
         :return: The byte encoded value of this FieldValue
         """
-        return utils.encode(self.value)
+        return utils.encode(self._value)
 
 
 class Field(collections.namedtuple("Field", ["tag", "value_ref"])):
@@ -99,7 +126,16 @@ class Field(collections.namedtuple("Field", ["tag", "value_ref"])):
         return _tuple.__new__(_cls, (tag, FieldValue(value)))
 
     def __eq__(self, other):
-        return self.value_ref == other
+        try:
+            # Try to compare as Field
+            return self.value_ref == other.value_ref
+        except AttributeError:
+            # Perhaps it is a tuple?
+            if isinstance(other, tuple):
+                return self.value_ref == other[1]
+            else:
+                # Fallback to comparing field values
+                return self.value_ref == other
 
     def __repr__(self):
         """
@@ -109,13 +145,13 @@ class Field(collections.namedtuple("Field", ["tag", "value_ref"])):
 
     def __str__(self):
         """
-        :return: (tag name, value) if the tag has been defined in one of the specifications,
-        (tag_number, value) otherwise.
+        :return: 'tag name:value' if the tag has been defined in one of the specifications,
+        'tag_number:value' otherwise.
         """
         if self.name == self.UNKNOWN_TAG:
-            return f"({self.tag}, {self.value_ref})"
+            return f"{self.tag}:{self.value_ref}"
 
-        return f"({self.name} ({self.tag}), {self.value_ref})"
+        return f"{self.name} ({self.tag}):{self.value_ref}"
 
     @property
     def name(self):
@@ -136,8 +172,25 @@ class Field(collections.namedtuple("Field", ["tag", "value_ref"])):
 
     @property
     def as_str(self):
+        if self.value_ref.value is None:
+            return None
+
         return str(self.value_ref)
 
     @property
     def as_int(self):
-        return int(self.as_str)
+        value = self.as_str
+
+        if value is None:
+            return None
+
+        return int(value)
+
+    @property
+    def as_bool(self):
+        value = self.as_str
+
+        if value is None:
+            return None
+
+        return strtobool(self.as_str) == 1

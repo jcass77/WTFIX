@@ -1,4 +1,9 @@
 import logging
+from asyncio import futures
+
+from unsync import (
+    unsync,
+)  # Import unsync to set event loop and start ambient unsync thread
 
 from wtfix.conf import logger
 from wtfix.conf import settings
@@ -12,7 +17,9 @@ if __name__ == "__main__":
 
     fix_pipeline = BasePipeline()
     try:
-        fix_pipeline.start()
+        fix_pipeline.start().result()
     except KeyboardInterrupt:
-        logger.info("Received keyboard interrupt!")
-        fix_pipeline.shutdown()
+        logger.info("Received keyboard interrupt! Initiating shutdown...")
+        fix_pipeline.stop().result()
+    except futures.CancelledError:
+        logger.error("Cancelled: session terminated abnormally!")

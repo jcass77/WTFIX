@@ -2,12 +2,8 @@ from datetime import datetime
 
 from wtfix.apps.base import BaseApp
 from wtfix.conf import settings
-from wtfix.core.exceptions import (
-    ParsingError,
-    MessageProcessingError,
-    TagNotFound,
-)
-from wtfix.message.message import BasicMessage
+from wtfix.core.exceptions import ParsingError, MessageProcessingError, TagNotFound
+from wtfix.message.message import RawMessage
 from wtfix.core import utils
 from wtfix.protocol.common import Tag
 
@@ -42,7 +38,7 @@ class EncoderApp(BaseApp):
 
         return message
 
-    # TODO: Add supporf for encoding BasicMessage instances?
+    # TODO: Add support for encoding RawMessage instances in addition to GenericMessage instances?
     def encode_message(self, message):
         """
         :param message: The message to encode.
@@ -51,6 +47,7 @@ class EncoderApp(BaseApp):
         generated header tags.
         """
         message.validate()  # Make sure the message is valid before attempting to encode.
+
         body = (
             b"35="
             + utils.encode(message.type)
@@ -69,7 +66,7 @@ class EncoderApp(BaseApp):
             + settings.SOH
         )
 
-        for field in message.values():
+        for field in message.fields:
             if field.tag in self.DYNAMIC_TAGS:  # These tags will be generated - ignore.
                 continue
             body += field.raw
@@ -84,23 +81,22 @@ class EncoderApp(BaseApp):
         )
 
         trailer = (
-            b"10=" + utils.encode(f"{utils.calculate_checksum(header + body):03}") + settings.SOH
+            b"10="
+            + utils.encode(f"{utils.calculate_checksum(header + body):03}")
+            + settings.SOH
         )
 
         return header + body + trailer
 
 
 class DecoderApp(BaseApp):
-    # TODO: Add support for raw data?
+    # TODO: Add support for raw data fields?
     # See: https://github.com/da4089/simplefix/blob/88613f798b300757380ef0b3f332c6d3df2b712b/simplefix/parser.py)
     """
-    Translates a FIX application messages in raw (wire) format into a BasicMessage instance.
+    Translates a FIX application messages in raw (wire) format into a RawMessage instance.
     """
 
     name = "decoder_app"
-
-    def __init__(self, pipeline, *args, **kwargs):
-        super().__init__(pipeline, *args, **kwargs)
 
     def on_receive(self, data: bytes):
         try:
@@ -115,15 +111,19 @@ class DecoderApp(BaseApp):
 
         :param data: An encoded FIX message.
         :param start: Position at which to start the search. Usually 0.
+
         :return: A tuple consisting of the value of the BeginString tag in encoded byte format, and the
         index at which the tag ends.
+
         :raises: ParsingError if the BeginString tag can either not be found, or if it is not the first tag
         in the message.
         """
         try:
             begin_string, start, tag_end = utils.index_tag(8, data, start=start)
         except TagNotFound as e:
-            raise ParsingError(f"BeginString (8) not found in {utils.decode(data)}.") from e
+            raise ParsingError(
+                f"BeginString (8) not found in {utils.decode(data)}."
+            ) from e
 
         if start != 0:
             # Begin string was not found at start of Message
@@ -143,8 +143,10 @@ class DecoderApp(BaseApp):
         :param body_end: Optimization: the index at which the body terminates in data. If this value
         is not provided then the data byte string will be parsed to look for the Checksum (10) tag,
         which should denote the end of the message body.
+
         :return: A tuple consisting of the value of the BodyLength tag in encoded byte format, and the
         index at which the tag ends.
+
         :raises: ParsingError if the BodyLength tag can either not be found, or if the actual body
         length does not match the check value provided by the server.
         """
@@ -154,7 +156,9 @@ class DecoderApp(BaseApp):
 
             body_length, _, tag_end = utils.index_tag(9, data, start=start)
         except TagNotFound as e:
-            raise ParsingError(f"BodyLength (9) not found in {utils.decode(data)}.") from e
+            raise ParsingError(
+                f"BodyLength (9) not found in {utils.decode(data)}."
+            ) from e
 
         body_length = int(body_length)
         actual_length = body_end - tag_end - 1
@@ -174,8 +178,10 @@ class DecoderApp(BaseApp):
         :param body_start: The index in the encoded message at which the message body starts.
         :param body_end: The index in the encoded message at which the message body ends.
         If this value is not provided, then it will default to the index at which the Checksum tag starts.
+
         :return: A tuple consisting of the value of the BeginString tag in encoded byte format, and the
         index at which the tag ends.
+
         :raises: ParsingError if the BeginString tag can either not be found, or if it is not the first tag
         in the message.
         """
@@ -203,7 +209,6 @@ class DecoderApp(BaseApp):
 
         return checksum, checksum_end
 
-    # TODO: check length and checksum!
     def decode_message(self, data):
         """
         Constructs a GenericMessage from the provided data. Also uses the BeginString (8), BodyLength (9),
@@ -225,19 +230,26 @@ class DecoderApp(BaseApp):
         )
 
         # MsgType must be the third field in the message
-        msg_type, _, msg_type_end_tag = utils.index_tag(Tag.MsgType, data, body_length_tag_end)
+        msg_type, _, msg_type_end_tag = utils.index_tag(
+            Tag.MsgType, data, body_length_tag_end
+        )
 
-        checksum, _ = self.check_checksum(data, body_start=0, body_end=checksum_tag_start)
+        checksum, _ = self.check_checksum(
+            data, body_start=0, body_end=checksum_tag_start
+        )
 
-        return BasicMessage(
+        message = RawMessage(
             begin_string,
             body_length=body_length,
             message_type=msg_type,
-            encoded_body=data[msg_type_end_tag + 1:checksum_tag_start],
+            encoded_body=data[msg_type_end_tag + 1: checksum_tag_start],
             checksum=checksum,
         )
+        return message
 
 
 class WireCommsApp(EncoderApp, DecoderApp):
-
+    """
+    Base class for sending and receiving messages on the FIX wire.
+    """
     name = "wire_comms"

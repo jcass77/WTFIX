@@ -1,0 +1,3 @@
+[run]
+include = wtfix/*
+omit = *migrations*, *tests*
