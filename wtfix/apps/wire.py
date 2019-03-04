@@ -28,6 +28,10 @@ class EncoderApp(BaseApp):
         Tag.DeliverToCompID,
     }
 
+    def on_send(self, message):
+        message = self.encode_message(message)
+        return message
+
     # TODO: Add support for encoding RawMessage instances in addition to GenericMessage instances?
     def encode_message(self, message):
         """
