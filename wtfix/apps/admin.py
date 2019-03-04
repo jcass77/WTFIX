@@ -1,5 +1,6 @@
 import asyncio
 import uuid
+from collections import OrderedDict
 from datetime import datetime
 
 from unsync import unsync
@@ -325,32 +326,33 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
     name = "seq_num_manager"
 
     def __init__(self, pipeline, *args, **kwargs):
-        self._last_sent_seq_num = 0
-        self._last_received_seq_num = 0
+        self._send_seq_num = 0
+        self._receive_seq_num = 0
+
+        self._send_buffer = OrderedDict()
 
         super().__init__(pipeline, *args, **kwargs)
 
     @property
-    def next_seq_num(self):
-        return max(self._last_received_seq_num, self._last_sent_seq_num) + 1
-        
-    def _check_seq_num_gap(self, message):
-        
-        if message.seq_num != self.next_seq_num:
-            num_dropped = message.seq_num - self.next_seq_num - 1
-            
-            if num_dropped < 0:
-                # Server missed messages
-                missing_seq_numbers = [seq_num for seq_num in range(self.next_seq_num - 1, message.seq_num)]
+    def send_seq_num(self):
+        return self._send_seq_num
 
-                logger.error(
-                    f"{self.name}: Server missed {abs(num_dropped)} messages. Sequence numbers: "
-                    f"{missing_seq_numbers}."
-                )
-                return missing_seq_numbers
-            else:
+    @property
+    def receive_seq_num(self):
+        return self._receive_seq_num
+
+    @property
+    def expected_receive_seq_num(self):
+        return self._receive_seq_num + 1
+
+    def _check_seq_num_gap(self, message):
+
+        if message.seq_num != self.expected_receive_seq_num:
+            num_dropped = message.seq_num - self.expected_receive_seq_num
+
+            if num_dropped > 0:
                 # Client missed messages
-                missing_seq_numbers = [seq_num for seq_num in range(message.seq_num, self.next_seq_num - 1)]
+                missing_seq_numbers = [seq_num for seq_num in range(self._receive_seq_num, message.seq_num)]
 
                 logger.error(
                     f"{self.name}: Client missed {num_dropped} messages. Sequence numbers: "
@@ -364,16 +366,31 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
         """
         Check the sequence number for every message received
         """
-        missing_seq_numbers = self._check_seq_num_gap(message)
-        
-        self._last_received_seq_num = message.seq_num
+        seq_num_gap = self._check_seq_num_gap(message)
+        if len(seq_num_gap) > 0:
+            # TODO: Send resend request and do gap fill
+            pass
+
+        if message.MsgType != MsgType.ResendRequest:
+            # All messages received up to this point - clear send buffer up to most recent message sent.
+            # This might be too aggressive as receiving messages does not gaurantee that previously sent ones
+            # were in fact received.
+            # TODO: implement redis- or database-based buffer to buffer ALL messages for this session
+            buffer_depth = len(self._send_buffer)
+
+            for i in range(buffer_depth - 1):
+                self._send_buffer.popitem(last=False)
+
+        self._receive_seq_num = message.seq_num
         return super().on_receive(message)
     
     def on_send(self, message):
         """
         Inject MsgSeqNum for every message to be sent.
         """
-        message.seq_num = self.next_seq_num
-        self._last_sent_seq_num = message.seq_num
+        self._send_seq_num += 1
+        message.seq_num = self._send_seq_num
+
+        self._send_buffer[message.seq_num] = message
 
         return super().on_send(message)
