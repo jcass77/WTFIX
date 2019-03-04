@@ -149,9 +149,9 @@ class RawMessage(FIXMessage, OrderedDictFieldSet):
 
 def generic_message_factory(*fields, **kwargs):
     try:
-        return OptimizedGenericMessage(*fields, **kwargs)
+        return OptimizedGenericMessage(*fields, **kwargs)  # Try to instantiate a OptimizedGenericMessage first
     except DuplicateTags:
-        return GenericMessage(*fields, **kwargs)
+        return GenericMessage(*fields, **kwargs)  # Fall back to GenericMessage
 
 
 class GenericMessage(FIXMessage, ListFieldSet):

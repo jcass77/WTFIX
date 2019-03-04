@@ -49,19 +49,19 @@ class EncoderApp(BaseApp):
         message.validate()  # Make sure the message is valid before attempting to encode.
 
         body = (
-            b"35="
+            utils.encode(f"{Tag.MsgType}=")
             + utils.encode(message.type)
             + settings.SOH
-            + b"34="
+            + utils.encode(f"{Tag.MsgSeqNum}=")
             + utils.encode(self.cur_seq_num)
             + settings.SOH
-            + b"49="
+            + utils.encode(f"{Tag.SenderCompID}=")
             + utils.encode(message.sender_id)
             + settings.SOH
-            + b"52="
+            + utils.encode(f"{Tag.SendingTime}=")
             + utils.encode(datetime.utcnow().strftime(settings.DATETIME_FORMAT)[:-3])
             + settings.SOH
-            + b"56="
+            + utils.encode(f"{Tag.TargetCompID}=")
             + utils.encode(message.target_id)
             + settings.SOH
         )
@@ -72,16 +72,16 @@ class EncoderApp(BaseApp):
             body += field.raw
 
         header = (
-            b"8="
+            utils.encode(f"{Tag.BeginString}=")
             + utils.encode(settings.BEGIN_STRING)
             + settings.SOH
-            + b"9="
+            + utils.encode(f"{Tag.BodyLength}=")
             + utils.encode(len(body))
             + settings.SOH
         )
 
         trailer = (
-            b"10="
+            utils.encode(f"{Tag.CheckSum}=")
             + utils.encode(f"{utils.calculate_checksum(header + body):03}")
             + settings.SOH
         )
