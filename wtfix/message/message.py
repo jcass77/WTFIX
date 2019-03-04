@@ -115,6 +115,7 @@ class RawMessage(FIXMessage, OrderedDictFieldSet):
         begin_string=None,
         body_length=None,
         message_type=None,
+        message_seq_num=None,
         encoded_body=None,
         checksum=None,
     ):
@@ -137,6 +138,7 @@ class RawMessage(FIXMessage, OrderedDictFieldSet):
             (Tag.BeginString, begin_string),
             (Tag.BodyLength, body_length),
             (Tag.MsgType, message_type),
+            (Tag.MsgSeqNum, message_seq_num),
             (Tag.CheckSum, checksum),
         )
 

@@ -315,3 +315,65 @@ class AuthenticationApp(MessageTypeHandlerApp):
         """
         logout_msg = generic_message_factory((Tag.MsgType, MsgType.Logout))
         self.send(logout_msg)
+
+
+class SeqNumManagerApp(MessageTypeHandlerApp):
+    """
+    Monitors message sequence numbers to detect dropped messages
+    """
+
+    name = "seq_num_manager"
+
+    def __init__(self, pipeline, *args, **kwargs):
+        self._last_sent_seq_num = 0
+        self._last_received_seq_num = 0
+
+        super().__init__(pipeline, *args, **kwargs)
+
+    @property
+    def next_seq_num(self):
+        return max(self._last_received_seq_num, self._last_sent_seq_num) + 1
+        
+    def _check_seq_num_gap(self, message):
+        
+        if message.seq_num != self.next_seq_num:
+            num_dropped = message.seq_num - self.next_seq_num - 1
+            
+            if num_dropped < 0:
+                # Server missed messages
+                missing_seq_numbers = [seq_num for seq_num in range(self.next_seq_num - 1, message.seq_num)]
+
+                logger.error(
+                    f"{self.name}: Server missed {abs(num_dropped)} messages. Sequence numbers: "
+                    f"{missing_seq_numbers}."
+                )
+                return missing_seq_numbers
+            else:
+                # Client missed messages
+                missing_seq_numbers = [seq_num for seq_num in range(message.seq_num, self.next_seq_num - 1)]
+
+                logger.error(
+                    f"{self.name}: Client missed {num_dropped} messages. Sequence numbers: "
+                    f"{missing_seq_numbers}."
+                )
+                return missing_seq_numbers
+            
+        return []
+
+    def on_receive(self, message):
+        """
+        Check the sequence number for every message received
+        """
+        missing_seq_numbers = self._check_seq_num_gap(message)
+        
+        self._last_received_seq_num = message.seq_num
+        return super().on_receive(message)
+    
+    def on_send(self, message):
+        """
+        Inject MsgSeqNum for every message to be sent.
+        """
+        message.seq_num = self.next_seq_num
+        self._last_sent_seq_num = message.seq_num
+
+        return super().on_send(message)

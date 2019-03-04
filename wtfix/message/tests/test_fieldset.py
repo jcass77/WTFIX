@@ -62,13 +62,19 @@ class TestFieldSet:
 
         assert len(fs) == 19
 
-    def test_setitem(self, fieldset_class):
+    def test_setitem_by_tag_number(self, fieldset_class):
         fs = fieldset_class((1, "a"), (2, "b"))
 
         fs[3] = "c"
         assert fs[3] == "c"
 
-    def test_setitem_replace(self, fieldset_class):
+    def test_setitem_by_tag_name(self, fieldset_class):
+        fs = fieldset_class((1, "a"), (2, "b"))
+
+        fs.MsgSeqNum = 1
+        assert fs[Tag.MsgSeqNum] == 1
+
+    def test_setitem_replace_by_tag_number(self, fieldset_class):
         fs = fieldset_class((1, "a"), (2, "b"))
         fs[3] = "c"
 
@@ -76,6 +82,15 @@ class TestFieldSet:
         assert fs[2] == "aa"
         assert len(fs) == 3
         assert fs.fields[1].tag == 2  # Confirm position in FieldSet is maintained
+
+    def test_setitem_replace_by_tag_name(self, fieldset_class):
+        fs = fieldset_class((1, "a"), (Tag.MsgType, "b"))
+        fs.MsgSeqNum = 1
+
+        fs.MsgType = "aa"
+        assert fs.MsgType == "aa"
+        assert len(fs) == 3
+        assert fs.fields[1].tag == Tag.MsgType  # Confirm position in FieldSet is maintained
 
     def test_getitem(self, fieldset_impl_ab):
         assert fieldset_impl_ab[1] == "a"

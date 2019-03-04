@@ -51,7 +51,7 @@ class FieldSet(abc.ABC):
     @abc.abstractmethod
     def __setitem__(self, tag, value):
         """
-        Sets a Field in the FieldSet with the specified tag number and value..
+        Sets a Field in the FieldSet with the specified tag number and value.
 
         :param tag: The tag number to set in the FieldSet.
         :param value: The value of the Field.
@@ -67,6 +67,23 @@ class FieldSet(abc.ABC):
         :return: A Field object.
         :raises: TagNotFound if a Field with the specified tag number could not be found.
         """
+
+    def __setattr__(self, key, value):
+        """
+        Set the value of a Field in a Fieldset
+
+        :param key: The Field's tag name
+        :param value: The value to set the Field to
+        """
+        try:
+            tag_num = common.Tag.get_tag(key)
+            self[tag_num].value_ref.value = value
+        except UnknownTag:
+            # Not a known tag number, fall back to default Python implementation
+            return super().__setattr__(key, value)
+        except TagNotFound:
+            # Valid tag, but it has not been added to FieldSet yet - do so now
+            self[tag_num] = value
 
     def __iter__(self):
         """

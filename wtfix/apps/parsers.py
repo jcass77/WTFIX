@@ -22,12 +22,18 @@ class RawMessageParserApp(BaseApp, GroupTemplateMixin):
             message[Tag.BeginString],
             message[Tag.BodyLength],
             message[Tag.MsgType],
+            message[Tag.MsgSeqNum],
             *self._parse_fields(data),
             message[Tag.CheckSum],
         ]
 
         message = generic_message_factory(*fields, group_templates=self.group_templates)
         logger.info(f" <-- {message}")
+
+        return message
+
+    def on_send(self, message: RawMessage):
+        logger.info(f" --> {message}")
 
         return message
 

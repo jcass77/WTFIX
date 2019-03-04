@@ -37,6 +37,7 @@ PASSWORD = os.getenv("PASSWORD")
 PIPELINE_APPS = [
     "wtfix.apps.admin.HeartbeatApp",
     "wtfix.apps.admin.AuthenticationApp",
+    "wtfix.apps.admin.SeqNumManagerApp",
     "wtfix.apps.parsers.RawMessageParserApp",
     "wtfix.apps.wire.WireCommsApp",
     "wtfix.apps.sessions.ClientSessionApp",

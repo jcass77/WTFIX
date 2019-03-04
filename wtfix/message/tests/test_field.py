@@ -97,6 +97,12 @@ class TestFieldValue:
     def test_iter(self):
         assert [i for i in iter(FieldValue("abc"))] == ["a", "b", "c"]
 
+    def test_value_setter(self):
+        fv = FieldValue(123)
+        fv.value = 456
+
+        assert fv.value == 456
+
     def test_value_setter_converts_null(self):
         fv = FieldValue(123)
         assert fv.value == 123

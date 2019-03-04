@@ -3,7 +3,7 @@ import pytest
 from wtfix.apps.wire import DecoderApp
 from wtfix.conf import settings
 from wtfix.core.exceptions import ValidationError, ParsingError
-from wtfix.message.message import GenericMessage, generic_message_factory
+from wtfix.message.message import generic_message_factory
 from wtfix.core import utils
 from wtfix.protocol.common import Tag, MsgType
 
@@ -25,7 +25,7 @@ class TestEncoderApp:
             encoder_app.encode_message(generic_message_factory((1, "a"), (2, "b")))
 
     def test_encode_message_nested_group(self, encoder_app, nested_parties_group):
-        m = generic_message_factory((35, "a"), (2, "bb"))
+        m = generic_message_factory((35, "a"), (34, 1), (2, "bb"))
         m.set_group(nested_parties_group)
 
         # Compare just the group-related bytes.
@@ -97,10 +97,11 @@ class TestDecoderApp:
         assert m[Tag.BeginString] == b"FIX.4.4"
         assert m[Tag.BodyLength] == b"113"
         assert m[Tag.MsgType] == b"c"
+        assert m[Tag.MsgSeqNum] == b"1"
         # Compare body, skipping timestamp and checksum
-        assert m.encoded_body[:18] == b"34=1\x0149=SENDER\x0152="
+        assert m.encoded_body[:13] == b"49=SENDER\x0152="
         assert (
-            m.encoded_body[40:]
+            m.encoded_body[35:]
             == b"56=TARGET\x0155=^.*$\x01167=CS\x01320=37a0b5c8afb543ec8f29eca2a44be2ec\x01321=3\x01"
         )
 
@@ -109,7 +110,7 @@ class TestDecoderApp:
     ):
         with pytest.raises(ParsingError):
             m = generic_message_factory(
-                (Tag.MsgType, MsgType.TestRequest), (Tag.TestReqID, "a")
+                (Tag.MsgType, MsgType.TestRequest), (Tag.MsgSeqNum, 1), (Tag.TestReqID, "a")
             )
             data = encoder_app.encode_message(m).replace(
                 b"8=" + utils.encode(settings.BEGIN_STRING), b""

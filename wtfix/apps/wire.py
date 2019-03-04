@@ -28,16 +28,6 @@ class EncoderApp(BaseApp):
         Tag.DeliverToCompID,
     }
 
-    def __init__(self, pipeline, *args, **kwargs):
-        super().__init__(pipeline, *args, **kwargs)
-        self.cur_seq_num = 1  # TODO: Move to a future sequence number manager app?
-
-    def on_send(self, message):
-        message = self.encode_message(message)
-        self.cur_seq_num += 1
-
-        return message
-
     # TODO: Add support for encoding RawMessage instances in addition to GenericMessage instances?
     def encode_message(self, message):
         """
@@ -53,7 +43,7 @@ class EncoderApp(BaseApp):
             + utils.encode(message.type)
             + settings.SOH
             + utils.encode(f"{Tag.MsgSeqNum}=")
-            + utils.encode(self.cur_seq_num)
+            + utils.encode(message.seq_num)
             + settings.SOH
             + utils.encode(f"{Tag.SenderCompID}=")
             + utils.encode(message.sender_id)
@@ -234,6 +224,11 @@ class DecoderApp(BaseApp):
             Tag.MsgType, data, body_length_tag_end
         )
 
+        # MsgSeqNum must be the fourth field in the message
+        msg_seq_num, _, msg_seq_num_end_tag = utils.index_tag(
+            Tag.MsgSeqNum, data, msg_type_end_tag
+        )
+
         checksum, _ = self.check_checksum(
             data, body_start=0, body_end=checksum_tag_start
         )
@@ -242,7 +237,8 @@ class DecoderApp(BaseApp):
             begin_string,
             body_length=body_length,
             message_type=msg_type,
-            encoded_body=data[msg_type_end_tag + 1: checksum_tag_start],
+            message_seq_num=msg_seq_num,
+            encoded_body=data[msg_seq_num_end_tag + 1: checksum_tag_start],
             checksum=checksum,
         )
         return message

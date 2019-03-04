@@ -51,10 +51,10 @@ class BasePipeline:
             )
 
         for app in installed_apps:
-            last_dot = app.rfind(".")
-            module = importlib.import_module(app[:last_dot])
+            mod_name, class_name = app.rsplit(".", 1)
+            module = importlib.import_module(mod_name)
 
-            class_ = getattr(module, app[last_dot + 1 :])
+            class_ = getattr(module, class_name)
             instance = class_(self)
 
             loaded_apps[instance.name] = instance
@@ -186,5 +186,4 @@ class BasePipeline:
     @unsync
     async def send(self, message):
         """Processes a new message to be sent"""
-        logger.info(f" --> {message}")
         return await self._process_message(message, self.OUTBOUND_PROCESSING)

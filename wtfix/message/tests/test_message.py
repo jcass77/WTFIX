@@ -74,13 +74,14 @@ class TestBasicMessage:
     def test_str(self):
         bm = RawMessage(
             message_type=MsgType.QuoteStatusRequest,
+            message_seq_num=1,
             encoded_body=b"12345" + settings.SOH + b"67890" + settings.SOH,
         )
 
         assert (
             str(bm)
             == "QuoteStatusRequest (a): {BeginString (8):FIX.4.4 | BodyLength (9):12 | "
-            "MsgType (35):a | CheckSum (10):15}, with content - b'12345\\x0167890\\x01'"
+            "MsgType (35):a | MsgSeqNum (34):1 | CheckSum (10):15}, with content - b'12345\\x0167890\\x01'"
         )
 
 
