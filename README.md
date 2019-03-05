@@ -26,6 +26,7 @@ The Pythonic Financial Information eXchange client for humans.
     ```
     
 - Provides a convenient ``@on`` decorator for fine grained control over which apps will respond to which types of messages:
+ 
     ```python
     from wtfix.apps.base import MessageTypeHandlerApp, on
     from wtfix.protocol.common import MsgType
@@ -68,16 +69,16 @@ The Pythonic Financial Information eXchange client for humans.
     >>> logon_msg[108]  # Using old school tag number
     (108, b"30")
   
-    >>> logon_msg[Tag.HeartBtInt]  # Using Tag name as per FIX specification
+    >>> logon_msg[Tag.HeartBtInt]  # Using the tag name as per the FIX specification
     (108, b"30")
   
-    >>> logon_msg.HeartBtInt  # Using shortcut approach
+    >>> logon_msg.HeartBtInt  # Using tag name shortcut
     (108, b"30")
     ```    
-- A [unicode sandwich](https://nedbatchelder.com/text/unipain.html) based approach means that you do not need to deal with bytestrings...
+- A more pragmatic [unicode sandwich](https://nedbatchelder.com/text/unipain.html) based approach to encoding / decoding messages mean that you never need to deal with byte strings...
  
     ```python
-    # Duck typing for doing tag value comparisons
+    # Duck typing for doing field value comparisons
     >>> logon_msg.HeartBtInt == 30
     True
   
@@ -88,6 +89,7 @@ The Pythonic Financial Information eXchange client for humans.
     True
     ```
 - ...unless you want to:
+
     ```python
     # Accessing the underlying byte string
     >>> logon_msg.HeartBtInt.value_ref.value
@@ -97,20 +99,31 @@ The Pythonic Financial Information eXchange client for humans.
     b'35=A\x0198=0\x01108=30\x01553=my_username\x01554=my_password\x01'
     ```
 - ...with on the fly type conversions:
+ 
     ```python
     >>> logon_msg.HeartBtInt.as_str
     '30'
+    
     >>> logon_msg.HeartBtInt.as_int
     30
+    
+    >>> logon_msg.PossDupFlag = "Y"
+    >>> logon_msg.PossDupFlag.as_bool
+    True
+    
+    >>> logon_msg.PossDupFlag == True
+    True
+  
     ```
 - A very forgiving approach to repeating groups of message tags:
+ 
     ```python
     from wtfix.message.message import generic_message_factory
   
     # If you provide a group template, then messages are stored in a more efficient 'OrderedDict'
-    >>> msg = generic_message_factory((1, "a"), (2, 2), (3, "1st_group_tag3"), (4, "1st_group_tag_4"), (3, "2nd_group_tag3"), (4, "2nd_group_tag_4"), group_templates={2: [3, 4,]})
+    >>> msg = generic_message_factory((1, "a"), (2, 2), (3, "1st_group_val_3"), (4, "1st_group_val_4"), (3, "2nd_group_val_3"), (4, "2nd_group_val_4"), group_templates={2: [3, 4,]})
     >>> msg_.fields
-    OrderedDict([(1, (1, a)), (2, [(2, 2)]:[(3, 1st_group_tag3), (4, 1st_group_tag_4)], [(3, 2nd_group_tag3), (4, 2nd_group_tag_4)])])
+    OrderedDict([(1, (1, a)), (2, [(2, 2)]:[(3, '1st_group_val_3'), (4, '1st_group_val_4')], [(3, '2nd_group_val_3'), (4, '2nd_group_val_4)'])])
     
     # ...providing fast group and group instance lookups:
     >>> group = msg.get_group(2)
@@ -123,9 +136,9 @@ The Pythonic Financial Information eXchange client for humans.
     [(3, 2nd_group_tag3), (4, 2nd_group_tag_4)]
    
     # Without a pre-defined group template we fall back to using a (slightly slower) list structure for representing message fields internally
-    >>> msg = generic_message_factory((1, "a"), (2, 2), (3, "1st_group_tag3"), (4, "1st_group_tag_4"), (3, "2nd_group_tag3"), (4, "2nd_group_tag_4"))
+    >>> msg = generic_message_factory((1, "a"), (2, 2), (3, "1st_group_val_3"), (4, "1st_group_val_4"), (3, "2nd_group_val_3"), (4, "2nd_group_val_4"))
     >>> msg_.fields
-    [(1, a), (2, 2), (3, 1st_group_tag3), (4, 1st_group_tag_4), (3, 2nd_group_tag3), (4, 2nd_group_tag_4)]
+    [(1, a), (2, 2), (3, '1st_group_val_3'), (4, '1st_group_val_4'), (3, '2nd_group_val_3'), (4, '2nd_group_val_4)')]
   
     ```
     
