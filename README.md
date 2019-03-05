@@ -13,7 +13,7 @@ The Pythonic Financial Information eXchange (FIX) client for humans.
 ## Project Highlights
 
 - Pure Python3.
-- Batteries included - everything you need to connect to a FIX server and start sending and receiving messages in minutes. Comes bundled with default apps for:
+- Batteries included - comes with everything that you need to connect to a FIX server and start sending and receiving messages in minutes. Provides default implementations for:
     - Authentication
     - Maintaining a heartbeat
     - Sequence number management and resend requests
@@ -32,7 +32,7 @@ The Pythonic Financial Information eXchange (FIX) client for humans.
     ]
     ```
     
-- Provides a convenient ``@on`` decorator for fine grained control over which apps will respond to which types of messages:
+- Provides a convenient ``@on`` decorator for fine-grained control over which apps will respond to which types of messages:
  
     ```python
     from wtfix.apps.base import MessageTypeHandlerApp, on
@@ -50,7 +50,7 @@ The Pythonic Financial Information eXchange (FIX) client for humans.
           logger.info(f"Received message {message}!")
     ```
 
-- A simple message tag syntax, and various convenience methods, that are kind to humans - no more trying to decipher byte streams. Example ``Logon`` message:
+- A simple message tag syntax, and various convenience methods, that are kind to humans - no more trying to decipher raw byte streams. Example ``Logon`` message:
 
     ```python
     >>> from wtfix.message import admin
@@ -105,7 +105,7 @@ The Pythonic Financial Information eXchange (FIX) client for humans.
     >>> logon_msg.raw
     b'35=A\x0198=0\x01108=30\x01553=my_username\x01554=my_password\x01'
     ```
-- ...with on the fly type conversions:
+-   On the fly field conversions to commonly used types:
  
     ```python
     >>> logon_msg.HeartBtInt.as_str
@@ -154,7 +154,7 @@ The Pythonic Financial Information eXchange (FIX) client for humans.
 
 - Install the project's dependencies (e.g. `pip install -r requirements/local.txt`), preferably in a virtual
   machine that has been created specifically for that purpose.
-- Run the test suite with `pytest`.
+- Run the test suite with `pytest` to verify the installation.
 - Create a `.env` file in the project's root directory that contains at least the following configuration settings:
 
     ```python
@@ -173,7 +173,7 @@ The Pythonic Financial Information eXchange (FIX) client for humans.
     PYTHONASYNCIODEBUG=0  # Set to '1' for detailed debugging messages.
     ```
     
-- Start the client with `python runclient.py`. The default implementation will log in to the FIX server and maintain a steady heartbeat.
+- Start the FIX client with `python runclient.py`. The default implementation will log in to the FIX server and maintain a steady heartbeat.
 - Use `Ctrl-C` to quit - stops the message processing pipeline in an orderly fashion by doing a proper `Logout`.
     
 ## Project Resources
