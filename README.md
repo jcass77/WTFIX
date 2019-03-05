@@ -127,6 +127,7 @@ The Pythonic Financial Information eXchange client for humans.
     
     # ...providing fast group and group instance lookups:
     >>> group = msg.get_group(2)
+   
     # Determine the number of instances in the group
     >>> group.size
     2
@@ -150,7 +151,7 @@ The Pythonic Financial Information eXchange client for humans.
 - Create a `.env` file in the project's root directory that contains at least the following configuration settings:
 
     ```python
-    # Support for different configuration settings for local development, staging, or production environments.
+    # Supports different configuration settings for local development, staging, or production environments.
     WTFIX_SETTINGS_MODULE=config.settings.local
     
     HOST=             # Required. The FIX server hostname or IP address
@@ -176,4 +177,4 @@ The Pythonic Financial Information eXchange client for humans.
 ## Inspired By
 
 - [slowbreak](https://pypi.org/project/slowbreak/)'s message processing pipeline and ``@on`` decorator
-- [simplefix](https://github.com/da4089/simplefix)'s approach to raw message processing
+- [simplefix](https://github.com/da4089/simplefix)'s approach to raw message parsing
