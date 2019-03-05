@@ -6,7 +6,7 @@ The Pythonic Financial Information eXchange client for humans.
 ## Project Highlights
 
 - Pure Python3.
-- Batteries included - everything you need to connect to a FIX server and start sending and receiving messages in minutes. Comes bundles with standard apps for:
+- Batteries included - everything you need to connect to a FIX server and start sending and receiving messages in minutes. Comes bundled with default apps for:
     - Authentication
     - Maintaining a heartbeat
     - Sequence number management and resend requests
@@ -141,6 +141,31 @@ The Pythonic Financial Information eXchange client for humans.
     [(1, a), (2, 2), (3, '1st_group_val_3'), (4, '1st_group_val_4'), (3, '2nd_group_val_3'), (4, '2nd_group_val_4')]
   
     ```
+    
+## Getting Started
+
+- Install the project's dependencies (e.g. `pip install -r requirements/local.txt`), preferably in a virtual
+  machine that has been created specifically for that purpose.
+- Run the test suite with `pytest`.
+- Create a `.env` file in the project's root directory that contains at least the following configuration settings:
+
+    ```python
+    # Support for different configuration settings for development, staging, or production environments.
+    WTFIX_SETTINGS_MODULE=config.settings.local
+    
+    HOST=             # Required. The FIX server hostname or IP address
+    PORT=             # Required. The port on the FIX server to connect to
+    
+    SENDER_COMP_ID=   # Required. Sender ID (tag 49).
+    TARGET_COMP_ID=   # Required. Target ID (tag 56).
+    
+    USERNAME=         # Required. Username to use for Logon messages (tag 553).
+    PASSWORD=         # Required. Password to use for logon messages (tag 554).
+    
+    PYTHONASYNCIODEBUG=0  # Set to '1' for detailed debugging messages.
+    ```
+    
+- Start the client with `python runclient.py`. `Ctrl-C` to quit.
     
 ## Project Resources
 
