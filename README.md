@@ -150,7 +150,7 @@ The Pythonic Financial Information eXchange client for humans.
 - Create a `.env` file in the project's root directory that contains at least the following configuration settings:
 
     ```python
-    # Support for different configuration settings for development, staging, or production environments.
+    # Support for different configuration settings for local development, staging, or production environments.
     WTFIX_SETTINGS_MODULE=config.settings.local
     
     HOST=             # Required. The FIX server hostname or IP address
@@ -165,7 +165,8 @@ The Pythonic Financial Information eXchange client for humans.
     PYTHONASYNCIODEBUG=0  # Set to '1' for detailed debugging messages.
     ```
     
-- Start the client with `python runclient.py`. `Ctrl-C` to quit.
+- Start the client with `python runclient.py`. The default implementation will log in to the FIX server and maintain a steady heartbeat.
+- Use `Ctrl-C` to quit - stops the message processing pipeline in an orderly fashion by doing a proper `Logout`.
     
 ## Project Resources
 
