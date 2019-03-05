@@ -7,10 +7,13 @@ from unsync import unsync
 
 from wtfix.apps.base import MessageTypeHandlerApp, on
 from wtfix.conf import logger, settings
-from wtfix.core.exceptions import MessageProcessingError, TagNotFound
+from wtfix.core.exceptions import (
+    MessageProcessingError,
+    TagNotFound,
+    StopMessageProcessing,
+    SessionError)
 from wtfix.message import admin
 from wtfix.core import utils
-from wtfix.message.message import generic_message_factory
 from wtfix.protocol.common import MsgType, Tag
 
 
@@ -122,7 +125,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
         logger.warning(
             f"{self.name}: Heartbeat exceeded, sending test request '{self._test_request_id}'..."
         )
-        self.send(admin.TestRequest(utils.encode(self._test_request_id)))
+        self.send(admin.TestRequestMessage(utils.encode(self._test_request_id)))
 
         # Sleep while we wait for a response on the test request
         await asyncio.sleep(self.test_request_response_delay)
@@ -152,7 +155,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
         logger.debug(
             f"{self.name}: Sending heartbeat in response to request {message[Tag.TestReqID]}."
         )
-        self.send(admin.Heartbeat(message[Tag.TestReqID].as_str))
+        self.send(admin.HeartbeatMessage(message[Tag.TestReqID].as_str))
 
         return message
 
@@ -195,7 +198,7 @@ class AuthenticationApp(MessageTypeHandlerApp):
     def __init__(
         self,
         pipeline,
-        heartbeat_time=None,
+        heartbeat_int=None,
         username=None,
         password=None,
         reset_seq_nums=True,
@@ -205,10 +208,10 @@ class AuthenticationApp(MessageTypeHandlerApp):
     ):
         super().__init__(pipeline, *args, **kwargs)
 
-        if heartbeat_time is None:
-            heartbeat_time = settings.HEARTBEAT_TIME
+        if heartbeat_int is None:
+            heartbeat_int = settings.HEARTBEAT_INTERVAL
 
-        self.heartbeat_time = heartbeat_time
+        self.heartbeat_int = heartbeat_int
 
         if username is None:
             username = settings.USERNAME
@@ -254,9 +257,9 @@ class AuthenticationApp(MessageTypeHandlerApp):
         :raises: MessageProcessingError if any of the session parameters do not match what was sent to the server.
         """
         heartbeat_time = message.HeartBtInt.as_int
-        if heartbeat_time != self.heartbeat_time:
+        if heartbeat_time != self.heartbeat_int:
             raise MessageProcessingError(
-                f"{self.name}: Heartbeat confirmation '{heartbeat_time}' does not match logon value {self.heartbeat_time}."
+                f"{self.name}: Heartbeat confirmation '{heartbeat_time}' does not match logon value {self.heartbeat_int}."
             )
 
         try:
@@ -292,13 +295,7 @@ class AuthenticationApp(MessageTypeHandlerApp):
         """
         Log on to the FIX server using the provided credentials.
         """
-        logon_msg = generic_message_factory(
-            (Tag.MsgType, MsgType.Logon),
-            (Tag.EncryptMethod, "0"),  # TODO: should this be a configurable value?
-            (Tag.HeartBtInt, self.heartbeat_time),
-            (Tag.Username, self.username),
-            (Tag.Password, self.password),
-        )
+        logon_msg = admin.LogonMessage(self.username, self.password, heartbeat_int=self.heartbeat_int)
 
         if self.reset_seq_nums:
             logon_msg[Tag.ResetSeqNumFlag] = "Y"
@@ -314,7 +311,7 @@ class AuthenticationApp(MessageTypeHandlerApp):
         """
         Log out of the FIX server.
         """
-        logout_msg = generic_message_factory((Tag.MsgType, MsgType.Logout))
+        logout_msg = admin.LogoutMessage()
         self.send(logout_msg)
 
 
@@ -325,11 +322,22 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
     name = "seq_num_manager"
 
+    ADMIN_MESSAGES = [
+        MsgType.Logon,
+        MsgType.Logout,
+        MsgType.ResendRequest,
+        MsgType.Heartbeat,
+        MsgType.TestRequest,
+        MsgType.SequenceReset,
+    ]
+
     def __init__(self, pipeline, *args, **kwargs):
         self._send_seq_num = 0
         self._receive_seq_num = 0
 
-        self._send_buffer = OrderedDict()
+        # TODO: make implementation of send and receive logs plug-able to reduce memory consumption (redis support)
+        self._send_log = OrderedDict()
+        self._receive_log = OrderedDict()
 
         super().__init__(pipeline, *args, **kwargs)
 
@@ -342,55 +350,119 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
         return self._receive_seq_num
 
     @property
-    def expected_receive_seq_num(self):
+    def expected_seq_num(self):
         return self._receive_seq_num + 1
 
     def _check_seq_num_gap(self, message):
+        if message.seq_num > self.expected_seq_num:
+            # We've missed some incoming messages
 
-        if message.seq_num != self.expected_receive_seq_num:
-            num_dropped = message.seq_num - self.expected_receive_seq_num
+            missing_seq_numbers = [
+                seq_num
+                for seq_num in range(self.receive_seq_num + 1, message.seq_num)
+            ]
 
-            if num_dropped > 0:
-                # Client missed messages
-                missing_seq_numbers = [seq_num for seq_num in range(self._receive_seq_num, message.seq_num)]
+            logger.error(
+                f"{self.name}: Client missed {len(missing_seq_numbers)} messages. Sequence numbers: "
+                f"{missing_seq_numbers}."
+            )
 
-                logger.error(
-                    f"{self.name}: Client missed {num_dropped} messages. Sequence numbers: "
-                    f"{missing_seq_numbers}."
+            self._handle_seq_num_gaps(missing_seq_numbers)
+
+    def _handle_seq_num_gaps(self, missing_seq_numbers):
+        self.send(
+            admin.ResendRequestMessage(missing_seq_numbers[0])
+        )
+
+        raise StopMessageProcessing(
+            f"Detected message sequence gap: {missing_seq_numbers}. Discarding message."
+        )
+
+    def _check_poss_dup(self, message):
+        if message.seq_num < self.expected_seq_num:
+            error_msg = f"Unexpected message sequence number '{message.seq_num}'. Expected '{self.expected_seq_num}'."
+
+            try:
+                if message.PossDupFlag.as_bool is True:
+                    raise StopMessageProcessing(
+                        f"Ignoring duplicate message {message}."
+                    )
+        # According to the FIX specification, receiving a lower than expected sequence number, that is not a duplicate,
+        # is a fatal error that requires manual intervention. Throw an unhandled exception to force-stop the pipeline.
+            except TagNotFound:
+                raise SessionError(error_msg)
+
+            raise SessionError(error_msg)
+
+    @on(MsgType.ResendRequest)
+    def on_resend_request(self, message):
+        begin_seq_no = message.BeginSeqNo.as_int
+        end_seq_no = message.EndSeqNo.as_int
+
+        if end_seq_no == 0:
+            # Server requested all messages
+            end_seq_no = self.send_seq_num
+
+        logger.info(
+            f"Resending messages {begin_seq_no} through {end_seq_no}."
+        )
+
+        last_admin_seq_num = None
+        next_seq_num = begin_seq_no
+
+        for seq_num in range(begin_seq_no, end_seq_no + 1):
+            resend_msg = self._send_log[seq_num]
+
+            if resend_msg.MsgType in self.ADMIN_MESSAGES:
+                # Admin message - see if there are more sequential ones in the send log
+                last_admin_seq_num = resend_msg.seq_num
+                continue
+
+            elif last_admin_seq_num is not None:
+                # Admin messages were found, submit SequenceReset
+                self.send(
+                    admin.SequenceResetMessage(next_seq_num, last_admin_seq_num + 1)
                 )
-                return missing_seq_numbers
-            
-        return []
+                next_seq_num = last_admin_seq_num + 1
+                last_admin_seq_num = None
+
+            # Resend message
+            resend_msg = resend_msg.copy()  # Make a copy so that we do not change entries in the send log.
+            resend_msg.MsgSeqNum = next_seq_num
+            resend_msg.PossDupFlag = "Y"
+            resend_msg.OrigSendingTime = resend_msg.SendingTime.value_ref
+
+            self.send(resend_msg)
+            next_seq_num += 1
+
+        return message
 
     def on_receive(self, message):
         """
         Check the sequence number for every message received
         """
-        seq_num_gap = self._check_seq_num_gap(message)
-        if len(seq_num_gap) > 0:
-            # TODO: Send resend request and do gap fill
-            pass
-
-        if message.MsgType != MsgType.ResendRequest:
-            # All messages received up to this point - clear send buffer up to most recent message sent.
-            # This might be too aggressive as receiving messages does not gaurantee that previously sent ones
-            # were in fact received.
-            # TODO: implement redis- or database-based buffer to buffer ALL messages for this session
-            buffer_depth = len(self._send_buffer)
-
-            for i in range(buffer_depth - 1):
-                self._send_buffer.popitem(last=False)
+        self._check_seq_num_gap(message)
+        self._check_poss_dup(message)
 
         self._receive_seq_num = message.seq_num
+
+        self._receive_log[message.seq_num] = message
         return super().on_receive(message)
-    
+
     def on_send(self, message):
         """
-        Inject MsgSeqNum for every message to be sent.
+        Inject MsgSeqNum for every message to be sent, except duplicates.
         """
-        self._send_seq_num += 1
-        message.seq_num = self._send_seq_num
+        try:
+            is_duplicate = message.PossDupFlag.as_bool
+        except TagNotFound:
+            is_duplicate = False
 
-        self._send_buffer[message.seq_num] = message
+        if not is_duplicate:
+            # Set sequence number and add to send log
+            self._send_seq_num += 1
+            message.seq_num = self.send_seq_num
+
+            self._send_log[message.seq_num] = message
 
         return super().on_send(message)

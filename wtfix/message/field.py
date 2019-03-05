@@ -5,9 +5,8 @@ from collections import abc
 from distutils.util import strtobool
 
 import wtfix.conf.global_settings
-import wtfix.core.exceptions
+from wtfix.core import exceptions
 from wtfix.conf import settings
-from wtfix.core.exceptions import InvalidField
 from ..protocol import common
 from wtfix.core import utils
 
@@ -54,20 +53,61 @@ class FieldValue(abc.Sequence):
         if self._value is None:
             return other is None
 
+        return self._equality_check("eq", other)
+
+    def _equality_check(self, check_method, other):
+        comparitor = None
         if isinstance(other, bool):
-            return strtobool(str(self._value)) == other
+            comparitor = strtobool(str(self._value))
 
-        if isinstance(other, bytes):
-            return utils.encode(self._value) == other
+        elif isinstance(other, bytes):
+            comparitor = utils.encode(self._value)
 
-        if isinstance(other, numbers.Integral):
+        elif isinstance(other, numbers.Integral):
             try:
-                return int(self._value) == other
+                comparitor = int(self._value)
             except ValueError:
                 # self._value is not a numbers.Integral
                 return False
 
-        return str(utils.decode(self._value)) == other
+        elif isinstance(other, FieldValue):
+            comparitor = self
+            other = other._value
+
+        else:
+            comparitor = str(utils.decode(self._value))
+
+        if check_method == "eq":
+            check_method = comparitor.__eq__
+
+        elif check_method == "lt":
+            check_method = comparitor.__lt__
+
+        elif check_method == "le":
+            check_method = comparitor.__le__
+
+        elif check_method == "gt":
+            check_method = comparitor.__gt__
+
+        elif check_method == "ge":
+            check_method = comparitor.__ge__
+
+        else:
+            raise exceptions.ValidationError(f"Unknown equality operator '{check_method}'.")
+
+        return check_method(other)
+
+    def __lt__(self, other):
+        return self._equality_check("lt", other)
+
+    def __le__(self, other):
+        return self._equality_check("le", other)
+
+    def __gt__(self, other):
+        return self._equality_check("gt", other)
+
+    def __ge__(self, other):
+        return self._equality_check("ge", other)
 
     def __str__(self):
         """
@@ -121,7 +161,7 @@ class Field(collections.namedtuple("Field", ["tag", "value_ref"])):
             try:
                 tag = int(tag)
             except ValueError as e:
-                raise InvalidField(f"Tag '{tag}' must be an integer.") from e
+                raise exceptions.InvalidField(f"Tag '{tag}' must be an integer.") from e
 
         return _tuple.__new__(_cls, (tag, FieldValue(value)))
 

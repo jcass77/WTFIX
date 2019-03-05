@@ -41,6 +41,13 @@ class InvalidField(Exception):
     pass
 
 
+class SessionError(Exception):
+    """
+    Fatal session error from which no recovery is possible
+    """
+    pass
+
+
 class _TagException(Exception):
     """
     Base class for exceptions that are related to issues with tags.

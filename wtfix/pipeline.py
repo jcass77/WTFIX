@@ -11,8 +11,7 @@ from wtfix.core.exceptions import (
     MessageProcessingError,
     StopMessageProcessing,
     ValidationError,
-    ImproperlyConfigured,
-)
+    ImproperlyConfigured)
 
 
 class BasePipeline:

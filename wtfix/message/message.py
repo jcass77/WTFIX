@@ -87,6 +87,12 @@ class FIXMessage(abc.ABC):
         """
         self._fields.clear()
 
+    @abc.abstractmethod
+    def copy(self):
+        """
+        Make a copy of this message
+        """
+
     def validate(self):
         """
         A well-formed message should, at minimum, contain tag 35.
@@ -142,6 +148,16 @@ class RawMessage(FIXMessage, OrderedDictFieldSet):
             (Tag.CheckSum, checksum),
         )
 
+    def copy(self):
+        return RawMessage(
+            begin_string=self.BeginString.value_ref.value,
+            body_length=self.BodyLength.value_ref.value,
+            message_type=self.MsgType.value_ref.value,
+            message_seq_num=self.MsgSeqNum.value_ref.value,
+            encoded_body=self.encoded_body,
+            checksum=self.CheckSum.value_ref.value,
+        )
+
     def __str__(self):
         """
         :return: name (type): ((tag_name_1, value_1), (tag_name_2, value_2))
@@ -162,9 +178,25 @@ class GenericMessage(FIXMessage, ListFieldSet):
 
     We think of FIX messages as lists of (tag, value) pairs, where tag is a number and value is a bytestring.
     """
+    def copy(self):
+        copy = GenericMessage()
+        copy._fields = self._fields.copy()
+
+        return copy
 
 
 class OptimizedGenericMessage(FIXMessage, OrderedDictFieldSet):
     """
     An optimized implementation based on storing fields in a dictionary instead of a list.
     """
+
+    def __eq__(self, other):
+        if super().__eq__(other):
+            return self.group_templates == other.group_templates
+
+    def copy(self):
+        copy = OptimizedGenericMessage()
+        copy.group_templates = self.group_templates
+        copy._fields = self._fields.copy()
+
+        return copy

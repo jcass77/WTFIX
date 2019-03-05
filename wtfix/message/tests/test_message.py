@@ -70,22 +70,38 @@ class TestFixMessageMixin:
             m.validate()
 
 
-class TestBasicMessage:
+class TestRawMessage:
+    def test_copy(self):
+        rm = RawMessage(
+            message_type=MsgType.QuoteStatusRequest,
+            message_seq_num=1,
+            encoded_body=b"12345" + settings.SOH + b"67890" + settings.SOH,
+        )
+
+        new_rm = rm.copy()
+        assert new_rm == rm
+
     def test_str(self):
-        bm = RawMessage(
+        rm = RawMessage(
             message_type=MsgType.QuoteStatusRequest,
             message_seq_num=1,
             encoded_body=b"12345" + settings.SOH + b"67890" + settings.SOH,
         )
 
         assert (
-            str(bm)
+            str(rm)
             == "QuoteStatusRequest (a): {BeginString (8):FIX.4.4 | BodyLength (9):12 | "
             "MsgType (35):a | MsgSeqNum (34):1 | CheckSum (10):15}, with content - b'12345\\x0167890\\x01'"
         )
 
 
 class TestGenericMessage:
+    def test_copy(self):
+        m = GenericMessage((35, "a"), (2, "bb"))
+
+        new_m = m.copy()
+        assert new_m == m
+
     def test_add_returns_message_instance(self):
         m = GenericMessage((35, "a"), (2, "bb"))
         m += Field(3, "ccc")
@@ -100,6 +116,14 @@ class TestGenericMessage:
             str(m)
             == "QuoteStatusRequest (a): [MsgType (35):a | AdvId (2):bb | AdvRefID (3):ccc]"
         )
+
+
+class TestOptimizedGenericMessage:
+    def test_copy(self):
+        m = OptimizedGenericMessage((1, "a"), (2, 2), (3, "b"), (3, "c"), group_templates={2: [3]})
+
+        new_m = m.copy()
+        assert new_m == m
 
 
 def test_message_factory_returns_optimized_message_by_default():

@@ -1,11 +1,11 @@
 import pytest
 from unsync import unsync
 
+from wtfix.message import admin
 from wtfix.protocol.common import MsgType, Tag
 from wtfix.message.message import (
     GenericMessage,
     OptimizedGenericMessage,
-    generic_message_factory,
 )
 from wtfix.message.fieldset import Group
 
@@ -86,33 +86,30 @@ def generic_message_class(request):
 @pytest.fixture
 def logon_message():
     """Sample logon message"""
-    return generic_message_factory(
-        (35, MsgType.Logon),
-        (34, "1"),
-        (49, "SENDER"),
-        (52, "20181206-10:24:27.018"),
-        (56, "TARGET"),
-        (98, "0"),
-        (108, "30"),
-        (553, "USERNAME"),
-        (554, "PASSWORD"),
-        (141, "Y"),
-    )
+    message = admin.LogonMessage("USERNAME", "PASSWORD")
+
+    message.MsgSeqNum = "1"
+    message.SenderCompID = "SENDER"
+    message.SendingTime = "20181206-10:24:27.018"
+    message.TargetCompID = "TARGET"
+    message.ResetSeqNumFlag = "Y"
+
+    return message
 
 
 @pytest.fixture
 def sdr_message_fields():
     """Sample of a security definition request message fields"""
     return [
-        (35, MsgType.SecurityDefinitionRequest),
-        (34, "1"),  # MsgSeqNum: 1
-        (49, "SENDER"),  # SenderCompID
-        (52, "20181127-11:33:31.505"),  # SendingTime
-        (56, "TARGET"),  # TargetCompID
-        (55, "^.*$"),  # Symbol
-        (167, "CS"),  # SecurityType: CommonStock
-        (320, "37a0b5c8afb543ec8f29eca2a44be2ec"),  # SecurityReqID
-        (321, "3"),  # SecurityRequestType: all
+        (Tag.MsgType, MsgType.SecurityDefinitionRequest),
+        (Tag.MsgSeqNum, "1"),  # MsgSeqNum: 1
+        (Tag.SenderCompID, "SENDER"),  # SenderCompID
+        (Tag.SendingTime, "20181127-11:33:31.505"),  # SendingTime
+        (Tag.TargetCompID, "TARGET"),  # TargetCompID
+        (Tag.Symbol, "^.*$"),  # Symbol
+        (Tag.SecurityType, "CS"),  # SecurityType: CommonStock
+        (Tag.SecurityReqID, "37a0b5c8afb543ec8f29eca2a44be2ec"),  # SecurityReqID
+        (Tag.SecurityRequestType, "3"),  # SecurityRequestType: all
     ]
 
 
