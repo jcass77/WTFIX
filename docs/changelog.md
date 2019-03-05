@@ -2,6 +2,10 @@
 
 This changelog is used to track all major changes to WTFIX.
 
+## v0.1.2 (2019-03-05)
+
+- Fix test build dependencies.
+
 ## v0.1.1 (2019-03-05)
 
 - Add missing aiofiles dependency.
