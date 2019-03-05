@@ -1,12 +1,18 @@
- # Changelog
+# Changelog
 
 This changelog is used to track all major changes to WTFIX.
+
+## v0.1.1 (2019-03-05)
+
+- Add missing aiofiles dependency.
+- Link repository to coveralls.io and Travis-CI
+- Update README with various GitHub badges.
 
 ## v0.1.0 (2019-03-05)
 
 - First public alpha release.
 - Now implements all standard admin messages.
-- Updated README
+- Update README
 
 ## v0.0.3 (2019-02-08)
 
