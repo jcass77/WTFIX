@@ -123,7 +123,7 @@ The Pythonic Financial Information eXchange client for humans.
     # If you provide a group template, then messages are stored in a more efficient 'OrderedDict'
     >>> msg = generic_message_factory((1, "a"), (2, 2), (3, "1st_group_val_3"), (4, "1st_group_val_4"), (3, "2nd_group_val_3"), (4, "2nd_group_val_4"), group_templates={2: [3, 4,]})
     >>> msg_.fields
-    OrderedDict([(1, (1, a)), (2, [(2, 2)]:[(3, '1st_group_val_3'), (4, '1st_group_val_4')], [(3, '2nd_group_val_3'), (4, '2nd_group_val_4)'])])
+    OrderedDict([(1, (1, a)), (2, [(2, 2)]:[(3, '1st_group_val_3'), (4, '1st_group_val_4')], [(3, '2nd_group_val_3'), (4, '2nd_group_val_4')])])
     
     # ...providing fast group and group instance lookups:
     >>> group = msg.get_group(2)
@@ -131,14 +131,14 @@ The Pythonic Financial Information eXchange client for humans.
     >>> group.size
     2
   
-    # Retrive the second group instance
+    # Retrieve the second group instance
     >>> group.instances[1]
-    [(3, 2nd_group_tag3), (4, 2nd_group_tag_4)]
+    [(3, '2nd_group_val_3'), (4, '2nd_group_val_4')]
    
     # Without a pre-defined group template we fall back to using a (slightly slower) list structure for representing message fields internally
     >>> msg = generic_message_factory((1, "a"), (2, 2), (3, "1st_group_val_3"), (4, "1st_group_val_4"), (3, "2nd_group_val_3"), (4, "2nd_group_val_4"))
     >>> msg_.fields
-    [(1, a), (2, 2), (3, '1st_group_val_3'), (4, '1st_group_val_4'), (3, '2nd_group_val_3'), (4, '2nd_group_val_4)')]
+    [(1, a), (2, 2), (3, '1st_group_val_3'), (4, '1st_group_val_4'), (3, '2nd_group_val_3'), (4, '2nd_group_val_4')]
   
     ```
     
