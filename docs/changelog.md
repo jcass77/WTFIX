@@ -2,7 +2,7 @@
 
 This changelog is used to track all major changes to WTFIX.
 
-## v0.4.0 (2019-03-05)
+## v0.1.0 (2019-03-05)
 
 - First public alpha release.
 - Now implements all standard admin messages.
