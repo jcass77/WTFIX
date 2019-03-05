@@ -1,47 +1,46 @@
-Creating releases
-=================
+## Creating releases
 
-#. Update changelog and commit it.
+1. Update changelog and commit it.
 
-#. Bump the version number in ``setup.py``.
+2. Bump the version number in ``setup.py``.
 
-#. Merge the release branch (``develop`` in the example) into master::
+3. Merge the release branch (``develop`` in the example) into ``master``:
 
+    ```
     git checkout master
     git merge --no-ff -m "Release v0.0.1" develop
+    ```
 
-#. Install/upgrade tools used for packaging::
+4. Install / upgrade tools used for packaging:
 
+    ```
     pip install -U twine wheel
+    ```
 
-#. Build package and test it manually in a new virtualenv. The following assumes the use of virtualenvwrapper::
+5. Build package:
 
+    ```
     python setup.py sdist bdist_wheel
+    ```
 
-    mktmpenv
-    pip install path/to/dist/wtfix-0.0.1.tar.gz
-    toggleglobalsitepackages
-    # do manual test
-    deactivate
+6. Tag the release:
 
-    mktmpenv
-    pip install path/to/dist/wtfix-0.0.1-py3-none-any.whl
-    toggleglobalsitepackages
-    # do manual test
-    deactivate
-
-#. Tag the release::
-
+    ```
     git tag -a -m "Release v0.0.1" v0.0.1
+    ```
 
-#. Push to GitHub::
-
+7. Push to GitHub:
+    
+    ```
     git push --follow-tags
+    ```
 
-#. Upload the previously built and tested sdist and bdist_wheel packages to PyPI::
+8. Upload the previously built and tested sdist and bdist_wheel packages to PyPI:
 
+    ```
     twine upload dist/wtfix-0.0.1*
+    ```
 
-#. Merge ``master`` back into ``develop`` and push the branch to GitHub.
+9. Merge ``master`` back into ``develop`` and push the branch to GitHub.
 
-#. Document the release on GitHub.
+10. Document the release on GitHub.

@@ -1,6 +1,6 @@
 # WTFIX
 
-The Pythonic Financial Information eXchange client for humans.
+The Pythonic Financial Information eXchange (FIX) client for humans.
 
 [![Build status](https://travis-ci.org/jcass77/WTFIX.svg?branch=develop)](https://travis-ci.org/jcass77/WTFIX)
 [![Coverage status](https://coveralls.io/repos/github/jcass77/WTFIX/badge.svg?branch=develop)](https://coveralls.io/github/jcass77/WTFIX?branch=develop)
