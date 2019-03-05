@@ -25,7 +25,7 @@ The Pythonic Financial Information eXchange client for humans.
     ]
     ```
     
-- Convenient message hooks for adding new apps to the message processing pipeline:
+- Provides a convenient ``@on`` decorator that can be used to add new apps to the message processing pipeline:
     ```python
     from wtfix.apps.base import MessageTypeHandlerApp, on
     from wtfix.protocol.common import MsgType
@@ -33,34 +33,36 @@ The Pythonic Financial Information eXchange client for humans.
   
     class SecretAlgoTradingRecipe(MessageTypeHandlerApp):
 
-        @on(MsgType.Logon)  # Only invokved when 'Logon (type A)' messages are received.
+        @on(MsgType.Logon)  # Only invoked when 'Logon (type A)' messages are received.
         def on_logon(self, message):
             self.send_security_definition_request()
             return message
           
-        def on_receive(self, message):  # Invoked for every type of message
+        def on_receive(self, message):  # Invoked for every type of message.
           logger.info(f"Received message {message}!")
     ```
 
-- A Message tag syntax with convenience methods that are kind to humans. Example ``Logon`` message:
+- A message tag syntax, with convenience methods, that are kind to humans. Example ``Logon`` message:
 
     ```python
     >>> from wtfix.message import admin
     >>> from wtfix.protocol.common import Tag
     
+    # Instantiate a new 'Logon' message
     >>> logon_msg = admin.LogonMessage("my_username", "my_password", heartbeat_int=b"30")
     
-    # Determining the message type
+    # Example of getting the message type
     >>> logon_msg.type
     'A'
   
+    # Example of getting the message type name
     >>> logon_msg.name
     'Logon'
   
     >>> logon_msg.seq_num
     1
 
-    # Various ways for accessing message tags
+    # There are various ways for accessing the different fields within the message
     >>> logon_msg[108]  # Using old school tag number
     (108, b"30")
   
