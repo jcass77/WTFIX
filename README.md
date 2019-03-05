@@ -59,10 +59,12 @@ The Pythonic Financial Information eXchange client for humans.
     >>> logon_msg.name
     'Logon'
   
+    # Find the sequence number
     >>> logon_msg.seq_num
     1
 
-    # There are various ways for accessing the different fields within the message
+    # Various ways for accessing the different fields that make up the message. Fields are just 
+    # (tag, value) tuples.
     >>> logon_msg[108]  # Using old school tag number
     (108, b"30")
   
