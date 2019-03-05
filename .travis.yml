@@ -1,9 +1,6 @@
-sudo: required
 dist: xenial
 
-language: python
-python:
-  - "3.7"
+language: generic
 
 env:
   - TOX_ENV=py36
