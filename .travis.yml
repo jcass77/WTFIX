@@ -1,16 +1,15 @@
 dist: xenial
 
-language: generic
-
-env:
-  - TOX_ENV=py36
-  - TOX_ENV=py37
+language: python
+python:
+  - "3.6"
+  - "3.7"
 
 install:
-  - "pip install tox"
+  - pip install -r requirements/local.txt
 
 script:
-  - "tox -e $TOX_ENV"
+  - pytest
 
 after_success:
-  - "if [ $TOX_ENV == 'py37' ]; then pip install coveralls; coveralls; fi"
+  - "pip install coveralls; coveralls"
