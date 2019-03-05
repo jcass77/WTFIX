@@ -9,7 +9,7 @@ with open(path.join(here, "README.md"), encoding="utf-8") as f:
 
 setup(
     name="wtfix",
-    version="0.0.3",
+    version="0.0.4",
     author="John Cass",
     author_email="john.cass77@gmail.com",
     description="The Pythonic Financial Information eXchange client for humans.",
