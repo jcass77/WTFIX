@@ -6,7 +6,7 @@ The Pythonic Financial Information eXchange client for humans.
 ## Project Highlights
 
 - Pure Python3.
-- Batteries included - everything you need to connect to a FIX server and start sending and receiving messages in minutes.
+- Batteries included - everything you need to connect to a FIX server and start sending and receiving messages in minutes. Comes bundles with standard apps for:
     - Authentication
     - Maintaining a heartbeat
     - Sequence number management and resend requests
@@ -25,7 +25,7 @@ The Pythonic Financial Information eXchange client for humans.
     ]
     ```
     
-- Provides a convenient ``@on`` decorator that can be used to add new apps to the message processing pipeline:
+- Provides a convenient ``@on`` decorator for fine grained control over which apps will respond to which types of messages:
     ```python
     from wtfix.apps.base import MessageTypeHandlerApp, on
     from wtfix.protocol.common import MsgType
@@ -42,7 +42,7 @@ The Pythonic Financial Information eXchange client for humans.
           logger.info(f"Received message {message}!")
     ```
 
-- A message tag syntax, with convenience methods, that are kind to humans. Example ``Logon`` message:
+- A simple message tag syntax, and various convenience methods, that are kind to humans - no more trying to decipher byte streams. Example ``Logon`` message:
 
     ```python
     >>> from wtfix.message import admin
