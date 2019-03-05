@@ -120,7 +120,9 @@ class TestGenericMessage:
 
 class TestOptimizedGenericMessage:
     def test_copy(self):
-        m = OptimizedGenericMessage((1, "a"), (2, 2), (3, "b"), (3, "c"), group_templates={2: [3]})
+        m = OptimizedGenericMessage(
+            (1, "a"), (2, 2), (3, "b"), (3, "c"), group_templates={2: [3]}
+        )
 
         new_m = m.copy()
         assert new_m == m

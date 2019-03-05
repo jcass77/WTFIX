@@ -110,7 +110,9 @@ class TestDecoderApp:
     ):
         with pytest.raises(ParsingError):
             m = generic_message_factory(
-                (Tag.MsgType, MsgType.TestRequest), (Tag.MsgSeqNum, 1), (Tag.TestReqID, "a")
+                (Tag.MsgType, MsgType.TestRequest),
+                (Tag.MsgSeqNum, 1),
+                (Tag.TestReqID, "a"),
             )
             data = encoder_app.encode_message(m).replace(
                 b"8=" + utils.encode(settings.BEGIN_STRING), b""

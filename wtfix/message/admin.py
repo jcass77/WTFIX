@@ -24,9 +24,7 @@ class LogoutMessage(OptimizedGenericMessage):
     """Generic Logout message"""
 
     def __init__(self):
-        super().__init__(
-            (Tag.MsgType, MsgType.Logout),
-        )
+        super().__init__((Tag.MsgType, MsgType.Logout))
 
 
 class HeartbeatMessage(OptimizedGenericMessage):
@@ -69,5 +67,5 @@ class SequenceResetMessage(OptimizedGenericMessage):
             (Tag.MsgType, MsgType.SequenceReset),
             (Tag.MsgSeqNum, next_seq_num),
             (Tag.PossDupFlag, "Y"),
-            (Tag.NewSeqNo, new_seq_num)
+            (Tag.NewSeqNo, new_seq_num),
         )

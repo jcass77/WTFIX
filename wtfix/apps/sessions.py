@@ -92,7 +92,9 @@ class ClientSessionApp(SessionApp):
         """
         Listen for new messages that are sent by the server.
         """
-        begin_string = utils.encode(f"{Tag.BeginString}=") + utils.encode(settings.BEGIN_STRING)
+        begin_string = utils.encode(f"{Tag.BeginString}=") + utils.encode(
+            settings.BEGIN_STRING
+        )
         checksum_start = settings.SOH + utils.encode(f"{Tag.CheckSum}=")
 
         while not self.writer.transport.is_closing():  # Listen forever for new messages
@@ -113,9 +115,14 @@ class ClientSessionApp(SessionApp):
 
             except IncompleteReadError as e:
                 # Connection was closed before a complete message could be received.
-                if utils.encode(f"{Tag.MsgType}={MsgType.Logout}") + settings.SOH in data:
+                if (
+                    utils.encode(f"{Tag.MsgType}={MsgType.Logout}") + settings.SOH
+                    in data
+                ):
                     # Process logout message that was sent by the server.
-                    self.pipeline.receive(data)  # Process logout message in the pipeline as per normal
+                    self.pipeline.receive(
+                        data
+                    )  # Process logout message in the pipeline as per normal
 
                 else:
                     logger.exception(
@@ -128,7 +135,9 @@ class ClientSessionApp(SessionApp):
 
             except LimitOverrunError:
                 # Buffer limit reached before a complete message could be read - abort!
-                logger.exception(f"{self.name}: Stream reader buffer limit exceeded! Initiating shutdown...")
+                logger.exception(
+                    f"{self.name}: Stream reader buffer limit exceeded! Initiating shutdown..."
+                )
 
                 self.pipeline.stop()
 

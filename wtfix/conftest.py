@@ -3,10 +3,7 @@ from unsync import unsync
 
 from wtfix.message import admin
 from wtfix.protocol.common import MsgType, Tag
-from wtfix.message.message import (
-    GenericMessage,
-    OptimizedGenericMessage,
-)
+from wtfix.message.message import GenericMessage, OptimizedGenericMessage
 from wtfix.message.fieldset import Group
 
 from pytest_socket import socket_allow_hosts
@@ -63,13 +60,23 @@ def nested_parties_group():
         (524, "b"),
         (525, "bb"),
         (538, "bbb"),
-        template=[524, 525, 538, 804]
+        template=[524, 525, 538, 804],
     )
     nested_sub_party_1 = Group(
-        (804, "2"), (545, "c"), (805, "cc"), (545, "d"), (805, "dd"), template=[545, 805]
+        (804, "2"),
+        (545, "c"),
+        (805, "cc"),
+        (545, "d"),
+        (805, "dd"),
+        template=[545, 805],
     )
     nested_sub_party_2 = Group(
-        (804, "2"), (545, "e"), (805, "ee"), (545, "f"), (805, "ff"), template=[545, 805]
+        (804, "2"),
+        (545, "e"),
+        (805, "ee"),
+        (545, "f"),
+        (805, "ff"),
+        template=[545, 805],
     )
 
     nested_party[0].set_group(nested_sub_party_1)

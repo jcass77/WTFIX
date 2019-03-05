@@ -95,7 +95,9 @@ class TestHeartbeatApp:
         request_message = TestRequestMessage("test123")
         zero_heartbeat_app.on_test_request(request_message)
 
-        zero_heartbeat_app.pipeline.send.assert_called_with(admin.HeartbeatMessage("test123"))
+        zero_heartbeat_app.pipeline.send.assert_called_with(
+            admin.HeartbeatMessage("test123")
+        )
 
     def test_resets_request_id_when_heartbeat_received(self, zero_heartbeat_app):
         heartbeat_message = HeartbeatMessage("test123")
@@ -129,9 +131,7 @@ class TestSeqNumManagerApp:
 
         resend_begin_seq_num = 2
 
-        seq_num_app.on_resend_request(
-            admin.ResendRequestMessage(resend_begin_seq_num)
-        )
+        seq_num_app.on_resend_request(admin.ResendRequestMessage(resend_begin_seq_num))
 
         assert pipeline_mock.send.call_count == 4
 
@@ -144,14 +144,13 @@ class TestSeqNumManagerApp:
             # Check sending time
             assert message.OrigSendingTime.value_ref == message.SendingTime.value_ref
 
-    def test_on_resend_request_handles_admin_messages_correctly(self, logon_message, messages):
+    def test_on_resend_request_handles_admin_messages_correctly(
+        self, logon_message, messages
+    ):
         pipeline_mock = MagicMock(BasePipeline)
         seq_num_app = SeqNumManagerApp(pipeline_mock)
 
-        admin_messages = [
-            logon_message,
-            HeartbeatMessage("test123")
-        ]
+        admin_messages = [logon_message, HeartbeatMessage("test123")]
 
         # Inject admin messages
         messages = admin_messages + messages
@@ -165,9 +164,7 @@ class TestSeqNumManagerApp:
 
         resend_begin_seq_num = 1
 
-        seq_num_app.on_resend_request(
-            admin.ResendRequestMessage(resend_begin_seq_num)
-        )
+        seq_num_app.on_resend_request(admin.ResendRequestMessage(resend_begin_seq_num))
 
         assert pipeline_mock.send.call_count == 6
 

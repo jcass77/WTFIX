@@ -28,7 +28,9 @@ class TestBasePipeline:
     def test_prep_processing_pipeline_inbound(self, three_level_app_chain):
         pipeline = BasePipeline(installed_apps=three_level_app_chain)
 
-        func, app_chain = pipeline._prep_processing_pipeline(pipeline.INBOUND_PROCESSING)
+        func, app_chain = pipeline._prep_processing_pipeline(
+            pipeline.INBOUND_PROCESSING
+        )
         assert func == "on_receive"
         assert next(app_chain).name == "below"
         assert next(app_chain).name == "middle"
@@ -36,7 +38,9 @@ class TestBasePipeline:
 
     def test_prep_processing_pipeline_outbound(self, three_level_app_chain):
         pipeline = BasePipeline(installed_apps=three_level_app_chain)
-        func, app_chain = pipeline._prep_processing_pipeline(pipeline.OUTBOUND_PROCESSING)
+        func, app_chain = pipeline._prep_processing_pipeline(
+            pipeline.OUTBOUND_PROCESSING
+        )
 
         assert func == "on_send"
         assert next(app_chain).name == "top"

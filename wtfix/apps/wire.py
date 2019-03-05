@@ -242,7 +242,7 @@ class DecoderApp(BaseApp):
             body_length=body_length,
             message_type=msg_type,
             message_seq_num=msg_seq_num,
-            encoded_body=data[msg_seq_num_end_tag + 1: checksum_tag_start],
+            encoded_body=data[msg_seq_num_end_tag + 1 : checksum_tag_start],
             checksum=checksum,
         )
         return message
@@ -252,4 +252,5 @@ class WireCommsApp(EncoderApp, DecoderApp):
     """
     Base class for sending and receiving messages on the FIX wire.
     """
+
     name = "wire_comms"

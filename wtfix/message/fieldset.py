@@ -4,8 +4,14 @@ import itertools
 import numbers
 
 from wtfix.conf import settings
-from wtfix.core.exceptions import TagNotFound, InvalidGroup, UnknownTag, DuplicateTags, ParsingError, \
-    ImproperlyConfigured
+from wtfix.core.exceptions import (
+    TagNotFound,
+    InvalidGroup,
+    UnknownTag,
+    DuplicateTags,
+    ParsingError,
+    ImproperlyConfigured,
+)
 from wtfix.core.utils import GroupTemplateMixin
 from wtfix.message.field import Field
 from wtfix.protocol import common
@@ -511,9 +517,7 @@ class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
                 # Tag denotes the start of a new repeating group.
                 group_fields = self._parse_fields(fields, group_index=idx)
                 group = Group(
-                    field,
-                    *group_fields,
-                    template=self.group_templates[field.tag]
+                    field, *group_fields, template=self.group_templates[field.tag]
                 )
 
                 parsed_fields.append(group)
@@ -573,7 +577,11 @@ class Group:
             try:
                 template = settings.GROUP_TEMPLATES[self.identifier.tag]
             except KeyError:
-                raise(ImproperlyConfigured(f"No template available for repeating group identifier {self.identifier}."))
+                raise (
+                    ImproperlyConfigured(
+                        f"No template available for repeating group identifier {self.identifier}."
+                    )
+                )
 
         self._instance_template = template
 
@@ -599,27 +607,31 @@ class Group:
             if field.tag not in instance_tags:
                 if field.tag in self._instance_template:
                     # Tag belongs to the next instance. Append the current instance to this group.
-                    parsed_fields.append(GroupInstance(*fields[instance_start: instance_end]))
+                    parsed_fields.append(
+                        GroupInstance(*fields[instance_start:instance_end])
+                    )
 
                     instance_start = instance_end
                     instance_tags = set(self._instance_template)
 
                 else:
-                    raise ParsingError(f"Unknown tag {field.tag} found while parsing group fields {self._instance_template}.")
+                    raise ParsingError(
+                        f"Unknown tag {field.tag} found while parsing group fields {self._instance_template}."
+                    )
 
             instance_tags.remove(field.tag)
             instance_end += 1
 
         else:
             # Add last instance
-            parsed_fields.append(GroupInstance(*fields[instance_start: instance_end]))
+            parsed_fields.append(GroupInstance(*fields[instance_start:instance_end]))
 
         if len(parsed_fields) != self.size:
             raise InvalidGroup(
-                    self.identifier.tag,
-                    fields,
-                    f"Cannot make {self.size} instances of {self._instance_template} with {fields}."
-                )
+                self.identifier.tag,
+                fields,
+                f"Cannot make {self.size} instances of {self._instance_template} with {fields}.",
+            )
 
         return parsed_fields
 

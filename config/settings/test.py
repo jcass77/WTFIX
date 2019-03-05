@@ -20,8 +20,5 @@ PASSWORD = "TEST_PASSWORD"
 # ------------------------------------------------------------------------------
 GROUP_TEMPLATES = {
     # Routing IDs
-    Tag.NoRoutingIDs: [
-        Tag.RoutingType,
-        Tag.RoutingID,
-    ],
+    Tag.NoRoutingIDs: [Tag.RoutingType, Tag.RoutingID]
 }

@@ -105,12 +105,7 @@ class TestGroupTemplateMixin:
     def test_add_group_templates(self):
         gt = GroupTemplateMixin()
         gt.add_group_templates(
-            {
-                Tag.NoSecurityAltID: [
-                    Tag.SecurityAltID,
-                    Tag.SecurityAltIDSource
-                ]
-            }
+            {Tag.NoSecurityAltID: [Tag.SecurityAltID, Tag.SecurityAltIDSource]}
         )
 
         assert Tag.NoRoutingIDs in gt.group_templates

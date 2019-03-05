@@ -93,7 +93,9 @@ class FieldValue(abc.Sequence):
             check_method = comparitor.__ge__
 
         else:
-            raise exceptions.ValidationError(f"Unknown equality operator '{check_method}'.")
+            raise exceptions.ValidationError(
+                f"Unknown equality operator '{check_method}'."
+            )
 
         return check_method(other)
 

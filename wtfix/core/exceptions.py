@@ -45,6 +45,7 @@ class SessionError(Exception):
     """
     Fatal session error from which no recovery is possible
     """
+
     pass
 
 

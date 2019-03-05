@@ -167,7 +167,9 @@ class RawMessage(FIXMessage, OrderedDictFieldSet):
 
 def generic_message_factory(*fields, **kwargs):
     try:
-        return OptimizedGenericMessage(*fields, **kwargs)  # Try to instantiate a OptimizedGenericMessage first
+        return OptimizedGenericMessage(
+            *fields, **kwargs
+        )  # Try to instantiate a OptimizedGenericMessage first
     except DuplicateTags:
         return GenericMessage(*fields, **kwargs)  # Fall back to GenericMessage
 
@@ -178,6 +180,7 @@ class GenericMessage(FIXMessage, ListFieldSet):
 
     We think of FIX messages as lists of (tag, value) pairs, where tag is a number and value is a bytestring.
     """
+
     def copy(self):
         copy = GenericMessage()
         copy._fields = self._fields.copy()

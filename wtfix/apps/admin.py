@@ -11,7 +11,8 @@ from wtfix.core.exceptions import (
     MessageProcessingError,
     TagNotFound,
     StopMessageProcessing,
-    SessionError)
+    SessionError,
+)
 from wtfix.message import admin
 from wtfix.core import utils
 from wtfix.protocol.common import MsgType, Tag
@@ -295,7 +296,9 @@ class AuthenticationApp(MessageTypeHandlerApp):
         """
         Log on to the FIX server using the provided credentials.
         """
-        logon_msg = admin.LogonMessage(self.username, self.password, heartbeat_int=self.heartbeat_int)
+        logon_msg = admin.LogonMessage(
+            self.username, self.password, heartbeat_int=self.heartbeat_int
+        )
 
         if self.reset_seq_nums:
             logon_msg[Tag.ResetSeqNumFlag] = "Y"
@@ -358,8 +361,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             # We've missed some incoming messages
 
             missing_seq_numbers = [
-                seq_num
-                for seq_num in range(self.receive_seq_num + 1, message.seq_num)
+                seq_num for seq_num in range(self.receive_seq_num + 1, message.seq_num)
             ]
 
             logger.error(
@@ -370,9 +372,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             self._handle_seq_num_gaps(missing_seq_numbers)
 
     def _handle_seq_num_gaps(self, missing_seq_numbers):
-        self.send(
-            admin.ResendRequestMessage(missing_seq_numbers[0])
-        )
+        self.send(admin.ResendRequestMessage(missing_seq_numbers[0]))
 
         raise StopMessageProcessing(
             f"Detected message sequence gap: {missing_seq_numbers}. Discarding message."
@@ -387,8 +387,8 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
                     raise StopMessageProcessing(
                         f"Ignoring duplicate message {message}."
                     )
-        # According to the FIX specification, receiving a lower than expected sequence number, that is not a duplicate,
-        # is a fatal error that requires manual intervention. Throw an unhandled exception to force-stop the pipeline.
+            # According to the FIX specification, receiving a lower than expected sequence number, that is not a duplicate,
+            # is a fatal error that requires manual intervention. Throw an unhandled exception to force-stop the pipeline.
             except TagNotFound:
                 raise SessionError(error_msg)
 
@@ -403,9 +403,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             # Server requested all messages
             end_seq_no = self.send_seq_num
 
-        logger.info(
-            f"Resending messages {begin_seq_no} through {end_seq_no}."
-        )
+        logger.info(f"Resending messages {begin_seq_no} through {end_seq_no}.")
 
         last_admin_seq_num = None
         next_seq_num = begin_seq_no
@@ -427,7 +425,9 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
                 last_admin_seq_num = None
 
             # Resend message
-            resend_msg = resend_msg.copy()  # Make a copy so that we do not change entries in the send log.
+            resend_msg = (
+                resend_msg.copy()
+            )  # Make a copy so that we do not change entries in the send log.
             resend_msg.MsgSeqNum = next_seq_num
             resend_msg.PossDupFlag = "Y"
             resend_msg.OrigSendingTime = resend_msg.SendingTime.value_ref

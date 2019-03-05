@@ -8,7 +8,12 @@ from wtfix.message.message import generic_message_factory
 from wtfix.protocol.common import Tag, MsgType
 from ..field import Field
 from ..fieldset import OrderedDictFieldSet, Group, ListFieldSet
-from wtfix.core.exceptions import TagNotFound, DuplicateTags, InvalidGroup, ImproperlyConfigured
+from wtfix.core.exceptions import (
+    TagNotFound,
+    DuplicateTags,
+    InvalidGroup,
+    ImproperlyConfigured,
+)
 
 
 class TestFieldSet:
@@ -90,7 +95,9 @@ class TestFieldSet:
         fs.MsgType = "aa"
         assert fs.MsgType == "aa"
         assert len(fs) == 3
-        assert fs.fields[1].tag == Tag.MsgType  # Confirm position in FieldSet is maintained
+        assert (
+            fs.fields[1].tag == Tag.MsgType
+        )  # Confirm position in FieldSet is maintained
 
     def test_getitem(self, fieldset_impl_ab):
         assert fieldset_impl_ab[1] == "a"
@@ -197,7 +204,9 @@ class TestFieldSet:
         fs = fieldset_class()
         assert fs.get(1, default="abc") == "abc"
 
-    def test_get_not_found_and_no_default_provided_raises_exception(self, fieldset_class):
+    def test_get_not_found_and_no_default_provided_raises_exception(
+        self, fieldset_class
+    ):
         with pytest.raises(TagNotFound):
             fs = fieldset_class()
             fs.get(1)
@@ -212,7 +221,11 @@ class TestFieldSet:
     def test_set_group_instance_length_one(self, fieldset_class):
         fs = fieldset_class((1, "a"), (2, "bb"))
 
-        short_group = Group((Tag.NoMDEntryTypes, "1"), (Tag.MDEntryType, "a"), template=[Tag.MDEntryType])
+        short_group = Group(
+            (Tag.NoMDEntryTypes, "1"),
+            (Tag.MDEntryType, "a"),
+            template=[Tag.MDEntryType],
+        )
         fs.set_group(short_group)
 
         assert fs.get_group(Tag.NoMDEntryTypes) == short_group
@@ -331,7 +344,7 @@ class TestOrderedDictFieldSet:
             (6, "y"),  # <-- Switch tag order
             (5, "d"),
             (7, "e"),
-            group_templates={3: [4, 5, 6]}
+            group_templates={3: [4, 5, 6]},
         )
 
         assert 3 in fs
@@ -366,7 +379,7 @@ class TestOrderedDictFieldSet:
                 (5, "d"),
                 (6, "y"),
                 (7, "e"),
-                group_templates={3: [4, 5, 6]}
+                group_templates={3: [4, 5, 6]},
             )
 
             assert 3 in fs
@@ -394,7 +407,7 @@ class TestOrderedDictFieldSet:
             nested_parties_group.identifier,
             *nested_parties_group.fields,
             (3, "c"),
-            group_templates={539: [524, 525, 538, 804], 804: [545, 805]}
+            group_templates={539: [524, 525, 538, 804], 804: [545, 805]},
         )
 
         group = fs.get_group(539)
@@ -437,9 +450,21 @@ class TestOrderedDictFieldSet:
             (Tag.MarketDepth, 0),
         )
 
-        mdr_message.set_group(Group((Tag.NoRelatedSym, 1), (Tag.SecurityID, "test123"), template=[Tag.SecurityID]))
+        mdr_message.set_group(
+            Group(
+                (Tag.NoRelatedSym, 1),
+                (Tag.SecurityID, "test123"),
+                template=[Tag.SecurityID],
+            )
+        )
 
-        mdr_message.set_group(Group((Tag.NoMDEntryTypes, 1), (Tag.MDEntryType, "h"), template=[Tag.MDEntryType]))
+        mdr_message.set_group(
+            Group(
+                (Tag.NoMDEntryTypes, 1),
+                (Tag.MDEntryType, "h"),
+                template=[Tag.MDEntryType],
+            )
+        )
 
         mdr_message[9956] = 1
         mdr_message[9957] = 3
@@ -471,27 +496,25 @@ class TestOrderedDictFieldSet:
 
 
 class TestGroup:
-
     def test_defaults_to_using_templates_configured_in_settings(self):
-        g = Group(
-            (Tag.NoRoutingIDs, 1),
-            (Tag.RoutingID, "a"),
-            (Tag.RoutingType, "b"),
-        )
+        g = Group((Tag.NoRoutingIDs, 1), (Tag.RoutingID, "a"), (Tag.RoutingType, "b"))
 
         assert g[0].RoutingID == "a"
 
     def test_raises_exception_if_no_group_template_available(self):
         with pytest.raises(ImproperlyConfigured):
-            Group((1234567890, 0))
+            Group((1_234_567_890, 0))
 
     def test_parse_fields(self):
         g = Group(
             (Tag.NoMDEntryTypes, 3),
-            (Tag.MDEntryType, "a"), (Tag.MDEntryPx, "abc"),
-            (Tag.MDEntryType, "b"), (Tag.MDEntryPx, "abc"),
-            (Tag.MDEntryType, "c"), (Tag.MDEntryPx, "abc"),
-            template=[Tag.MDEntryType, Tag.MDEntryPx]
+            (Tag.MDEntryType, "a"),
+            (Tag.MDEntryPx, "abc"),
+            (Tag.MDEntryType, "b"),
+            (Tag.MDEntryPx, "abc"),
+            (Tag.MDEntryType, "c"),
+            (Tag.MDEntryPx, "abc"),
+            template=[Tag.MDEntryType, Tag.MDEntryPx],
         )
 
         assert g[0] == [(269, "a"), (270, "abc")]
@@ -503,10 +526,7 @@ class TestGroup:
             Group((215, "2"), (217, "b"), (216, "c"))
 
     def test_empty_group(self):
-        g = Group(
-            (Tag.NoMDEntries, 0),
-            template=[Tag.MDEntryType],
-        )
+        g = Group((Tag.NoMDEntries, 0), template=[Tag.MDEntryType])
 
         assert g.size == 0
         assert len(g) == 1  # Should consist only of the identifier field.
