@@ -1,0 +1,17 @@
+sudo: required
+dist: xenial
+
+language: python
+
+env:
+  - TOX_ENV=py36
+  - TOX_ENV=py37
+
+install:
+  - "pip install tox"
+
+script:
+  - "tox -e $TOX_ENV"
+
+after_success:
+  - "if [ $TOX_ENV == 'py37' ]; then pip install coveralls; coveralls; fi"
