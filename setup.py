@@ -12,7 +12,7 @@ setup(
     version="0.1.2",
     author="John Cass",
     author_email="john.cass77@gmail.com",
-    description="The Pythonic Financial Information eXchange client for humans.",
+    description="The Pythonic Financial Information eXchange (FIX) client for humans.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/jcass77/WTFIX",
