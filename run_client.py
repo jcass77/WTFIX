@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+import argparse
 import logging
 from asyncio import futures
 
@@ -26,13 +26,23 @@ from wtfix.conf import logger
 from wtfix.conf import settings
 from wtfix.pipeline import BasePipeline
 
+parser = argparse.ArgumentParser(description="Start a FIX session")
+parser.add_argument(
+    "--session",
+    default="default",
+    help="the session to connect to (default: 'default')",
+)
+
+
 if __name__ == "__main__":
     logging.basicConfig(
         level=settings.LOGGING_LEVEL,
         format="%(asctime)s - %(threadName)s - %(module)s - %(levelname)s - %(message)s",
     )
 
-    fix_pipeline = BasePipeline()
+    args = parser.parse_args()
+
+    fix_pipeline = BasePipeline(session_name=args.session)
     try:
         fix_pipeline.start().result()
     except KeyboardInterrupt:
