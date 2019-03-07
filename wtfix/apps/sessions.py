@@ -38,7 +38,7 @@ class SessionApp(BaseApp):
         self.writer = None
 
         if sender is None:
-            sender = self.pipeline.settings.SENDER_COMP_ID
+            sender = self.pipeline.settings.SENDER
 
         self.sender = sender
         self.next_in_seq_num = 1
@@ -55,7 +55,7 @@ class ClientSessionApp(SessionApp):
         super().__init__(pipeline, sender=sender, *args, **kwargs)
 
         if target is None:
-            target = self.pipeline.settings.TARGET_COMP_ID
+            target = self.pipeline.settings.TARGET
 
         self.target = target
 

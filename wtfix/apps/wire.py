@@ -19,7 +19,7 @@ from datetime import datetime
 
 from wtfix.apps.base import BaseApp
 from wtfix.apps.sessions import ClientSessionApp
-from wtfix.conf import settings
+from wtfix.conf import settings, logger
 from wtfix.core.exceptions import ParsingError, MessageProcessingError, TagNotFound
 from wtfix.message.message import RawMessage
 from wtfix.core import utils
@@ -65,6 +65,8 @@ class EncoderApp(BaseApp):
 
         if message.target_id is None:
             message.target_id = self.pipeline.apps[ClientSessionApp.name].target
+
+        logger.info(f" --> {message}")  # Last point at which we can log the outgoing message with pretty printing.
 
         body = (
             utils.encode(f"{Tag.MsgType}=")

@@ -10,8 +10,8 @@ DEBUG = True
 SESSIONS["default"]["HOST"] = "TEST_HOST"
 SESSIONS["default"]["PORT"] = "TEST_PORT"
 
-SESSIONS["default"]["SENDER_COMP_ID"] = "SENDER_ID"
-SESSIONS["default"]["TARGET_COMP_ID"] = "TARGET_ID"
+SESSIONS["default"]["SENDER"] = "SENDER_ID"
+SESSIONS["default"]["TARGET"] = "TARGET_ID"
 
 SESSIONS["default"]["USERNAME"] = "TEST_USER"
 SESSIONS["default"]["PASSWORD"] = "TEST_PASSWORD"

@@ -24,13 +24,20 @@ from unsync import (
 
 from wtfix.conf import logger
 from wtfix.conf import settings
+from wtfix.core.exceptions import ImproperlyConfigured
 from wtfix.pipeline import BasePipeline
 
 parser = argparse.ArgumentParser(description="Start a FIX session")
+
+try:
+    default_session = settings.default_session_name
+except ImproperlyConfigured:
+    default_session = None
+
 parser.add_argument(
     "--session",
-    default="default",
-    help="the session to connect to (default: 'default')",
+    default=default_session,
+    help=f"the session to connect to (default: '{default_session}')",
 )
 
 
@@ -41,8 +48,8 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-
     fix_pipeline = BasePipeline(session_name=args.session)
+
     try:
         fix_pipeline.start().result()
     except KeyboardInterrupt:

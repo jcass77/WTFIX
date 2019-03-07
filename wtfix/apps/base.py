@@ -152,8 +152,8 @@ class MessageTypeHandlerApp(BaseApp):
 
     name = "type_filter"
 
-    def __init__(self, name, *args, **kwargs):
-        super().__init__(name)
+    def __init__(self, pipeline, *args, **kwargs):
+        super().__init__(pipeline, *args, **kwargs)
 
         self.type_handlers = {}
 

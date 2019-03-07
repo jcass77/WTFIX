@@ -17,8 +17,8 @@ from wtfix.protocol.common import Tag, MsgType
 @pytest.fixture
 def base_pipeline():
     pipeline = MagicMock(BasePipeline)
-    pipeline.apps[ClientSessionApp.name].sender = settings.default_session.SENDER_COMP_ID
-    pipeline.apps[ClientSessionApp.name].target = settings.default_session.TARGET_COMP_ID
+    pipeline.apps[ClientSessionApp.name].sender = settings.default_session.SENDER
+    pipeline.apps[ClientSessionApp.name].target = settings.default_session.TARGET
 
     return pipeline
 

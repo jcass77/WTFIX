@@ -71,12 +71,16 @@ class BasePipeline:
                 f"At least one application needs to be added to the pipeline by using the PIPELINE_APPS setting."
             )
 
+        settings_kwargs = {
+            key.lower(): value for key, value in self.settings.__dict__.items()
+        }
+
         for app in installed_apps:
             mod_name, class_name = app.rsplit(".", 1)
             module = importlib.import_module(mod_name)
 
             class_ = getattr(module, class_name)
-            instance = class_(self)
+            instance = class_(self, **settings_kwargs)
 
             loaded_apps[instance.name] = instance
 

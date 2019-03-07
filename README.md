@@ -164,8 +164,8 @@ The Pythonic Financial Information eXchange (FIX) client for humans.
     HOST=             # Required. The FIX server hostname or IP address
     PORT=             # Required. The port on the FIX server to connect to
     
-    SENDER_COMP_ID=   # Required. Sender ID (tag 49).
-    TARGET_COMP_ID=   # Required. Target ID (tag 56).
+    SENDER=           # Required. SENDER_COMP_ID (tag 49).
+    TARGETD=          # Required. TARGET_COMP_ID (tag 56).
     
     USERNAME=         # Required. Username to use for Logon messages (tag 553).
     PASSWORD=         # Required. Password to use for logon messages (tag 554).

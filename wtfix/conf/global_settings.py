@@ -64,7 +64,7 @@ DATETIME_FORMAT = "%Y%m%d-%H:%M:%S.%f"
 
 SESSIONS = {
     "default": {
-        "HEARTBEAT_INTERVAL": 30,
+        "HEARTBEAT_INT": 30,
         # List of strings representing installed apps.
         "PIPELINE_APPS": [
             "wtfix.apps.admin.HeartbeatApp",

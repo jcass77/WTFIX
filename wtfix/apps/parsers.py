@@ -46,12 +46,7 @@ class RawMessageParserApp(BaseApp, GroupTemplateMixin):
         ]
 
         message = generic_message_factory(*fields, group_templates=self.group_templates)
-        logger.info(f" <-- {message}")
-
-        return message
-
-    def on_send(self, message: RawMessage):
-        logger.info(f" --> {message}")
+        logger.info(f" <-- {message}")  # Earliest point at which we can log a newly parsed message with pretty printing
 
         return message
 

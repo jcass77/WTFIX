@@ -25,12 +25,12 @@ USE_TZ = True
 # ------------------------------------------------------------------------------
 SESSIONS = {
     "default": {
-        "HEARTBEAT_INTERVAL": 30,
+        "HEARTBEAT_INT": 30,
         "HOST": os.getenv("HOST"),
         "PORT": os.getenv("PORT"),
-        "SENDER_COMP_ID": os.getenv("SENDER_COMP_ID"),
-        "TARGET_COMP_ID": os.getenv("TARGET_COMP_ID"),
-        "USERNAME": os.getenv("USERNAME", os.getenv("SENDER_COMP_ID")),
+        "SENDER": os.getenv("SENDER"),
+        "TARGET": os.getenv("TARGET"),
+        "USERNAME": os.getenv("USERNAME", os.getenv("SENDER")),
         "PASSWORD": os.getenv("PASSWORD"),
         # APPS
         "PIPELINE_APPS": [
