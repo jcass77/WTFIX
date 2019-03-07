@@ -61,14 +61,14 @@ class Settings:
 
         mod = importlib.import_module(self.WTFIX_SETTINGS_MODULE)
 
-        tuple_settings = "PIPELINE_APPS"
         self._explicit_settings = set()
 
         for setting in dir(mod):
             if setting.isupper():
                 setting_value = getattr(mod, setting)
 
-                if setting in tuple_settings and not isinstance(
+                # Check settings that should consist of collections of key / value pairs
+                if setting in ("PIPELINE_APPS",) and not isinstance(
                     setting_value, (list, tuple)
                 ):
                     raise ImproperlyConfigured(
@@ -76,6 +76,47 @@ class Settings:
                     )
                 setattr(self, setting, setting_value)
                 self._explicit_settings.add(setting)
+
+    @property
+    def has_safe_defaults(self):
+        return len(self.SESSIONS) == 1
+
+    @property
+    def default_session_name(self):
+        if self.has_safe_defaults:
+            return next(iter(self.SESSIONS))
+
+        raise ImproperlyConfigured(
+            f"Cannot fall back to using session defaults as more than one session has been configured "
+            f"using the 'SESSIONS' parameter. You MUST specify which sessions' configuration settings to use."
+        )
+
+    @property
+    def default_session(self):
+        return self.SESSIONS[self.default_session_name]
+
+    def get_group_templates(self, session_name=None, identifiers=None):
+        if session_name is None:
+            session_name = self.default_session_name
+
+        session_templates = self.SESSIONS[session_name]["GROUP_TEMPLATES"]
+        if identifiers is None:
+            # Return all templates that have been defined.
+            return session_templates
+
+        # Look up the specified identifiers
+        templates = {
+            identifier:
+            template
+            for identifier, template in session_templates.items() if identifier in identifiers
+        }
+
+        if len(templates) != len(identifiers):
+            missing_identifiers = identifiers - templates.keys()
+            # Some templates could not be found!
+            raise ImproperlyConfigured(f"No group template defined for identifier(s): {missing_identifiers}.")
+
+        return templates
 
     def __repr__(self):
         return '<%(cls)s "%(settings_module)s">' % {
@@ -85,3 +126,16 @@ class Settings:
 
 
 settings = Settings()
+
+
+class SessionSettings:
+    """
+    Used to promote the settings for a specific session so that it's properties can be accessed
+    in the same way as 'Settings' above.
+    """
+    def __init__(self, session_name=None):
+        if session_name is None:
+            session_name = settings.default_session[0]
+
+        for setting, setting_value in settings.SESSIONS[session_name].items():
+            setattr(self, setting, setting_value)

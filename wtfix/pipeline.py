@@ -22,7 +22,7 @@ from collections import OrderedDict
 
 from unsync import unsync
 
-from wtfix.conf import logger
+from wtfix.conf import logger, SessionSettings
 from wtfix.conf import settings
 from wtfix.core.exceptions import (
     MessageProcessingError,
@@ -40,7 +40,11 @@ class BasePipeline:
     INBOUND_PROCESSING = 0
     OUTBOUND_PROCESSING = 1
 
-    def __init__(self, installed_apps=None):
+    def __init__(self, session_name=None, installed_apps=None):
+        if session_name is None:
+            session_name = settings.default_session_name
+
+        self.settings = SessionSettings(session_name)
         self._installed_apps = self._load_apps(installed_apps=installed_apps)
         logger.info(f"Created new FIX application pipeline: {list(self.apps.keys())}.")
 
@@ -60,7 +64,7 @@ class BasePipeline:
         loaded_apps = OrderedDict()
 
         if installed_apps is None:
-            installed_apps = settings.PIPELINE_APPS
+            installed_apps = self.settings.PIPELINE_APPS
 
         if len(installed_apps) == 0:
             raise ImproperlyConfigured(

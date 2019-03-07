@@ -29,7 +29,7 @@ class TestEncoderApp:
         m.set_group(nested_parties_group)
 
         # Compare just the group-related bytes.
-        assert encoder_app.encode_message(m)[82:-7] == (
+        assert encoder_app.encode_message(m)[86:-7] == (
             b"539=2\x01"  # Header
             + b"524=a\x01525=aa\x01538=aaa\x01"  # Group identifier
             + b"804=2\x01545=c\x01805=cc\x01545=d\x01805=dd\x01"  # First group

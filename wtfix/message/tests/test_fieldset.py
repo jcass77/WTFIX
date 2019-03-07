@@ -309,14 +309,13 @@ class TestOrderedDictFieldSet:
         fs = OrderedDictFieldSet(
             (1, "a"),
             (2, "b"),
-            (215, 2),
-            (216, "a"),
+            (Tag.NoRoutingIDs, 2),
+            (Tag.RoutingType, "a"),
             # (217, "b"),  <-- Simulated one instance not containing all template fields
-            (216, "c"),
-            (217, "d"),
+            (Tag.RoutingType, "c"),
+            (Tag.RoutingID, "d"),
             (3, "e"),
         )
-
         assert 215 in fs
         assert fs[1] == "a"
 
@@ -496,7 +495,7 @@ class TestOrderedDictFieldSet:
 
 
 class TestGroup:
-    def test_defaults_to_using_templates_configured_in_settings(self):
+    def test_defaults_to_using_templates_configured_in_settings_if_safe(self):
         g = Group((Tag.NoRoutingIDs, 1), (Tag.RoutingID, "a"), (Tag.RoutingType, "b"))
 
         assert g[0].RoutingID == "a"
@@ -523,7 +522,11 @@ class TestGroup:
 
     def test_invalid_group(self):
         with pytest.raises(InvalidGroup):
-            Group((215, "2"), (217, "b"), (216, "c"))
+            Group(
+                (Tag.NoRoutingIDs, "2"),
+                (Tag.RoutingID, "b"),
+                (Tag.RoutingType, "c"),
+            )
 
     def test_empty_group(self):
         g = Group((Tag.NoMDEntries, 0), template=[Tag.MDEntryType])

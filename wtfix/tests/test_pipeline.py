@@ -13,16 +13,16 @@ class TestBasePipeline:
 
     def test_load_apps_falls_back_to_settings(self):
         pipeline = BasePipeline()
-        assert len(pipeline.apps) == len(settings.PIPELINE_APPS)
+        assert len(pipeline.apps) == len(pipeline.settings.PIPELINE_APPS)
         assert all(
             f"{app.__class__.__module__}.{app.__class__.__name__}"
-            in settings.PIPELINE_APPS
+            in pipeline.settings.PIPELINE_APPS
             for app in pipeline.apps.values()
         )
 
     def test_load_apps_raises_exception_if_no_apps_installed(self):
         with pytest.raises(ImproperlyConfigured):
-            settings.PIPELINE_APPS = []
+            settings.default_session["PIPELINE_APPS"] = []
             BasePipeline()
 
     def test_prep_processing_pipeline_inbound(self, three_level_app_chain):

@@ -38,7 +38,7 @@ class SessionApp(BaseApp):
         self.writer = None
 
         if sender is None:
-            sender = settings.SENDER_COMP_ID
+            sender = self.pipeline.settings.SENDER_COMP_ID
 
         self.sender = sender
         self.next_in_seq_num = 1
@@ -55,7 +55,7 @@ class ClientSessionApp(SessionApp):
         super().__init__(pipeline, sender=sender, *args, **kwargs)
 
         if target is None:
-            target = settings.TARGET_COMP_ID
+            target = self.pipeline.settings.TARGET_COMP_ID
 
         self.target = target
 
@@ -74,10 +74,10 @@ class ClientSessionApp(SessionApp):
         from and sending messages to the server.
         """
         logger.info(
-            f"{self.name}: Establishing connection to {settings.HOST}:{settings.PORT}..."
+            f"{self.name}: Establishing connection to {self.pipeline.settings.HOST}:{self.pipeline.settings.PORT}..."
         )
         self.reader, self.writer = await asyncio.open_connection(
-            settings.HOST, settings.PORT, limit=2 ** 26  # 64Mb
+            self.pipeline.settings.HOST, self.pipeline.settings.PORT, limit=2 ** 26  # 64Mb
         )
         logger.info(f"{self.name}: Connected!")
 

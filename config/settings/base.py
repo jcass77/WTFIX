@@ -21,28 +21,27 @@ LOGGING_LEVEL = logging.INFO
 TIME_ZONE = "Africa/Johannesburg"
 USE_TZ = True
 
-# SESSION
+# SESSIONS
 # ------------------------------------------------------------------------------
-HOST = os.getenv("HOST")
-PORT = os.getenv("PORT")
-
-SENDER_COMP_ID = os.getenv("SENDER_COMP_ID")
-TARGET_COMP_ID = os.getenv("TARGET_COMP_ID")
-
-USERNAME = os.getenv("USERNAME", SENDER_COMP_ID)
-PASSWORD = os.getenv("PASSWORD")
-
-# APPS
-# ------------------------------------------------------------------------------
-PIPELINE_APPS = [
-    "wtfix.apps.admin.HeartbeatApp",
-    "wtfix.apps.admin.AuthenticationApp",
-    "wtfix.apps.admin.SeqNumManagerApp",
-    "wtfix.apps.parsers.RawMessageParserApp",
-    "wtfix.apps.wire.WireCommsApp",
-    "wtfix.apps.sessions.ClientSessionApp",
-]
-
-# REPEATING GROUPS
-# ------------------------------------------------------------------------------
-GROUP_TEMPLATES = {}
+SESSIONS = {
+    "default": {
+        "HEARTBEAT_INTERVAL": 30,
+        "HOST": os.getenv("HOST"),
+        "PORT": os.getenv("PORT"),
+        "SENDER_COMP_ID": os.getenv("SENDER_COMP_ID"),
+        "TARGET_COMP_ID": os.getenv("TARGET_COMP_ID"),
+        "USERNAME": os.getenv("USERNAME", os.getenv("SENDER_COMP_ID")),
+        "PASSWORD": os.getenv("PASSWORD"),
+        # APPS
+        "PIPELINE_APPS": [
+            "wtfix.apps.admin.HeartbeatApp",
+            "wtfix.apps.admin.AuthenticationApp",
+            "wtfix.apps.admin.SeqNumManagerApp",
+            "wtfix.apps.parsers.RawMessageParserApp",
+            "wtfix.apps.wire.WireCommsApp",
+            "wtfix.apps.sessions.ClientSessionApp",
+        ],
+        # REPEATING GROUPS
+        "GROUP_TEMPLATES": {}
+    }
+}

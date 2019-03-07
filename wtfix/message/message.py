@@ -68,7 +68,10 @@ class FIXMessage(abc.ABC):
         """
         :return: Message sequence number
         """
-        return self[Tag.MsgSeqNum].as_int
+        try:
+            return self[Tag.MsgSeqNum].as_int
+        except TagNotFound:
+            return None
 
     @seq_num.setter
     def seq_num(self, value):
@@ -79,8 +82,7 @@ class FIXMessage(abc.ABC):
         try:
             return self[Tag.SenderCompID].as_str
         except TagNotFound:
-            self[Tag.SenderCompID] = settings.SENDER_COMP_ID
-            return self[Tag.SenderCompID].as_str
+            return None
 
     @sender_id.setter
     def sender_id(self, value):
@@ -91,8 +93,7 @@ class FIXMessage(abc.ABC):
         try:
             return self[Tag.TargetCompID].as_str
         except TagNotFound:
-            self[Tag.TargetCompID] = settings.TARGET_COMP_ID
-            return self[Tag.TargetCompID].as_str
+            return None
 
     @target_id.setter
     def target_id(self, value):
@@ -216,7 +217,8 @@ class OptimizedGenericMessage(FIXMessage, OrderedDictFieldSet):
 
     def copy(self):
         copy = OptimizedGenericMessage()
-        copy.group_templates = self.group_templates
+        copy.group_templates = self.group_templates.copy()
+
         copy._fields = self._fields.copy()
 
         return copy

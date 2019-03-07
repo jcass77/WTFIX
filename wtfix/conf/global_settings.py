@@ -50,27 +50,9 @@ ENCODING_ERRORS = (
 )  # Valid options are 'strict', 'ignore', 'replace', and any other
 
 BEGIN_STRING = b"FIX.4.4"
-HEARTBEAT_INTERVAL = 30
 
 SOH = b"\x01"  # Start of header / field delimiter
 SOH_BYTE = ord(SOH)
-
-# List of strings representing installed apps.
-PIPELINE_APPS = []
-
-# Dictionary of repeating group templates.
-# The format is:
-#
-#   {
-#       <identifier_tag_number>: [
-#             <tag_1>,
-#             <tag_2>,
-#            ...,
-#             <tag_n>
-#         ]
-#   }
-#
-GROUP_TEMPLATES = {}
 
 # Timeouts for app initialization and startup
 INIT_TIMEOUT = 10
@@ -79,3 +61,31 @@ STOP_TIMEOUT = 5
 
 # Default formatting for datetime objects.
 DATETIME_FORMAT = "%Y%m%d-%H:%M:%S.%f"
+
+SESSIONS = {
+    "default": {
+        "HEARTBEAT_INTERVAL": 30,
+        # List of strings representing installed apps.
+        "PIPELINE_APPS": [
+            "wtfix.apps.admin.HeartbeatApp",
+            "wtfix.apps.admin.AuthenticationApp",
+            "wtfix.apps.admin.SeqNumManagerApp",
+            "wtfix.apps.parsers.RawMessageParserApp",
+            "wtfix.apps.wire.WireCommsApp",
+            "wtfix.apps.sessions.ClientSessionApp",
+        ],
+        # Dictionary of repeating group templates.
+        # The format is:
+        #
+        #   {
+        #       <identifier_tag_number>: [
+        #             <tag_1>,
+        #             <tag_2>,
+        #            ...,
+        #             <tag_n>
+        #         ]
+        #   }
+        #
+        "GROUP_TEMPLATES": {}
+    }
+}

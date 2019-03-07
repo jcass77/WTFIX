@@ -227,15 +227,15 @@ class AuthenticationApp(MessageTypeHandlerApp):
         super().__init__(pipeline, *args, **kwargs)
 
         if heartbeat_int is None:
-            heartbeat_int = settings.HEARTBEAT_INTERVAL
+            heartbeat_int = settings.default_session["HEARTBEAT_INTERVAL"]
 
         self.heartbeat_int = heartbeat_int
 
         if username is None:
-            username = settings.USERNAME
+            username = self.pipeline.settings.USERNAME
 
         if password is None:
-            password = settings.PASSWORD
+            password = self.pipeline.settings.PASSWORD
 
         self.username = username
         self.password = password
