@@ -93,7 +93,7 @@ class Settings:
 
     @property
     def default_session(self):
-        return self.SESSIONS[self.default_session_name]
+        return SessionSettings(self.default_session_name)
 
     def get_group_templates(self, session_name=None, identifiers=None):
         if session_name is None:

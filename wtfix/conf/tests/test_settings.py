@@ -1,6 +1,6 @@
 import pytest
 
-from wtfix.conf import settings
+from wtfix.conf import settings, SessionSettings
 from wtfix.core.exceptions import ImproperlyConfigured
 
 
@@ -30,7 +30,7 @@ class TestSettings:
         del settings.SESSIONS["another_session"]
 
     def test_default_session_returns_default_if_safe(self):
-        assert settings.default_session == settings.SESSIONS["default"]
+        assert isinstance(settings.default_session, SessionSettings)
 
     def test_default_session_raises_exception_if_multiple_sessions_defined(self):
         settings.SESSIONS["another_session"] = {}

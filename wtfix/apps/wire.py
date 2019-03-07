@@ -18,6 +18,7 @@
 from datetime import datetime
 
 from wtfix.apps.base import BaseApp
+from wtfix.apps.sessions import ClientSessionApp
 from wtfix.conf import settings
 from wtfix.core.exceptions import ParsingError, MessageProcessingError, TagNotFound
 from wtfix.message.message import RawMessage
@@ -58,6 +59,12 @@ class EncoderApp(BaseApp):
         generated header tags.
         """
         message.validate()  # Make sure the message is valid before attempting to encode.
+
+        if message.sender_id is None:
+            message.sender_id = self.pipeline.apps[ClientSessionApp.name].sender
+
+        if message.target_id is None:
+            message.target_id = self.pipeline.apps[ClientSessionApp.name].target
 
         body = (
             utils.encode(f"{Tag.MsgType}=")

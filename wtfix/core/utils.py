@@ -201,7 +201,7 @@ class GroupTemplateMixin:
 
     def _init_group_templates(self):
         if settings.has_safe_defaults:
-            self._group_templates = settings.default_session["GROUP_TEMPLATES"]
+            self._group_templates = settings.default_session.GROUP_TEMPLATES
         else:
             self._group_templates = {}
 

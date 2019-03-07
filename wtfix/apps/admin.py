@@ -227,7 +227,7 @@ class AuthenticationApp(MessageTypeHandlerApp):
         super().__init__(pipeline, *args, **kwargs)
 
         if heartbeat_int is None:
-            heartbeat_int = settings.default_session["HEARTBEAT_INTERVAL"]
+            heartbeat_int = settings.default_session.HEARTBEAT_INTERVAL
 
         self.heartbeat_int = heartbeat_int
 

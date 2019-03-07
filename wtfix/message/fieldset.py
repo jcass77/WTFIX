@@ -592,7 +592,7 @@ class Group:
         self.identifier = Field(*identifier)
         if template is None:
             try:
-                template = settings.default_session["GROUP_TEMPLATES"][self.identifier.tag]
+                template = settings.default_session.GROUP_TEMPLATES[self.identifier.tag]
             except KeyError:
                 raise (
                     ImproperlyConfigured(
