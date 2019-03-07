@@ -31,6 +31,11 @@ class RawMessageParserApp(BaseApp, GroupTemplateMixin):
 
     name = "raw_message_parser"
 
+    def __init__(self, pipeline, *args, **kwargs):
+        super().__init__(pipeline, *args, **kwargs)
+
+        self.group_templates = self.pipeline.settings.GROUP_TEMPLATES
+
     def on_receive(self, message: RawMessage):
         data = message.encoded_body.rstrip(settings.SOH).split(
             settings.SOH
