@@ -11,6 +11,7 @@ This changelog is used to track all major changes to WTFIX.
 - Improve logging of inbound and outbound messages.
 
 **Fixes**
+- Don't raise an exception if a heartbeat message (0) is received unexpectedly.
 
 **Breaking changes**
 

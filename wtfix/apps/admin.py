@@ -32,7 +32,7 @@ from wtfix.core.exceptions import (
 )
 from wtfix.message import admin
 from wtfix.core import utils
-from wtfix.protocol.common import MsgType, Tag
+from wtfix.protocol.common import MsgType
 
 
 class HeartbeatApp(MessageTypeHandlerApp):
@@ -159,7 +159,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
         :param message: The Logon message received. Should contain a HeartBtInt tag that will be used
         to set the heartbeat interval to monitor.
         """
-        self._heartbeat = message[Tag.HeartBtInt].as_int
+        self._heartbeat = message.HeartBtInt.as_int
 
         return message
 
@@ -171,9 +171,9 @@ class HeartbeatApp(MessageTypeHandlerApp):
         :param message: The TestRequest message. Should contain a TestReqID.
         """
         logger.debug(
-            f"{self.name}: Sending heartbeat in response to request {message[Tag.TestReqID]}."
+            f"{self.name}: Sending heartbeat in response to request {message.TestReqID}."
         )
-        self.send(admin.HeartbeatMessage(message[Tag.TestReqID].as_str))
+        self.send(admin.HeartbeatMessage(message.TestReqID.as_str))
 
         return message
 
@@ -184,13 +184,13 @@ class HeartbeatApp(MessageTypeHandlerApp):
         :param message: The Heartbeat message that was received in response to our TestRequest. The
         TestReqID for the TestRequest and Heartbeat messages should match for this to be a valid response.
         """
-        if message[Tag.TestReqID] == self._test_request_id:
-            # Response received - reset
-            self._test_request_id = None
-        else:
-            raise MessageProcessingError(
-                f"Received an unexpected heartbeat message: {message}."
-            )
+        try:
+            if message.TestReqID == self._test_request_id:
+                # Response received - reset
+                self._test_request_id = None
+        except TagNotFound:
+            # Random heartbeat message received - nothing more to do
+            pass
 
         return message
 
@@ -318,10 +318,10 @@ class AuthenticationApp(MessageTypeHandlerApp):
         )
 
         if self.reset_seq_nums:
-            logon_msg[Tag.ResetSeqNumFlag] = "Y"
+            logon_msg.ResetSeqNumFlag = "Y"
 
         if self.test_mode is True:
-            logon_msg[Tag.TestMessageIndicator] = "Y"
+            logon_msg.TestMessageIndicator = "Y"
 
         logger.info(f"{self.name}: Logging in with: {logon_msg}...")
         self.send(logon_msg)

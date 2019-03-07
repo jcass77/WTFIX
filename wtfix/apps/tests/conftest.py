@@ -9,6 +9,7 @@ from wtfix.apps.parsers import RawMessageParserApp
 from wtfix.apps.sessions import ClientSessionApp
 from wtfix.apps.wire import EncoderApp, DecoderApp
 from wtfix.conf import settings
+from wtfix.message.admin import HeartbeatMessage
 from wtfix.message.message import generic_message_factory
 from wtfix.pipeline import BasePipeline
 from wtfix.protocol.common import Tag, MsgType
@@ -17,6 +18,8 @@ from wtfix.protocol.common import Tag, MsgType
 @pytest.fixture
 def base_pipeline():
     pipeline = MagicMock(BasePipeline)
+    pipeline.settings = settings.default_session
+
     pipeline.apps[ClientSessionApp.name].sender = settings.default_session.SENDER
     pipeline.apps[ClientSessionApp.name].target = settings.default_session.TARGET
 
@@ -71,7 +74,7 @@ def failing_server_heartbeat_app():
         nonlocal num_responses
 
         if num_responses < 3:
-            app.on_heartbeat({Tag.TestReqID: message[Tag.TestReqID].as_str})
+            app.on_heartbeat(HeartbeatMessage(message.TestReqID.as_str))
         num_responses += 1
 
     app.pipeline.send.side_effect = simulate_heartbeat_response

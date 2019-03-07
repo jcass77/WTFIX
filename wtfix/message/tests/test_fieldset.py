@@ -77,7 +77,7 @@ class TestFieldSet:
         fs = fieldset_class((1, "a"), (2, "b"))
 
         fs.MsgSeqNum = 1
-        assert fs[Tag.MsgSeqNum] == 1
+        assert fs.MsgSeqNum == 1
 
     def test_setitem_replace_by_tag_number(self, fieldset_class):
         fs = fieldset_class((1, "a"), (2, "b"))

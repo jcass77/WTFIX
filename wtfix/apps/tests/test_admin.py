@@ -6,11 +6,10 @@ import pytest
 from unsync import Unfuture
 
 from wtfix.apps.admin import HeartbeatApp, SeqNumManagerApp
-from wtfix.core.exceptions import MessageProcessingError, StopMessageProcessing
+from wtfix.core.exceptions import StopMessageProcessing
 from wtfix.message import admin
 from wtfix.message.admin import TestRequestMessage, HeartbeatMessage
 from wtfix.pipeline import BasePipeline
-from wtfix.protocol.common import Tag
 
 
 class TestHeartbeatApp:
@@ -63,9 +62,7 @@ class TestHeartbeatApp:
     @pytest.mark.asyncio
     async def test_send_test_request(self, unsync_event_loop, zero_heartbeat_app):
         def simulate_heartbeat_response(message):
-            zero_heartbeat_app.on_heartbeat(
-                {Tag.TestReqID: message[Tag.TestReqID].as_str}
-            )
+            zero_heartbeat_app.on_heartbeat(HeartbeatMessage(message.TestReqID.as_str))
 
         zero_heartbeat_app.pipeline.send.side_effect = simulate_heartbeat_response
 
@@ -86,7 +83,7 @@ class TestHeartbeatApp:
     def test_logon_sets_heartbeat_increment(self, logon_message):
         heartbeat_app = HeartbeatApp(MagicMock(BasePipeline))
 
-        logon_message[Tag.HeartBtInt] = 45
+        logon_message.HeartBtInt = 45
         heartbeat_app.on_logon(logon_message)
 
         assert heartbeat_app.heartbeat == 45
@@ -106,13 +103,6 @@ class TestHeartbeatApp:
         zero_heartbeat_app.on_heartbeat(heartbeat_message)
 
         assert zero_heartbeat_app._test_request_id is None
-
-    def test_raises_exception_on_unexpected_heartbeat(self, zero_heartbeat_app):
-        with pytest.raises(MessageProcessingError):
-            heartbeat_message = HeartbeatMessage("123test")
-            zero_heartbeat_app._test_request_id = "test123"
-
-            zero_heartbeat_app.on_heartbeat(heartbeat_message)
 
     def test_on_receive_updated_timestamp(self, zero_heartbeat_app):
         prev_timestamp = zero_heartbeat_app._last_receive

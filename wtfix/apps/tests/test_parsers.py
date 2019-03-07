@@ -3,11 +3,8 @@ from wtfix.message.message import RawMessage, OptimizedGenericMessage
 
 
 class TestRawMessageParser:
-    def test_parses_inits_groups_to_empty_by_default(self, raw_msg_parser_app):
-        settings.SESSIONS["another_session"] = {}
-        assert raw_msg_parser_app.group_templates == {}
-
-        del settings.SESSIONS["another_session"]
+    def test_parses_inits_groups_to_pipeline_by_default(self, raw_msg_parser_app):
+        assert raw_msg_parser_app.group_templates == raw_msg_parser_app.pipeline.settings.GROUP_TEMPLATES
 
     def test_parses_inits_groups_from_default_settings_if_safe(self, raw_msg_parser_app):
         assert raw_msg_parser_app.group_templates == settings.default_session.GROUP_TEMPLATES
