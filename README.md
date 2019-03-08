@@ -139,7 +139,7 @@ used message attributes.
     >>> msg._fields
     OrderedDict([(35, (35, 8)), (136, [(136, 2)]:[(137, 10.0), (139, 2)], [(137, 20.0), (139, A)])])
   
-    # Get Tag.NoMiscFees group
+    # Get 'NoMiscFees' group
     >>> group = msg.get_group(Tag.NoMiscFees)
     >>> str(group)
     '[NoMiscFees (136):2] | [MiscFeeAmt (137):10.0 | MiscFeeType (139):2] | [MiscFeeAmt (137):20.0 | MiscFeeType (139):A]'
@@ -161,8 +161,8 @@ used message attributes.
     
 ## Getting Started
 
-- Install the project's dependencies (e.g. `pip install -r requirements/local.txt`), preferably in a virtual
-  machine that has been created specifically for that purpose.
+- Install the project's dependencies (e.g. `pip install -r requirements/local.txt`), preferably in a Python virtual
+  environment that has been created specifically for that purpose.
 - Run the test suite with `pytest` to verify the installation.
 - Create a `.env` file in the project's root directory that contains at least the following configuration settings:
 
@@ -183,7 +183,7 @@ used message attributes.
     ```
     
 - Start the FIX client with `python runclient.py`. The default implementation will log in to the FIX server and maintain a steady heartbeat.
-- Use `Ctrl-C` to quit - stops the message processing pipeline in an orderly fashion by doing a proper `Logout`.
+- Use `Ctrl-C` to quit. This will trigger a `Logout` message to be sent before the pipeline is terminated.
     
 ## Project Resources
 
