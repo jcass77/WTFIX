@@ -26,7 +26,7 @@ setup(
     ],
     keywords="FIX financial information exchange",
     packages=find_packages(exclude=["contrib", "docs", "tests"]),
-    install_requires=["python-dotenv~=0.10", "unsync~=1.1"],
+    install_requires=["python-dotenv~=0.10", "unsync~=1.1", "flask-restful~=0.3", "requests~=2.21"],
     python_requires=">=3.6",
     project_urls={
         "Bug Reports": "https://github.com/jcass77/WTFIX/issues",

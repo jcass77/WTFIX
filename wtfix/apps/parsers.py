@@ -17,7 +17,7 @@
 
 
 from wtfix.apps.base import BaseApp
-from wtfix.conf import settings, logger
+from wtfix.conf import settings
 from wtfix.core.utils import GroupTemplateMixin
 from wtfix.message.field import Field
 from wtfix.message.message import RawMessage, generic_message_factory
@@ -50,7 +50,6 @@ class RawMessageParserApp(BaseApp, GroupTemplateMixin):
         ]
 
         message = generic_message_factory(*fields, group_templates=self.group_templates)
-        logger.info(f" <-- {message}")  # Earliest point at which we can log a newly parsed message with pretty printing
 
         return message
 

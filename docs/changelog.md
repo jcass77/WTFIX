@@ -8,7 +8,8 @@ This changelog is used to track all major changes to WTFIX.
 
 - Add support for configuring multiple FIX sessions using the ``SESSIONS`` config parameter.
 - Different pipeline connections can now be initiated by using the ``--sessions`` command line parameter with ``run_client.py``.
-- Improve logging of inbound and outbound messages.
+- New ``LoggingApp`` for logging of inbound and outbound messages.
+- New ``RESTfulServiceApp`` for sending messages via a REST API.
 
 **Fixes**
 - Don't raise an exception if a heartbeat message (0) is received unexpectedly.

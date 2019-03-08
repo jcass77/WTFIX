@@ -34,10 +34,12 @@ SESSIONS = {
         "PASSWORD": os.getenv("PASSWORD"),
         # APPS
         "PIPELINE_APPS": [
+            "wtfix.apps.api.RESTfulServiceApp",
             "wtfix.apps.admin.HeartbeatApp",
             "wtfix.apps.admin.AuthenticationApp",
             "wtfix.apps.admin.SeqNumManagerApp",
             "wtfix.apps.parsers.RawMessageParserApp",
+            "wtfix.apps.utils.LoggingApp",
             "wtfix.apps.wire.WireCommsApp",
             "wtfix.apps.sessions.ClientSessionApp",
         ],
