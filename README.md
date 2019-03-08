@@ -52,7 +52,8 @@ The Pythonic Financial Information eXchange (FIX) client for humans.
           logger.info(f"Received message {message}!")
     ```
 
-- A simple message tag syntax, and various convenience methods, that are kind to humans - no more trying to decipher raw byte streams. Example ``Logon`` message:
+- A simple message tag syntax that is human friendly, with various convenience methods for quick access to commonly
+used message attributes.
 
     ```python
     >>> from wtfix.message import admin
@@ -78,7 +79,7 @@ The Pythonic Financial Information eXchange (FIX) client for humans.
     1
 
     # Various ways for accessing the different fields that make up the message. Fields are just 
-    # (tag, value) tuples.
+    # (tag, value) namedtuples.
     >>> logon_msg[108]  # Using old school tag number
     (108, b"30")
   
@@ -138,7 +139,7 @@ The Pythonic Financial Information eXchange (FIX) client for humans.
     >>> msg._fields
     OrderedDict([(35, (35, 8)), (136, [(136, 2)]:[(137, 10.0), (139, 2)], [(137, 20.0), (139, A)])])
   
-    # Get group with tag identifier '2'
+    # Get Tag.NoMiscFees group
     >>> group = msg.get_group(Tag.NoMiscFees)
     >>> str(group)
     '[NoMiscFees (136):2] | [MiscFeeAmt (137):10.0 | MiscFeeType (139):2] | [MiscFeeAmt (137):20.0 | MiscFeeType (139):A]'
