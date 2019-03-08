@@ -60,6 +60,10 @@ The Pythonic Financial Information eXchange (FIX) client for humans.
     
     # Instantiate a new 'Logon' message
     >>> logon_msg = admin.LogonMessage("my_username", "my_password", heartbeat_int=b"30")
+  
+    # Readable string representation
+    str(logon_msg)
+    'Logon (A): {MsgType (35):A | EncryptMethod (98):0 | HeartBtInt (108):30 | Username (553):my_username | Password (554):my_password | 10222:345}
     
     # Example of getting the message type
     >>> logon_msg.type
@@ -84,7 +88,7 @@ The Pythonic Financial Information eXchange (FIX) client for humans.
     >>> logon_msg.HeartBtInt  # Using tag name shortcut
     (108, b"30")
     ```    
-- A more pragmatic [unicode sandwich](https://nedbatchelder.com/text/unipain.html) based approach to encoding / decoding messages mean that you never need to deal with byte strings...
+- A pragmatic [unicode sandwich](https://nedbatchelder.com/text/unipain.html) based approach to encoding / decoding messages mean that you never need to deal with byte strings...
  
     ```python
     # Duck typing for doing field value comparisons
@@ -129,13 +133,15 @@ The Pythonic Financial Information eXchange (FIX) client for humans.
     ```python
     from wtfix.message.message import generic_message_factory
   
-    # If you provide a group template, then messages are stored in a more efficient 'OrderedDict'
-    >>> msg = generic_message_factory((1, "a"), (2, 2), (3, "1st_group_val_3"), (4, "1st_group_val_4"), (3, "2nd_group_val_3"), (4, "2nd_group_val_4"), group_templates={2: [3, 4,]})
-    >>> msg_.fields
-    OrderedDict([(1, (1, a)), (2, [(2, 2)]:[(3, '1st_group_val_3'), (4, '1st_group_val_4')], [(3, '2nd_group_val_3'), (4, '2nd_group_val_4')])])
-    
-    # ...providing fast group and group instance lookups:
-    >>> group = msg.get_group(2)
+    # If you provide a group template, then messages are stored in an 'OrderedDict' for fast lookups
+    >>> msg = generic_message_factory((Tag.MsgType, MsgType.ExecutionReport), (Tag.NoMiscFees, 2), (Tag.MiscFeeAmt, 10.00), (Tag.MiscFeeType, 2), (Tag.MiscFeeAmt, 20.00), (Tag.MiscFeeType, "A"), group_templates={Tag.NoMiscFees: [Tag.MiscFeeAmt, Tag.MiscFeeType,]})
+    >>> msg._fields
+    OrderedDict([(35, (35, 8)), (136, [(136, 2)]:[(137, 10.0), (139, 2)], [(137, 20.0), (139, A)])])
+  
+    # Get group with tag identifier '2'
+    >>> group = msg.get_group(Tag.NoMiscFees)
+    >>> str(group)
+    '[NoMiscFees (136):2] | [MiscFeeAmt (137):10.0 | MiscFeeType (139):2] | [MiscFeeAmt (137):20.0 | MiscFeeType (139):A]'
    
     # Determine the number of instances in the group
     >>> group.size
@@ -143,12 +149,12 @@ The Pythonic Financial Information eXchange (FIX) client for humans.
   
     # Retrieve the second group instance
     >>> group.instances[1]
-    [(3, '2nd_group_val_3'), (4, '2nd_group_val_4')]
+    [(137, 20.0), (139, A)]
    
     # Without a pre-defined group template we fall back to using a (slightly slower) list structure for representing message fields internally
-    >>> msg = generic_message_factory((1, "a"), (2, 2), (3, "1st_group_val_3"), (4, "1st_group_val_4"), (3, "2nd_group_val_3"), (4, "2nd_group_val_4"))
+    >>> msg = generic_message_factory((Tag.MsgType, MsgType.ExecutionReport), (Tag.NoMiscFees, 2), (Tag.MiscFeeAmt, 10.00), (Tag.MiscFeeType, 2), (Tag.MiscFeeAmt, 20.00), (Tag.MiscFeeType, "A")
     >>> msg_.fields
-    [(1, a), (2, 2), (3, '1st_group_val_3'), (4, '1st_group_val_4'), (3, '2nd_group_val_3'), (4, '2nd_group_val_4')]
+    [(35, 8), (136, 2), (137, 10.0), (139, 2), (137, 20.0), (139, A)]
   
     ```
     
