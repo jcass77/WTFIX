@@ -23,10 +23,12 @@ The Pythonic Financial Information eXchange (FIX) client for humans.
     ```python
     PIPELINE_APPS = [
         "my_app.apps.SecretAlgoTradingRecipe",     # <-- Your application logic
+        "wtfix.apps.api.RESTfulServiceApp",        # REST API for sending messages
         "wtfix.apps.admin.HeartbeatApp",           # Heartbeat monitoring and maintenance
         "wtfix.apps.admin.AuthenticationApp",      # Login / logout handling
         "wtfix.apps.admin.SeqNumManagerApp",       # Message gap detection and filling
         "wtfix.apps.parsers.RawMessageParserApp",  # Message parsing: Logon (A): {BeginString (8):FIX.4.4 | BodyLength (9):99 | MsgType (35):A | MsgSeqNum (34):1 | SenderCompID (49):SENDER | SendingTime (52):20190305-08:45:45.979 | TargetCompID (56):TARGET | EncryptMethod (98):0 | HeartBtInt (108):30 | Username (553):USERNAME | Password (554):PASSWORD | ResetSeqNumFlag (141):Y | CheckSum (10):94}
+        "wtfix.apps.utils.LoggingApp",             # Log inbound and outbound messages
         "wtfix.apps.wire.WireCommsApp",            # Raw message encoding / decoding: b'8=FIX.4.4\x019=99\x0135=A\x0134=1\x0149=SENDER\x0152=20190305-08:42:32.793\x0156=TARGET\x0198=0\x01108=30\x01553=USERNAME\x01554=PASSWORD\x01141=Y\x0110=081\x01'
         "wtfix.apps.sessions.ClientSessionApp",    # HTTP session management
     ]
