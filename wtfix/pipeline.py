@@ -140,7 +140,7 @@ class BasePipeline:
         """
         async with self.stop_lock:  # Ensure that more than one app does not attempt to initiate a shutdown at once
             if self.stopped_event.is_set():
-                # Pipeline has already been sotpped - nothing more to do.
+                # Pipeline has already been stopped - nothing more to do.
                 return
 
             logger.info("Shutting down pipeline...")
