@@ -77,7 +77,9 @@ class ClientSessionApp(SessionApp):
             f"{self.name}: Establishing connection to {self.pipeline.settings.HOST}:{self.pipeline.settings.PORT}..."
         )
         self.reader, self.writer = await asyncio.open_connection(
-            self.pipeline.settings.HOST, self.pipeline.settings.PORT, limit=2 ** 26  # 64Mb
+            self.pipeline.settings.HOST,
+            self.pipeline.settings.PORT,
+            limit=2 ** 26,  # 64Mb
         )
         logger.info(f"{self.name}: Connected!")
 
@@ -120,6 +122,7 @@ class ClientSessionApp(SessionApp):
                 data = await self.reader.readuntil(
                     begin_string
                 )  # Detect beginning of message.
+                # TODO: should there be a timeout for reading an entire message?
                 data += await self.reader.readuntil(
                     checksum_start
                 )  # Detect start of checksum field.
@@ -133,7 +136,8 @@ class ClientSessionApp(SessionApp):
             except IncompleteReadError as e:
                 # Connection was closed before a complete message could be received.
                 if (
-                    utils.encode(f"{Tag.MsgType}={MsgType.Logout}") + settings.SOH
+                    data is not None
+                    and utils.encode(f"{Tag.MsgType}={MsgType.Logout}") + settings.SOH
                     in data
                 ):
                     # Process logout message that was sent by the server.

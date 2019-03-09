@@ -50,6 +50,7 @@ class TestAuthenticationApp:
             auth_app = AuthenticationApp(base_pipeline)
             auth_app.on_logon(logon_msg)
 
+
 class TestHeartbeatApp:
     def test_heartbeat_getter_defaults_to_global_settings(self, base_pipeline):
         heartbeat_app = HeartbeatApp(base_pipeline)
