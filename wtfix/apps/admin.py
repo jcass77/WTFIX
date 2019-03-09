@@ -59,7 +59,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
         try:
             return self._heartbeat
         except AttributeError:
-            self._heartbeat = 30
+            self._heartbeat = self.pipeline.settings.HEARTBEAT_INT
 
             return self._heartbeat
 
@@ -276,7 +276,7 @@ class AuthenticationApp(MessageTypeHandlerApp):
         """
         heartbeat_time = message.HeartBtInt.as_int
         if heartbeat_time != self.heartbeat_int:
-            raise MessageProcessingError(
+            raise SessionError(
                 f"{self.name}: Heartbeat confirmation '{heartbeat_time}' does not match logon value {self.heartbeat_int}."
             )
 
@@ -286,13 +286,13 @@ class AuthenticationApp(MessageTypeHandlerApp):
             test_mode = False
 
         if test_mode != self.test_mode:
-            raise MessageProcessingError(
+            raise SessionError(
                 f"{self.name}: Test mode confirmation '{test_mode}' does not match logon value {self.test_mode}."
             )
 
         reset_seq_nums = message.ResetSeqNumFlag.as_bool
         if reset_seq_nums != self.reset_seq_nums:
-            raise MessageProcessingError(
+            raise SessionError(
                 f"{self.name}: Reset sequence number confirmation '{reset_seq_nums}' does not match logon value {self.reset_seq_nums}."
             )
 

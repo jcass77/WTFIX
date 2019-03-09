@@ -53,27 +53,15 @@ class StopMessageProcessing(Exception):
     pass
 
 
-class InvalidMessage(Exception):
-    pass
-
-
-class SignalStop(Exception):
-    pass
-
-
-class WaitTimeout(BaseException):
-    pass
-
-
 class InvalidField(Exception):
     pass
 
 
 class SessionError(Exception):
     """
-    Fatal session error from which no recovery is possible
+    Fatal session error from which no recovery is possible. A SessionError exception won't be handled by the
+    pipeline and will cause an abnormal termination.
     """
-
     pass
 
 
