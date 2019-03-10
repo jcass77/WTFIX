@@ -110,7 +110,7 @@ class RESTfulServiceApp(BaseApp):
     def flask_app(self):
         if self._flask_app is None:
 
-            if settings.FLASK_ENV == "development":
+            if settings.DEBUG is True:
                 # We need to start our own Flask application
                 logger.info(
                     f"{self.name}: Starting Flask development server..."
@@ -126,7 +126,6 @@ class RESTfulServiceApp(BaseApp):
 
         return self._flask_app
 
-
     @unsync
     async def initialize(self, *args, **kwargs):
         await super().initialize(*args, **kwargs)
@@ -139,7 +138,7 @@ class RESTfulServiceApp(BaseApp):
     @unsync
     def _run_flask_dev_server(self, flask_app):
         # Start Flask in a separate thread
-        flask_app.run()
+        flask_app.run(debug=False)
 
     # @on(MsgType.Logon)
     # def on_logon(self, message):
