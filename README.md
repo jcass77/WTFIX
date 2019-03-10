@@ -3,7 +3,7 @@
 The Pythonic Financial Information eXchange (FIX) client for humans.
 
 [![Build status](https://travis-ci.org/jcass77/WTFIX.svg?branch=develop)](https://travis-ci.org/jcass77/WTFIX)
-[![Coverage status](https://coveralls.io/repos/github/jcass77/WTFIX/badge.svg?branch=develop)](https://coveralls.io/github/jcass77/WTFIX?branch=develop)
+[![Coverage Status](https://coveralls.io/repos/github/jcass77/WTFIX/badge.svg?branch=develop)](https://coveralls.io/github/jcass77/WTFIX?branch=develop)
 [![PyPI version shields.io](https://img.shields.io/pypi/v/wtfix.svg)](https://pypi.python.org/pypi/wtfix/)
 [![PyPI pyversions](https://img.shields.io/pypi/pyversions/wtfix.svg)](https://pypi.python.org/pypi/wtfix/)
 [![PyPI license](https://img.shields.io/pypi/l/wtfix.svg)](https://pypi.python.org/pypi/wtfix/)
@@ -23,10 +23,12 @@ The Pythonic Financial Information eXchange (FIX) client for humans.
     ```python
     PIPELINE_APPS = [
         "my_app.apps.SecretAlgoTradingRecipe",     # <-- Your application logic
+        "wtfix.apps.api.RESTfulServiceApp",        # REST API for sending messages
         "wtfix.apps.admin.HeartbeatApp",           # Heartbeat monitoring and maintenance
         "wtfix.apps.admin.AuthenticationApp",      # Login / logout handling
         "wtfix.apps.admin.SeqNumManagerApp",       # Message gap detection and filling
         "wtfix.apps.parsers.RawMessageParserApp",  # Message parsing: Logon (A): {BeginString (8):FIX.4.4 | BodyLength (9):99 | MsgType (35):A | MsgSeqNum (34):1 | SenderCompID (49):SENDER | SendingTime (52):20190305-08:45:45.979 | TargetCompID (56):TARGET | EncryptMethod (98):0 | HeartBtInt (108):30 | Username (553):USERNAME | Password (554):PASSWORD | ResetSeqNumFlag (141):Y | CheckSum (10):94}
+        "wtfix.apps.utils.LoggingApp",             # Log inbound and outbound messages
         "wtfix.apps.wire.WireCommsApp",            # Raw message encoding / decoding: b'8=FIX.4.4\x019=99\x0135=A\x0134=1\x0149=SENDER\x0152=20190305-08:42:32.793\x0156=TARGET\x0198=0\x01108=30\x01553=USERNAME\x01554=PASSWORD\x01141=Y\x0110=081\x01'
         "wtfix.apps.sessions.ClientSessionApp",    # HTTP session management
     ]
@@ -50,7 +52,8 @@ The Pythonic Financial Information eXchange (FIX) client for humans.
           logger.info(f"Received message {message}!")
     ```
 
-- A simple message tag syntax, and various convenience methods, that are kind to humans - no more trying to decipher raw byte streams. Example ``Logon`` message:
+- A simple message tag syntax that is human friendly, with various convenience methods for quick access to commonly
+used message attributes.
 
     ```python
     >>> from wtfix.message import admin
@@ -58,6 +61,10 @@ The Pythonic Financial Information eXchange (FIX) client for humans.
     
     # Instantiate a new 'Logon' message
     >>> logon_msg = admin.LogonMessage("my_username", "my_password", heartbeat_int=b"30")
+  
+    # Readable string representation
+    str(logon_msg)
+    'Logon (A): {MsgType (35):A | EncryptMethod (98):0 | HeartBtInt (108):30 | Username (553):my_username | Password (554):my_password | 10222:345}
     
     # Example of getting the message type
     >>> logon_msg.type
@@ -72,7 +79,7 @@ The Pythonic Financial Information eXchange (FIX) client for humans.
     1
 
     # Various ways for accessing the different fields that make up the message. Fields are just 
-    # (tag, value) tuples.
+    # (tag, value) namedtuples.
     >>> logon_msg[108]  # Using old school tag number
     (108, b"30")
   
@@ -82,7 +89,7 @@ The Pythonic Financial Information eXchange (FIX) client for humans.
     >>> logon_msg.HeartBtInt  # Using tag name shortcut
     (108, b"30")
     ```    
-- A more pragmatic [unicode sandwich](https://nedbatchelder.com/text/unipain.html) based approach to encoding / decoding messages mean that you never need to deal with byte strings...
+- A pragmatic [unicode sandwich](https://nedbatchelder.com/text/unipain.html) based approach to encoding / decoding messages mean that you never need to deal with byte strings...
  
     ```python
     # Duck typing for doing field value comparisons
@@ -127,13 +134,15 @@ The Pythonic Financial Information eXchange (FIX) client for humans.
     ```python
     from wtfix.message.message import generic_message_factory
   
-    # If you provide a group template, then messages are stored in a more efficient 'OrderedDict'
-    >>> msg = generic_message_factory((1, "a"), (2, 2), (3, "1st_group_val_3"), (4, "1st_group_val_4"), (3, "2nd_group_val_3"), (4, "2nd_group_val_4"), group_templates={2: [3, 4,]})
-    >>> msg_.fields
-    OrderedDict([(1, (1, a)), (2, [(2, 2)]:[(3, '1st_group_val_3'), (4, '1st_group_val_4')], [(3, '2nd_group_val_3'), (4, '2nd_group_val_4')])])
-    
-    # ...providing fast group and group instance lookups:
-    >>> group = msg.get_group(2)
+    # If you provide a group template, then messages are stored in an 'OrderedDict' for fast lookups
+    >>> msg = generic_message_factory((Tag.MsgType, MsgType.ExecutionReport), (Tag.NoMiscFees, 2), (Tag.MiscFeeAmt, 10.00), (Tag.MiscFeeType, 2), (Tag.MiscFeeAmt, 20.00), (Tag.MiscFeeType, "A"), group_templates={Tag.NoMiscFees: [Tag.MiscFeeAmt, Tag.MiscFeeType,]})
+    >>> msg._fields
+    OrderedDict([(35, (35, 8)), (136, [(136, 2)]:[(137, 10.0), (139, 2)], [(137, 20.0), (139, A)])])
+  
+    # Get 'NoMiscFees' group
+    >>> group = msg.get_group(Tag.NoMiscFees)
+    >>> str(group)
+    '[NoMiscFees (136):2] | [MiscFeeAmt (137):10.0 | MiscFeeType (139):2] | [MiscFeeAmt (137):20.0 | MiscFeeType (139):A]'
    
     # Determine the number of instances in the group
     >>> group.size
@@ -141,19 +150,19 @@ The Pythonic Financial Information eXchange (FIX) client for humans.
   
     # Retrieve the second group instance
     >>> group.instances[1]
-    [(3, '2nd_group_val_3'), (4, '2nd_group_val_4')]
+    [(137, 20.0), (139, A)]
    
     # Without a pre-defined group template we fall back to using a (slightly slower) list structure for representing message fields internally
-    >>> msg = generic_message_factory((1, "a"), (2, 2), (3, "1st_group_val_3"), (4, "1st_group_val_4"), (3, "2nd_group_val_3"), (4, "2nd_group_val_4"))
+    >>> msg = generic_message_factory((Tag.MsgType, MsgType.ExecutionReport), (Tag.NoMiscFees, 2), (Tag.MiscFeeAmt, 10.00), (Tag.MiscFeeType, 2), (Tag.MiscFeeAmt, 20.00), (Tag.MiscFeeType, "A")
     >>> msg_.fields
-    [(1, a), (2, 2), (3, '1st_group_val_3'), (4, '1st_group_val_4'), (3, '2nd_group_val_3'), (4, '2nd_group_val_4')]
+    [(35, 8), (136, 2), (137, 10.0), (139, 2), (137, 20.0), (139, A)]
   
     ```
     
 ## Getting Started
 
-- Install the project's dependencies (e.g. `pip install -r requirements/local.txt`), preferably in a virtual
-  machine that has been created specifically for that purpose.
+- Install the project's dependencies (e.g. `pip install -r requirements/local.txt`), preferably in a Python virtual
+  environment that has been created specifically for that purpose.
 - Run the test suite with `pytest` to verify the installation.
 - Create a `.env` file in the project's root directory that contains at least the following configuration settings:
 
@@ -164,8 +173,8 @@ The Pythonic Financial Information eXchange (FIX) client for humans.
     HOST=             # Required. The FIX server hostname or IP address
     PORT=             # Required. The port on the FIX server to connect to
     
-    SENDER_COMP_ID=   # Required. Sender ID (tag 49).
-    TARGET_COMP_ID=   # Required. Target ID (tag 56).
+    SENDER=           # Required. SENDER_COMP_ID (tag 49).
+    TARGETD=          # Required. TARGET_COMP_ID (tag 56).
     
     USERNAME=         # Required. Username to use for Logon messages (tag 553).
     PASSWORD=         # Required. Password to use for logon messages (tag 554).
@@ -174,7 +183,7 @@ The Pythonic Financial Information eXchange (FIX) client for humans.
     ```
     
 - Start the FIX client with `python runclient.py`. The default implementation will log in to the FIX server and maintain a steady heartbeat.
-- Use `Ctrl-C` to quit - stops the message processing pipeline in an orderly fashion by doing a proper `Logout`.
+- Use `Ctrl-C` to quit. This will trigger a `Logout` message to be sent before the pipeline is terminated.
     
 ## Project Resources
 

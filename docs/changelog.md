@@ -2,6 +2,22 @@
 
 This changelog is used to track all major changes to WTFIX.
 
+## v0.2.0 (2019-03-10)
+
+**Enhancements**
+
+- Add support for configuring multiple FIX sessions using the ``SESSIONS`` config parameter.
+- Different pipeline connections can now be initiated by using the ``--sessions`` command line parameter with ``run_client.py``.
+- New ``LoggingApp`` for logging of inbound and outbound messages.
+- New ``RESTfulServiceApp`` for sending messages via a REST API.
+
+**Fixes**
+- Don't raise an exception if a heartbeat message (0) is received unexpectedly.
+
+**Breaking changes**
+
+- Rename ``SENDER_COMP_ID`` parameter to ``SENDER`` and ``TARGET_COMP_ID`` to ``TARGET``.
+
 ## v0.1.2 (2019-03-05)
 
 - Fix test build dependencies.

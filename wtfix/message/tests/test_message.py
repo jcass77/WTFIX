@@ -37,21 +37,25 @@ class TestFixMessageMixin:
         m = generic_message_class(*sdr_message_fields)
         assert m.seq_num == 1
 
+    def test_seq_num_getter_defaults_to_none(self, generic_message_class):
+        m = generic_message_class((35, "a"), (2, "bb"))
+        assert m.seq_num is None
+
     def test_sender_id_getter(self, generic_message_class, sdr_message_fields):
         m = generic_message_class(*sdr_message_fields)
         assert m.sender_id == "SENDER"
 
-    def test_sender_id_getter_default(self, generic_message_class):
+    def test_sender_id_getter_defaults_to_none(self, generic_message_class):
         m = generic_message_class((35, "a"), (2, "bb"))
-        assert m.sender_id == "SENDER_ID"
+        assert m.sender_id is None
 
     def test_target_id_getter(self, generic_message_class, sdr_message_fields):
         m = generic_message_class(*sdr_message_fields)
         assert m.target_id == "TARGET"
 
-    def test_target_id_getter_default(self, generic_message_class):
+    def test_target_id_getter_defaults_to_none(self, generic_message_class):
         m = generic_message_class((35, "a"), (2, "bb"))
-        assert m.target_id == "TARGET_ID"
+        assert m.target_id is None
 
     def test_clear(self, generic_message_class, sdr_message_fields):
         m = generic_message_class(*sdr_message_fields)

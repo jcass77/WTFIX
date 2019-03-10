@@ -8,7 +8,6 @@ pytest-socket~=0.3  # https://github.com/miketheman/pytest-socket
 pytest-env~=0.6  # https://github.com/MobileDynasty/pytest-env
 pytest-asyncio~=0.9  # https://github.com/pytest-dev/pytest-asyncio
 faker~=1.0  # https://github.com/joke2k/faker
-aiofiles~=0.4  # https://github.com/Tinche/aiofiles
 
 # Code quality
 # ------------------------------------------------------------------------------

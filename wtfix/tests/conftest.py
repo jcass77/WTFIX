@@ -1,4 +1,8 @@
+import asyncio
+from unittest.mock import Mock
+
 import pytest
+from unsync import unsync
 
 from wtfix.apps.base import BaseApp
 from wtfix.core.exceptions import StopMessageProcessing
@@ -16,24 +20,54 @@ def routing_id_group_pairs(routing_id_group):
     return pairs
 
 
+def get_mock_async(return_value=None):
+    """
+    Create a Mock-able async class member
+    """
+    @unsync
+    async def mock_async(*args, **kwargs):
+        return return_value
+
+    return Mock(wraps=mock_async)
+
+
+def get_slow_mock_async(sleep_time):
+    """
+    Simulate an async method that is slow to respond - useful for testing timeouts.
+    """
+    @unsync
+    async def mock_async(*args, **kwargs):
+        await asyncio.sleep(sleep_time)
+
+    return Mock(wraps=mock_async)
+
+
 class Below(BaseApp):
     name = "below"
 
     def on_receive(self, message):
-        return f"{message} r1"
+        message.TestReqID = f"{message.TestReqID.as_str} r1"
+
+        return message
 
     def on_send(self, message):
-        return f"{message} s1"
+        message.TestReqID = f"{message.TestReqID.as_str} s1"
+
+        return message
 
 
 class Middle(BaseApp):
     name = "middle"
 
     def on_receive(self, message):
-        return f"{message} r2"
+        message.TestReqID = f"{message.TestReqID.as_str} r2"
+
+        return message
 
     def on_send(self, message):
-        return f"{message} s2"
+        message.TestReqID = f"{message.TestReqID.as_str} s2"
+
+        return message
 
 
 class MiddleStop(BaseApp):
@@ -50,10 +84,14 @@ class Top(BaseApp):
     name = "top"
 
     def on_receive(self, message):
-        return f"{message} r3"
+        message.TestReqID = f"{message.TestReqID.as_str} r3"
+
+        return message
 
     def on_send(self, message):
-        return f"{message} s3"
+        message.TestReqID = f"{message.TestReqID.as_str} s3"
+
+        return message
 
 
 @pytest.fixture(scope="session")

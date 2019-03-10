@@ -1,2 +1,4 @@
-python-dotenv==0.10.1  # https://github.com/theskumar/python-dotenv
-unsync==1.1  # https://github.com/alex-sherman/unsync
+python-dotenv~=0.10.1  # https://github.com/theskumar/python-dotenv
+unsync~=1.1  # https://github.com/alex-sherman/unsync
+flask-restful~=0.3.7  # https://github.com/flask-restful/flask-restful
+requests~=2.21.0  # https://github.com/kennethreitz/requests

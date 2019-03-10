@@ -17,11 +17,10 @@
 
 
 from wtfix.apps.base import BaseApp
-from wtfix.conf import settings, logger
+from wtfix.conf import settings
 from wtfix.core.utils import GroupTemplateMixin
 from wtfix.message.field import Field
 from wtfix.message.message import RawMessage, generic_message_factory
-from wtfix.protocol.common import Tag
 
 
 class RawMessageParserApp(BaseApp, GroupTemplateMixin):
@@ -31,27 +30,26 @@ class RawMessageParserApp(BaseApp, GroupTemplateMixin):
 
     name = "raw_message_parser"
 
+    def __init__(self, pipeline, *args, **kwargs):
+        super().__init__(pipeline, *args, **kwargs)
+
+        self.group_templates = self.pipeline.settings.GROUP_TEMPLATES
+
     def on_receive(self, message: RawMessage):
         data = message.encoded_body.rstrip(settings.SOH).split(
             settings.SOH
         )  # Remove last SOH at end of byte stream and split into fields
 
         fields = [
-            message[Tag.BeginString],
-            message[Tag.BodyLength],
-            message[Tag.MsgType],
-            message[Tag.MsgSeqNum],
+            message.BeginString,
+            message.BodyLength,
+            message.MsgType,
+            message.MsgSeqNum,
             *self._parse_fields(data),
-            message[Tag.CheckSum],
+            message.CheckSum,
         ]
 
         message = generic_message_factory(*fields, group_templates=self.group_templates)
-        logger.info(f" <-- {message}")
-
-        return message
-
-    def on_send(self, message: RawMessage):
-        logger.info(f" --> {message}")
 
         return message
 

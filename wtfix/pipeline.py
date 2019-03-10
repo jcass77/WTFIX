@@ -22,7 +22,7 @@ from collections import OrderedDict
 
 from unsync import unsync
 
-from wtfix.conf import logger
+from wtfix.conf import logger, SessionSettings
 from wtfix.conf import settings
 from wtfix.core.exceptions import (
     MessageProcessingError,
@@ -40,7 +40,11 @@ class BasePipeline:
     INBOUND_PROCESSING = 0
     OUTBOUND_PROCESSING = 1
 
-    def __init__(self, installed_apps=None):
+    def __init__(self, session_name=None, installed_apps=None):
+        if session_name is None:
+            session_name = settings.default_session_name
+
+        self.settings = SessionSettings(session_name)
         self._installed_apps = self._load_apps(installed_apps=installed_apps)
         logger.info(f"Created new FIX application pipeline: {list(self.apps.keys())}.")
 
@@ -60,19 +64,23 @@ class BasePipeline:
         loaded_apps = OrderedDict()
 
         if installed_apps is None:
-            installed_apps = settings.PIPELINE_APPS
+            installed_apps = self.settings.PIPELINE_APPS
 
         if len(installed_apps) == 0:
             raise ImproperlyConfigured(
                 f"At least one application needs to be added to the pipeline by using the PIPELINE_APPS setting."
             )
 
+        settings_kwargs = {
+            key.lower(): value for key, value in self.settings.__dict__.items()
+        }
+
         for app in installed_apps:
             mod_name, class_name = app.rsplit(".", 1)
             module = importlib.import_module(mod_name)
 
             class_ = getattr(module, class_name)
-            instance = class_(self)
+            instance = class_(self, **settings_kwargs)
 
             loaded_apps[instance.name] = instance
 
@@ -132,7 +140,7 @@ class BasePipeline:
         """
         async with self.stop_lock:  # Ensure that more than one app does not attempt to initiate a shutdown at once
             if self.stopped_event.is_set():
-                # Pipeline has already been sotpped - nothing more to do.
+                # Pipeline has already been stopped - nothing more to do.
                 return
 
             logger.info("Shutting down pipeline...")

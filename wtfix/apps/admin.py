@@ -32,7 +32,7 @@ from wtfix.core.exceptions import (
 )
 from wtfix.message import admin
 from wtfix.core import utils
-from wtfix.protocol.common import MsgType, Tag
+from wtfix.protocol.common import MsgType
 
 
 class HeartbeatApp(MessageTypeHandlerApp):
@@ -59,7 +59,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
         try:
             return self._heartbeat
         except AttributeError:
-            self._heartbeat = 30
+            self._heartbeat = self.pipeline.settings.HEARTBEAT_INT
 
             return self._heartbeat
 
@@ -159,7 +159,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
         :param message: The Logon message received. Should contain a HeartBtInt tag that will be used
         to set the heartbeat interval to monitor.
         """
-        self._heartbeat = message[Tag.HeartBtInt].as_int
+        self._heartbeat = message.HeartBtInt.as_int
 
         return message
 
@@ -171,9 +171,9 @@ class HeartbeatApp(MessageTypeHandlerApp):
         :param message: The TestRequest message. Should contain a TestReqID.
         """
         logger.debug(
-            f"{self.name}: Sending heartbeat in response to request {message[Tag.TestReqID]}."
+            f"{self.name}: Sending heartbeat in response to request {message.TestReqID}."
         )
-        self.send(admin.HeartbeatMessage(message[Tag.TestReqID].as_str))
+        self.send(admin.HeartbeatMessage(message.TestReqID.as_str))
 
         return message
 
@@ -184,13 +184,13 @@ class HeartbeatApp(MessageTypeHandlerApp):
         :param message: The Heartbeat message that was received in response to our TestRequest. The
         TestReqID for the TestRequest and Heartbeat messages should match for this to be a valid response.
         """
-        if message[Tag.TestReqID] == self._test_request_id:
-            # Response received - reset
-            self._test_request_id = None
-        else:
-            raise MessageProcessingError(
-                f"Received an unexpected heartbeat message: {message}."
-            )
+        try:
+            if message.TestReqID == self._test_request_id:
+                # Response received - reset
+                self._test_request_id = None
+        except TagNotFound:
+            # Random heartbeat message received - nothing more to do
+            pass
 
         return message
 
@@ -227,15 +227,15 @@ class AuthenticationApp(MessageTypeHandlerApp):
         super().__init__(pipeline, *args, **kwargs)
 
         if heartbeat_int is None:
-            heartbeat_int = settings.HEARTBEAT_INTERVAL
+            heartbeat_int = settings.default_session.HEARTBEAT_INT
 
         self.heartbeat_int = heartbeat_int
 
         if username is None:
-            username = settings.USERNAME
+            username = self.pipeline.settings.USERNAME
 
         if password is None:
-            password = settings.PASSWORD
+            password = self.pipeline.settings.PASSWORD
 
         self.username = username
         self.password = password
@@ -276,7 +276,7 @@ class AuthenticationApp(MessageTypeHandlerApp):
         """
         heartbeat_time = message.HeartBtInt.as_int
         if heartbeat_time != self.heartbeat_int:
-            raise MessageProcessingError(
+            raise SessionError(
                 f"{self.name}: Heartbeat confirmation '{heartbeat_time}' does not match logon value {self.heartbeat_int}."
             )
 
@@ -286,13 +286,13 @@ class AuthenticationApp(MessageTypeHandlerApp):
             test_mode = False
 
         if test_mode != self.test_mode:
-            raise MessageProcessingError(
+            raise SessionError(
                 f"{self.name}: Test mode confirmation '{test_mode}' does not match logon value {self.test_mode}."
             )
 
         reset_seq_nums = message.ResetSeqNumFlag.as_bool
         if reset_seq_nums != self.reset_seq_nums:
-            raise MessageProcessingError(
+            raise SessionError(
                 f"{self.name}: Reset sequence number confirmation '{reset_seq_nums}' does not match logon value {self.reset_seq_nums}."
             )
 
@@ -318,10 +318,10 @@ class AuthenticationApp(MessageTypeHandlerApp):
         )
 
         if self.reset_seq_nums:
-            logon_msg[Tag.ResetSeqNumFlag] = "Y"
+            logon_msg.ResetSeqNumFlag = "Y"
 
         if self.test_mode is True:
-            logon_msg[Tag.TestMessageIndicator] = "Y"
+            logon_msg.TestMessageIndicator = "Y"
 
         logger.info(f"{self.name}: Logging in with: {logon_msg}...")
         self.send(logon_msg)

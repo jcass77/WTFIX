@@ -16,7 +16,7 @@ class TestBaseApp:
     class MockApp(MessageTypeHandlerApp):
         name = "mock_app"
 
-    def test_check_name_on_init(self):
+    def test_raises_exception_on_init_if_app_name_not_defined(self):
         with pytest.raises(ValidationError):
             BaseApp(mock.MagicMock(BasePipeline))
 

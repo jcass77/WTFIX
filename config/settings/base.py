@@ -14,6 +14,8 @@ load_dotenv()
 DEBUG = strtobool(os.getenv("DEBUG", "False"))
 LOGGING_LEVEL = logging.INFO
 
+FLASK_ENV = os.getenv("FLASK_ENV", "production")
+
 # Local time zone. Choices are
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
 # though not all of them may be available with every OS.
@@ -21,28 +23,29 @@ LOGGING_LEVEL = logging.INFO
 TIME_ZONE = "Africa/Johannesburg"
 USE_TZ = True
 
-# SESSION
+# SESSIONS
 # ------------------------------------------------------------------------------
-HOST = os.getenv("HOST")
-PORT = os.getenv("PORT")
-
-SENDER_COMP_ID = os.getenv("SENDER_COMP_ID")
-TARGET_COMP_ID = os.getenv("TARGET_COMP_ID")
-
-USERNAME = os.getenv("USERNAME", SENDER_COMP_ID)
-PASSWORD = os.getenv("PASSWORD")
-
-# APPS
-# ------------------------------------------------------------------------------
-PIPELINE_APPS = [
-    "wtfix.apps.admin.HeartbeatApp",
-    "wtfix.apps.admin.AuthenticationApp",
-    "wtfix.apps.admin.SeqNumManagerApp",
-    "wtfix.apps.parsers.RawMessageParserApp",
-    "wtfix.apps.wire.WireCommsApp",
-    "wtfix.apps.sessions.ClientSessionApp",
-]
-
-# REPEATING GROUPS
-# ------------------------------------------------------------------------------
-GROUP_TEMPLATES = {}
+SESSIONS = {
+    "default": {
+        "HEARTBEAT_INT": 30,
+        "HOST": os.getenv("HOST"),
+        "PORT": os.getenv("PORT"),
+        "SENDER": os.getenv("SENDER"),
+        "TARGET": os.getenv("TARGET"),
+        "USERNAME": os.getenv("USERNAME", os.getenv("SENDER")),
+        "PASSWORD": os.getenv("PASSWORD"),
+        # APPS
+        "PIPELINE_APPS": [
+            "wtfix.apps.api.RESTfulServiceApp",
+            "wtfix.apps.admin.HeartbeatApp",
+            "wtfix.apps.admin.AuthenticationApp",
+            "wtfix.apps.admin.SeqNumManagerApp",
+            "wtfix.apps.parsers.RawMessageParserApp",
+            "wtfix.apps.utils.LoggingApp",
+            "wtfix.apps.wire.WireCommsApp",
+            "wtfix.apps.sessions.ClientSessionApp",
+        ],
+        # REPEATING GROUPS
+        "GROUP_TEMPLATES": {}
+    }
+}

@@ -183,12 +183,11 @@ class GroupTemplateMixin:
     """
     Mixin for maintaining a dictionary of repeating group templates.
     """
-
     @property
     def group_templates(self):
         """
         :return: The dictionary of group templates that have been added for this object. Initializes the dictionary
-        from the GROUP_TEMPLATES setting if it does not exist yet.
+        from the GROUP_TEMPLATES setting if it does not exist yet and only one SESSION has been configured.
         """
         try:
             return self._group_templates
@@ -201,11 +200,14 @@ class GroupTemplateMixin:
         self._group_templates = value
 
     def _init_group_templates(self):
-        self._group_templates = settings.GROUP_TEMPLATES
+        if settings.has_safe_defaults:
+            self._group_templates = settings.default_session.GROUP_TEMPLATES
+        else:
+            self._group_templates = {}
 
     def add_group_templates(self, templates):
         """
-        Performs some basic validation checks when adding new group templates.
+        Performs some basic validation checks when adding additional group templates.
 
         :param templates: A dictionary of templates in the format {identifier tag: [tag_1,...,tag_n]}
         """
@@ -219,6 +221,7 @@ class GroupTemplateMixin:
     def remove_group_template(self, identifier_tag):
         """
         Safely remove a group template.
+
         :param identifier_tag: The identifier tag number of the group that should be removed.
         """
         del self.group_templates[identifier_tag]

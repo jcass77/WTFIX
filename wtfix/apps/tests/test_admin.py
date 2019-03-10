@@ -5,18 +5,56 @@ from unittest.mock import MagicMock
 import pytest
 from unsync import Unfuture
 
-from wtfix.apps.admin import HeartbeatApp, SeqNumManagerApp
-from wtfix.core.exceptions import MessageProcessingError, StopMessageProcessing
+from wtfix.apps.admin import HeartbeatApp, SeqNumManagerApp, AuthenticationApp
+from wtfix.conf import settings
+from wtfix.core.exceptions import StopMessageProcessing, SessionError
 from wtfix.message import admin
 from wtfix.message.admin import TestRequestMessage, HeartbeatMessage
+from wtfix.message.message import OptimizedGenericMessage
 from wtfix.pipeline import BasePipeline
-from wtfix.protocol.common import Tag
+from wtfix.protocol.common import MsgType, Tag
+
+
+class TestAuthenticationApp:
+    def test_on_logon_raises_exception_on_wrong_heartbeat_response(self, base_pipeline):
+        with pytest.raises(SessionError):
+            logon_msg = admin.LogonMessage("", "", heartbeat_int=60)
+            logon_msg.ResetSeqNumFlag = True
+
+            auth_app = AuthenticationApp(base_pipeline)
+            auth_app.on_logon(logon_msg)
+
+    def test_on_logon_sets_default_test_message_indicator_to_false(self, base_pipeline):
+        logon_msg = admin.LogonMessage("", "")
+        logon_msg.ResetSeqNumFlag = True
+
+        auth_app = AuthenticationApp(base_pipeline)
+        auth_app.on_logon(logon_msg)
+
+        assert auth_app.test_mode is False
+
+    def test_on_logon_raises_exception_on_wrong_test_indicator_response(self, base_pipeline):
+        with pytest.raises(SessionError):
+            logon_msg = admin.LogonMessage("", "")
+            logon_msg.ResetSeqNumFlag = True
+            logon_msg.TestMessageIndicator = True
+
+            auth_app = AuthenticationApp(base_pipeline)
+            auth_app.on_logon(logon_msg)
+
+    def test_on_logon_raises_exception_on_wrong_reset_sequence_number_response(self, base_pipeline):
+        with pytest.raises(SessionError):
+            logon_msg = admin.LogonMessage("", "")
+            logon_msg.ResetSeqNumFlag = False
+
+            auth_app = AuthenticationApp(base_pipeline)
+            auth_app.on_logon(logon_msg)
 
 
 class TestHeartbeatApp:
-    def test_heartbeat_getter_defaults_to_30(self):
-        heartbeat_app = HeartbeatApp(MagicMock(BasePipeline))
-        assert heartbeat_app.heartbeat == 30
+    def test_heartbeat_getter_defaults_to_global_settings(self, base_pipeline):
+        heartbeat_app = HeartbeatApp(base_pipeline)
+        assert heartbeat_app.heartbeat == settings.default_session.HEARTBEAT_INT
 
     @pytest.mark.asyncio
     async def test_server_stops_responding_after_three_test_requests(
@@ -63,9 +101,7 @@ class TestHeartbeatApp:
     @pytest.mark.asyncio
     async def test_send_test_request(self, unsync_event_loop, zero_heartbeat_app):
         def simulate_heartbeat_response(message):
-            zero_heartbeat_app.on_heartbeat(
-                {Tag.TestReqID: message[Tag.TestReqID].as_str}
-            )
+            zero_heartbeat_app.on_heartbeat(HeartbeatMessage(message.TestReqID.as_str))
 
         zero_heartbeat_app.pipeline.send.side_effect = simulate_heartbeat_response
 
@@ -83,10 +119,10 @@ class TestHeartbeatApp:
         await zero_heartbeat_app.send_test_request()
         assert zero_heartbeat_app._server_not_responding.is_set()
 
-    def test_logon_sets_heartbeat_increment(self, logon_message):
-        heartbeat_app = HeartbeatApp(MagicMock(BasePipeline))
+    def test_logon_sets_heartbeat_increment(self, logon_message, base_pipeline):
+        heartbeat_app = HeartbeatApp(base_pipeline)
 
-        logon_message[Tag.HeartBtInt] = 45
+        logon_message.HeartBtInt = 45
         heartbeat_app.on_logon(logon_message)
 
         assert heartbeat_app.heartbeat == 45
@@ -107,12 +143,10 @@ class TestHeartbeatApp:
 
         assert zero_heartbeat_app._test_request_id is None
 
-    def test_raises_exception_on_unexpected_heartbeat(self, zero_heartbeat_app):
-        with pytest.raises(MessageProcessingError):
-            heartbeat_message = HeartbeatMessage("123test")
-            zero_heartbeat_app._test_request_id = "test123"
+    def test_on_heartbeat_handles_empty_request_id(self, zero_heartbeat_app):
+        test_request = OptimizedGenericMessage((Tag.MsgType, MsgType.TestRequest))
 
-            zero_heartbeat_app.on_heartbeat(heartbeat_message)
+        assert zero_heartbeat_app.on_heartbeat(test_request) == test_request
 
     def test_on_receive_updated_timestamp(self, zero_heartbeat_app):
         prev_timestamp = zero_heartbeat_app._last_receive
@@ -178,8 +212,8 @@ class TestSeqNumManagerApp:
         first_non_admin_message_resend = pipeline_mock.send.mock_calls[1][1][0]
         assert first_non_admin_message_resend.seq_num == 3
 
-    def test_on_receive_no_gaps_adds_messages_to_receive_log(self, messages):
-        seq_num_app = SeqNumManagerApp(MagicMock(BasePipeline))
+    def test_on_receive_no_gaps_adds_messages_to_receive_log(self, messages, base_pipeline):
+        seq_num_app = SeqNumManagerApp(base_pipeline)
 
         for next_message in messages:
             seq_num_app.on_receive(next_message)
@@ -223,3 +257,13 @@ class TestSeqNumManagerApp:
         except StopMessageProcessing:
             # Expected - ignore
             pass
+
+    def test_check_poss_dup_raises_exception_for_unexpected_sequence_numbers(self, user_notification_message):
+        with pytest.raises(SessionError):
+            pipeline_mock = MagicMock(BasePipeline)
+            seq_num_app = SeqNumManagerApp(pipeline_mock)
+            seq_num_app._receive_seq_num = 10
+
+            user_notification_message.MsgSeqNum = 1
+
+            seq_num_app._check_poss_dup(user_notification_message)

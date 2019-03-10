@@ -586,13 +586,13 @@ class Group:
         indicates the number of times that GroupInstance repeats in this Group.
         :param fields: A GroupInstance or list of (tag, value) tuples.
         :param template: Optional. The list of tags that this repeating group consists of. If no template is
-        provided then tries to find a template corresponding to identifier.tag in the GROUP_TEMPLATES setting.
+        provided then tries to find a template corresponding to identifier.tag in the default GROUP_TEMPLATES setting.
         :raises: ImproperlyConfigured if no template is specified and no template could be found in settings.
         """
         self.identifier = Field(*identifier)
         if template is None:
             try:
-                template = settings.GROUP_TEMPLATES[self.identifier.tag]
+                template = settings.default_session.GROUP_TEMPLATES[self.identifier.tag]
             except KeyError:
                 raise (
                     ImproperlyConfigured(

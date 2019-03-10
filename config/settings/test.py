@@ -7,18 +7,17 @@ DEBUG = True
 
 # SESSION
 # ------------------------------------------------------------------------------
-HOST = "TEST_HOST"
-PORT = "TEST_PORT"
+SESSIONS["default"]["HOST"] = "TEST_HOST"
+SESSIONS["default"]["PORT"] = "TEST_PORT"
 
-SENDER_COMP_ID = "SENDER_ID"
-TARGET_COMP_ID = "TARGET_ID"
+SESSIONS["default"]["SENDER"] = "SENDER_ID"
+SESSIONS["default"]["TARGET"] = "TARGET_ID"
 
-USERNAME = "TEST_USER"
-PASSWORD = "TEST_PASSWORD"
+SESSIONS["default"]["USERNAME"] = "TEST_USER"
+SESSIONS["default"]["PASSWORD"] = "TEST_PASSWORD"
 
 # REPEATING GROUPS
-# ------------------------------------------------------------------------------
-GROUP_TEMPLATES = {
+SESSIONS["default"]["GROUP_TEMPLATES"] = {
     # Routing IDs
     Tag.NoRoutingIDs: [Tag.RoutingType, Tag.RoutingID]
 }

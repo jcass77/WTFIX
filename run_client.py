@@ -15,6 +15,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import argparse
+import atexit
 import logging
 from asyncio import futures
 
@@ -24,7 +26,22 @@ from unsync import (
 
 from wtfix.conf import logger
 from wtfix.conf import settings
+from wtfix.core.exceptions import ImproperlyConfigured
 from wtfix.pipeline import BasePipeline
+
+parser = argparse.ArgumentParser(description="Start a FIX session")
+
+try:
+    default_session = settings.default_session_name
+except ImproperlyConfigured:
+    default_session = None
+
+parser.add_argument(
+    "--session",
+    default=default_session,
+    help=f"the session to connect to (default: '{default_session}')",
+)
+
 
 if __name__ == "__main__":
     logging.basicConfig(
@@ -32,11 +49,19 @@ if __name__ == "__main__":
         format="%(asctime)s - %(threadName)s - %(module)s - %(levelname)s - %(message)s",
     )
 
-    fix_pipeline = BasePipeline()
+    args = parser.parse_args()
+    fix_pipeline = BasePipeline(session_name=args.session)
+
     try:
+        atexit.register(fix_pipeline.stop)
         fix_pipeline.start().result()
+
+    except futures.TimeoutError as e:
+        logger.info(e)
+
     except KeyboardInterrupt:
-        logger.info("Received keyboard interrupt! Initiating shutdown...")
-        fix_pipeline.stop().result()
+        # Don't log keyboard interrupts - will be handled gracefully by atexit
+        pass
+
     except futures.CancelledError:
         logger.error("Cancelled: session terminated abnormally!")
