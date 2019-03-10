@@ -120,7 +120,7 @@ class RESTfulServiceApp(BaseApp):
                 self._run_flask_dev_server(self._flask_app)
             else:
                 # Must be running as a WSGI application
-                from wtfix.conf.wsgi import app
+                from config.wsgi import app
 
                 self._flask_app = app
 
