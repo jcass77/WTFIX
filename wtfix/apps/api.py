@@ -24,9 +24,13 @@ from flask import Flask, request, abort
 from flask_restful import Api, Resource, reqparse
 from unsync import unsync
 
-from wtfix.apps.base import MessageTypeHandlerApp, on
-from wtfix.message.admin import TestRequestMessage
-from wtfix.protocol.common import MsgType
+from wtfix.apps.base import BaseApp
+from wtfix.conf import settings, logger
+
+
+class Status(Resource):
+    def get(self):
+        return "WTFIX REST API is up and running!"
 
 
 class Send(Resource):
@@ -85,7 +89,7 @@ class Shutdown(Resource):
         func()
 
 
-class RESTfulServiceApp(MessageTypeHandlerApp):
+class RESTfulServiceApp(BaseApp):
     """
     Simple REST interface for communicating with the pipeline.
 
@@ -97,27 +101,45 @@ class RESTfulServiceApp(MessageTypeHandlerApp):
     def __init__(self, pipeline, *args, **kwargs):
         super().__init__(pipeline, *args, **kwargs)
 
-        self.app = None
+        self._flask_app = None
         self.secret_key = (
             uuid.uuid4().hex
         )  # Secret key used internally by restricted APIs that should only be callable by this app itself.
+
+    @property
+    def flask_app(self):
+        if self._flask_app is None:
+
+            if settings.FLASK_ENV == "development":
+                # We need to start our own Flask application
+                logger.info(
+                    f"{self.name}: Starting Flask development server..."
+                )
+
+                self._flask_app = Flask(__name__)
+                self._run_flask_dev_server(self._flask_app)
+            else:
+                # Must be running as a WSGI application
+                from wtfix.conf.wsgi import app
+
+                self._flask_app = app
+
+        return self._flask_app
+
 
     @unsync
     async def initialize(self, *args, **kwargs):
         await super().initialize(*args, **kwargs)
 
-        self.app = Flask(__name__)
-
-        api = Api(self.app)
+        api = Api(self.flask_app)
+        api.add_resource(Status, "/")
         api.add_resource(Send, "/send", resource_class_args=[self])
         api.add_resource(Shutdown, "/shutdown", resource_class_args=[self])
 
-        self.run_flask()
-
     @unsync
-    def run_flask(self):
+    def _run_flask_dev_server(self, flask_app):
         # Start Flask in a separate thread
-        self.app.run()
+        flask_app.run()
 
     # @on(MsgType.Logon)
     # def on_logon(self, message):

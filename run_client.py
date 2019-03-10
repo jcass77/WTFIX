@@ -14,7 +14,9 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import argparse
+import atexit
 import logging
 from asyncio import futures
 
@@ -51,14 +53,15 @@ if __name__ == "__main__":
     fix_pipeline = BasePipeline(session_name=args.session)
 
     try:
+        atexit.register(fix_pipeline.stop)
         fix_pipeline.start().result()
 
     except futures.TimeoutError as e:
         logger.info(e)
 
     except KeyboardInterrupt:
-        logger.info("Received keyboard interrupt! Initiating shutdown...")
-        fix_pipeline.stop().result()
+        # Don't log keyboard interrupts - will be handled gracefully by atexit
+        pass
 
     except futures.CancelledError:
         logger.error("Cancelled: session terminated abnormally!")
