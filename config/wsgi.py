@@ -31,10 +31,9 @@ app = Flask(__name__)
 
 
 def get_wsgi_application(session_name=None):
-    logging.basicConfig(
-        level=settings.LOGGING_LEVEL,
-        format="%(asctime)s - %(threadName)s - %(module)s - %(levelname)s - %(message)s",
-    )
+    gunicorn_logger = logging.getLogger("gunicorn.error")
+    app.logger.handlers = gunicorn_logger.handlers
+    app.logger.setLevel(gunicorn_logger.level)
 
     if session_name is None:
         session_name = settings.default_session_name
