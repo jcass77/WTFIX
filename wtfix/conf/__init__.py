@@ -41,6 +41,7 @@ ENVIRONMENT_VARIABLE = "WTFIX_SETTINGS_MODULE"
 class Settings:
     def __init__(self, settings_module=None):
 
+        self._logger = None
         if settings_module is None:
             settings_module = os.environ.get(ENVIRONMENT_VARIABLE)
 
@@ -95,7 +96,14 @@ class Settings:
 
     @property
     def logger(self):
-        return logging.getLogger(settings.LOGGER)
+        if self._logger is None:
+            self._logger = logging.getLogger(settings.LOGGER)
+
+        return self._logger
+
+    @logger.setter
+    def logger(self, value):
+        self._logger = value
 
     def get_group_templates(self, session_name=None, identifiers=None):
         if session_name is None:

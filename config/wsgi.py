@@ -35,7 +35,7 @@ def get_wsgi_application(session_name=None):
     app.logger.handlers = gunicorn_logger.handlers
     app.logger.setLevel(gunicorn_logger.level)
 
-    settings.LOGGER = "gunicorn.error"
+    settings.logger = app.logger
 
     if session_name is None:
         session_name = settings.default_session_name
