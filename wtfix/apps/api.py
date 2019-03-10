@@ -25,7 +25,10 @@ from flask_restful import Api, Resource, reqparse
 from unsync import unsync
 
 from wtfix.apps.base import BaseApp
-from wtfix.conf import settings, logger
+from wtfix.conf import settings
+
+
+logger = settings.logger
 
 
 class Status(Resource):

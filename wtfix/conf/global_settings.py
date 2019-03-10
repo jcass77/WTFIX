@@ -26,6 +26,7 @@ by the WTFIX_SETTINGS_MODULE environment variable.
 import logging
 
 DEBUG = False
+LOGGER = "wtfix"
 LOGGING_LEVEL = logging.INFO
 
 # Local time zone for this installation. All choices can be found here:

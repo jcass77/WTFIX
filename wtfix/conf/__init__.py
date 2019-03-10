@@ -37,8 +37,6 @@ load_dotenv(dotenv_path=env_path)
 
 ENVIRONMENT_VARIABLE = "WTFIX_SETTINGS_MODULE"
 
-logger = logging.getLogger("gunicorn.error")
-
 
 class Settings:
     def __init__(self, settings_module=None):
@@ -94,6 +92,10 @@ class Settings:
     @property
     def default_session(self):
         return SessionSettings(self.default_session_name)
+
+    @property
+    def logger(self):
+        return logging.getLogger(settings.LOGGER)
 
     def get_group_templates(self, session_name=None, identifiers=None):
         if session_name is None:

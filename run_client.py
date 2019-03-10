@@ -23,10 +23,11 @@ from unsync import (
     unsync,
 )  # Import unsync to set event loop and start ambient unsync thread
 
-from wtfix.conf import logger
 from wtfix.conf import settings
 from wtfix.core.exceptions import ImproperlyConfigured
 from wtfix.pipeline import BasePipeline
+
+logger = settings.logger
 
 parser = argparse.ArgumentParser(description="Start a FIX session")
 

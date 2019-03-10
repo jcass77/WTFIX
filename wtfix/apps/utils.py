@@ -16,7 +16,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from wtfix.apps.base import BaseApp
-from wtfix.conf import logger
+from wtfix.conf import settings
+
+
+logger = settings.logger
 
 
 class LoggingApp(BaseApp):

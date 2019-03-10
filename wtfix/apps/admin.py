@@ -23,9 +23,8 @@ from datetime import datetime
 from unsync import unsync
 
 from wtfix.apps.base import MessageTypeHandlerApp, on
-from wtfix.conf import logger, settings
+from wtfix.conf import settings
 from wtfix.core.exceptions import (
-    MessageProcessingError,
     TagNotFound,
     StopMessageProcessing,
     SessionError,
@@ -33,6 +32,9 @@ from wtfix.core.exceptions import (
 from wtfix.message import admin
 from wtfix.core import utils
 from wtfix.protocol.common import MsgType
+
+
+logger = settings.logger
 
 
 class HeartbeatApp(MessageTypeHandlerApp):
