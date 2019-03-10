@@ -34,7 +34,7 @@ SESSIONS = {
         "PASSWORD": os.getenv("PASSWORD"),
         # APPS
         "PIPELINE_APPS": [
-            "wtfix.apps.api.RESTfulServiceApp",
+            "wtfix.apps.api.rest.RESTfulServiceApp",
             "wtfix.apps.admin.HeartbeatApp",
             "wtfix.apps.admin.AuthenticationApp",
             "wtfix.apps.admin.SeqNumManagerApp",

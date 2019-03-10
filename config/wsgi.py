@@ -24,7 +24,7 @@ from unsync import (
     unsync,
 )  # Import unsync to set event loop and start ambient unsync thread
 
-from wtfix.apps.api import RESTfulServiceApp
+from wtfix.apps.api.rest import RESTfulServiceApp
 from wtfix.conf import settings
 from wtfix.pipeline import BasePipeline
 
