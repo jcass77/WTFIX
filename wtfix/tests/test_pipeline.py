@@ -74,6 +74,7 @@ class TestBasePipeline:
             app_mock = MagicMock(app.__class__)
             app_mock.name = app.name
             app_mock.initialize = get_mock_async()
+            app_mock.stop = get_mock_async()
 
             pipeline._installed_apps[key] = app_mock
 
@@ -82,6 +83,8 @@ class TestBasePipeline:
         for app in pipeline.apps.values():
             assert app.initialize.called
             assert app.initialize.call_count == 1
+
+        await pipeline.stop()
 
     @pytest.mark.asyncio
     async def test_start_starts_apps_in_reverse_order(
@@ -115,6 +118,8 @@ class TestBasePipeline:
         ]
         assert call_order == list(reversed(pipeline.apps.keys()))
 
+        await pipeline.stop()
+
     @pytest.mark.asyncio
     async def test_start_raises_exception_on_initialize_timeout(
         self, unsync_event_loop, three_level_app_chain
@@ -127,10 +132,13 @@ class TestBasePipeline:
             for key, app in pipeline._installed_apps.items():
                 app_mock = MagicMock(app.__class__)
                 app_mock.initialize = get_slow_mock_async(settings.INIT_TIMEOUT + 0.1)
+                app_mock.stop = get_mock_async()
 
                 pipeline._installed_apps[key] = app_mock
 
             await pipeline.start()
+
+        await pipeline.stop()
 
     @pytest.mark.asyncio
     async def test_start_raises_exception_on_start_timeout(
@@ -145,10 +153,13 @@ class TestBasePipeline:
                 app_mock = MagicMock(app.__class__)
                 app_mock.initialize = get_mock_async()
                 app_mock.start = get_slow_mock_async(settings.STARTUP_TIMEOUT + 0.1)
+                app_mock.stop = get_mock_async()
 
                 pipeline._installed_apps[key] = app_mock
 
             await pipeline.start()
+
+        await pipeline.stop()
 
     @pytest.mark.asyncio
     async def test_stop_stops_apps_in_top_down_order(
