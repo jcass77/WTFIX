@@ -20,11 +20,13 @@ from asyncio import IncompleteReadError, LimitOverrunError
 
 from unsync import unsync
 
-from wtfix.conf import logger
 from wtfix.apps.base import BaseApp
 from wtfix.conf import settings
 from wtfix.core import utils
 from wtfix.protocol.common import MsgType, Tag
+
+
+logger = settings.logger
 
 
 class SessionApp(BaseApp):

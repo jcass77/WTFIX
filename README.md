@@ -39,7 +39,9 @@ The Pythonic Financial Information eXchange (FIX) client for humans.
     ```python
     from wtfix.apps.base import MessageTypeHandlerApp, on
     from wtfix.protocol.common import MsgType
-    from wtfix.conf import logger
+    from wtfix.conf import settings
+  
+    logger = settings.logger
   
     class SecretAlgoTradingRecipe(MessageTypeHandlerApp):
 
@@ -187,6 +189,7 @@ used message attributes.
     
 ## Project Resources
 
+- [Deploying](docs/deploying.md)
 - [Changelog](docs/changelog.md)
 - [Release procedures](docs/releasing.md)
 

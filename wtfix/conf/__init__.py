@@ -37,12 +37,11 @@ load_dotenv(dotenv_path=env_path)
 
 ENVIRONMENT_VARIABLE = "WTFIX_SETTINGS_MODULE"
 
-logger = logging.getLogger("wtfix")
-
 
 class Settings:
     def __init__(self, settings_module=None):
 
+        self._logger = None
         if settings_module is None:
             settings_module = os.environ.get(ENVIRONMENT_VARIABLE)
 
@@ -94,6 +93,17 @@ class Settings:
     @property
     def default_session(self):
         return SessionSettings(self.default_session_name)
+
+    @property
+    def logger(self):
+        if self._logger is None:
+            self._logger = logging.getLogger(settings.LOGGER)
+
+        return self._logger
+
+    @logger.setter
+    def logger(self, value):
+        self._logger = value
 
     def get_group_templates(self, session_name=None, identifiers=None):
         if session_name is None:

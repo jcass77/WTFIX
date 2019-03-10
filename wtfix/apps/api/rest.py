@@ -20,23 +20,35 @@ import pickle
 import uuid
 
 import requests
-from flask import Flask, request, abort
+from flask import Flask, request
 from flask_restful import Api, Resource, reqparse
 from unsync import unsync
 
+from wtfix.apps.api.utils import JsonResultResponse
 from wtfix.apps.base import BaseApp
-from wtfix.conf import settings, logger
+from wtfix.conf import settings
+
+
+logger = settings.logger
 
 
 class Status(Resource):
+    def __init__(self, app):
+        self.app = app
+
     def get(self):
-        return "WTFIX REST API is up and running!"
+        return JsonResultResponse(
+            True,
+            "WTFIX REST API is up and running!",
+            {},
+        )
 
 
 class Send(Resource):
     """
     API endpoint for injecting messages into the pipeline.
     """
+
     def __init__(self, app):
         self.app = app
 
@@ -64,13 +76,16 @@ class Send(Resource):
 
         self.app.send(message)
 
-        return {"sent": f"{message}"}
+        return JsonResultResponse(
+            True, "Successfully added message to pipeline!", {"message": f"{message}"}
+        )
 
 
 class Shutdown(Resource):
     """
     Shut down the Flask server (without having to start a dedicated thread outside of the unsync thread pool)
     """
+
     def __init__(self, app):
         self.app = app
 
@@ -81,12 +96,18 @@ class Shutdown(Resource):
         args = self.parser.parse_args()
 
         if args["token"] != self.app.secret_key:
-            abort(401, message=f"Invalid token '{args['token']}'.")
+            return JsonResultResponse(
+                False,
+                "Shutdown request could not be processed!",
+                {"reason": f"Invalid token '{args['token']}'."},
+            )
 
         func = request.environ.get("werkzeug.server.shutdown")
         if func is None:
             raise RuntimeError("Not running with the Werkzeug Server")
         func()
+
+        return JsonResultResponse(True, "Server shutdown initiated!", {})
 
 
 class RESTfulServiceApp(BaseApp):
@@ -110,45 +131,33 @@ class RESTfulServiceApp(BaseApp):
     def flask_app(self):
         if self._flask_app is None:
 
-            if settings.FLASK_ENV == "development":
+            if settings.DEBUG is True:
                 # We need to start our own Flask application
-                logger.info(
-                    f"{self.name}: Starting Flask development server..."
-                )
+                logger.info(f"{self.name}: Starting Flask development server at http://localhost:5000")
 
                 self._flask_app = Flask(__name__)
                 self._run_flask_dev_server(self._flask_app)
             else:
                 # Must be running as a WSGI application
-                from wtfix.conf.wsgi import app
+                from config.wsgi import app
 
                 self._flask_app = app
 
         return self._flask_app
-
 
     @unsync
     async def initialize(self, *args, **kwargs):
         await super().initialize(*args, **kwargs)
 
         api = Api(self.flask_app)
-        api.add_resource(Status, "/")
+        api.add_resource(Status, "/", resource_class_args=[self])
         api.add_resource(Send, "/send", resource_class_args=[self])
         api.add_resource(Shutdown, "/shutdown", resource_class_args=[self])
 
     @unsync
     def _run_flask_dev_server(self, flask_app):
         # Start Flask in a separate thread
-        flask_app.run()
-
-    # @on(MsgType.Logon)
-    # def on_logon(self, message):
-    #     pickled = pickle.dumps(TestRequestMessage("TEST123"))
-    #     pickled_b64 = base64.b64encode(pickled)
-    #
-    #     requests.post("http://localhost:5000/send", data={"message": pickled_b64})
-    #
-    #     return message
+        flask_app.run(debug=False)  # Disable automatic restarting of the Flask server
 
     @unsync
     async def stop(self, *args, **kwargs):

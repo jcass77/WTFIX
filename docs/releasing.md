@@ -2,7 +2,7 @@
 
 1. Update changelog and commit it.
 
-2. Bump the version number in ``setup.py``.
+2. Bump the version number in ``setup.py`` and commit it.
 
 3. Merge the release branch (``develop`` in the example) into ``master``:
 

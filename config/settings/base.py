@@ -14,8 +14,6 @@ load_dotenv()
 DEBUG = strtobool(os.getenv("DEBUG", "False"))
 LOGGING_LEVEL = logging.INFO
 
-FLASK_ENV = os.getenv("FLASK_ENV", "production")
-
 # Local time zone. Choices are
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
 # though not all of them may be available with every OS.
@@ -36,7 +34,7 @@ SESSIONS = {
         "PASSWORD": os.getenv("PASSWORD"),
         # APPS
         "PIPELINE_APPS": [
-            "wtfix.apps.api.RESTfulServiceApp",
+            "wtfix.apps.api.rest.RESTfulServiceApp",
             "wtfix.apps.admin.HeartbeatApp",
             "wtfix.apps.admin.AuthenticationApp",
             "wtfix.apps.admin.SeqNumManagerApp",
