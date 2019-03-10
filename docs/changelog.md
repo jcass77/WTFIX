@@ -7,6 +7,7 @@ This changelog is used to track all major changes to WTFIX.
 **Enhancements**
 
 - Move `wsgi.py` to global `config` package.
+- Add gunicorn support for running WTFIX and Flask in production environments.
 
 **Fixes**
 
