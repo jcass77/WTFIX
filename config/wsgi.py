@@ -38,6 +38,3 @@ def get_wsgi_application(session_name=None):
     app.fix_pipeline.start()
 
     return app
-
-
-application = get_wsgi_application()
