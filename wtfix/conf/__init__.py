@@ -37,7 +37,7 @@ load_dotenv(dotenv_path=env_path)
 
 ENVIRONMENT_VARIABLE = "WTFIX_SETTINGS_MODULE"
 
-logger = logging.getLogger("wtfix")
+logger = logging.getLogger("gunicorn.error")
 
 
 class Settings:
