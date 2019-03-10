@@ -16,6 +16,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import atexit
+import logging
+
 from flask import Flask
 
 from unsync import (
@@ -29,6 +31,11 @@ app = Flask(__name__)
 
 
 def get_wsgi_application(session_name=None):
+    logging.basicConfig(
+        level=settings.LOGGING_LEVEL,
+        format="%(asctime)s - %(threadName)s - %(module)s - %(levelname)s - %(message)s",
+    )
+
     if session_name is None:
         session_name = settings.default_session_name
 
