@@ -1,9 +1,11 @@
+import json
 import uuid
 from datetime import datetime
 
 import pytest
 
 from wtfix.conf import settings
+from wtfix.core.json import FieldSetEncoder, FieldSetDecoder
 from wtfix.message.message import generic_message_factory
 from wtfix.protocol.common import Tag, MsgType
 from ..field import Field
@@ -259,7 +261,7 @@ class TestFieldSet:
         assert ng[0][805] == "cc"
 
 
-class TesListFieldSet:
+class TestListFieldSet:
     def test_repr_list(self):
         fs = ListFieldSet()
         assert repr(fs) == "[]"
@@ -273,6 +275,20 @@ class TesListFieldSet:
 
         fs = ListFieldSet((34, "a"), (35, "bb"), (1, "ccc"))
         assert str(fs) == "[MsgSeqNum (34):a | MsgType (35):bb | Account (1):ccc]"
+
+    def test_serialization_is_idempotent(self, nested_parties_group):
+        fs = ListFieldSet(
+            (1, "a"),
+            (2, "b"),
+            nested_parties_group.identifier,
+            *nested_parties_group.fields,
+            (3, "c"),
+        )
+
+        encoded = json.dumps(fs, cls=FieldSetEncoder)
+        decoded = json.loads(encoded, cls=FieldSetDecoder)
+
+        assert fs == decoded
 
 
 class TestOrderedDictFieldSet:
@@ -492,6 +508,20 @@ class TestOrderedDictFieldSet:
                 9960,
             ]
         )
+
+    def test_serialization_is_idempotent(self, nested_parties_group):
+        fs = OrderedDictFieldSet(
+            (1, "a"),
+            (2, "b"),
+            nested_parties_group.identifier,
+            *nested_parties_group.fields,
+            (3, "c"),
+            group_templates={539: [524, 525, 538, 804], 804: [545, 805]},
+        )
+        encoded = json.dumps(fs, cls=FieldSetEncoder)
+        decoded = json.loads(encoded, cls=FieldSetDecoder)
+
+        assert fs == decoded
 
 
 class TestGroup:
