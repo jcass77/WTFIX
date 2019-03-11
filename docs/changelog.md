@@ -2,6 +2,17 @@
 
 This changelog is used to track all major changes to WTFIX.
 
+## v0.4.0 (UNRELEASED)
+
+**Enhancements**
+
+- Split logging app into separate inbound and outbound processors so that the respective loggers can be injected in
+different parts of the pipeline.  
+
+**Fixes**
+
+- Fix WSGI callable to use ``session_name`` parameter correctly.
+
 ## v0.3.0 (2019-03-10)
 
 **Enhancements**
