@@ -21,6 +21,7 @@ async def api_app(unsync_event_loop):
         await asyncio.sleep(0.5)
         await api_app.initialize()
 
+    await asyncio.sleep(5)
     yield api_app
 
     try:
