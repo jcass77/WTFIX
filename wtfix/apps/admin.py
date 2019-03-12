@@ -110,7 +110,9 @@ class HeartbeatApp(MessageTypeHandlerApp):
         Cancel the heartbeat monitor on the next iteration of the event loop.
         """
         await super().stop(*args, **kwargs)
-        self._heartbeat_monitor_unfuture.future.cancel()
+        if self._heartbeat_monitor_unfuture is not None:
+            # Heartbeat has been started - stop it now.
+            self._heartbeat_monitor_unfuture.future.cancel()
 
     @unsync
     async def monitor_heartbeat(self):

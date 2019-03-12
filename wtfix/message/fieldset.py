@@ -497,6 +497,12 @@ class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
     def append(self, field):
         return self.__setitem__(field[0], field[1])
 
+    def set_group(self, group):
+        # Also add group templates when a new group is set.
+        self.add_group_templates({group.identifier.tag: group.template})
+
+        super().set_group(group)
+
     def _parse_fields(self, fields, **kwargs):
         """
         Parses the list of field tuples recursively into Field instances.
@@ -699,6 +705,10 @@ class Group:
         :return: A list of GroupInstances that make up this Group.
         """
         return self._instances
+
+    @property
+    def template(self):
+        return self._instance_template
 
     @property
     def fields(self):

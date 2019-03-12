@@ -2,16 +2,23 @@
 
 This changelog is used to track all major changes to WTFIX.
 
-## v0.4.0 (UNRELEASED)
+## v0.4.0 (2019-03-12)
 
 **Enhancements**
 
 - Split logging app into separate inbound and outbound processors so that the respective loggers can be injected in
-different parts of the pipeline.  
+different parts of the pipeline.
+- Add JSON encoder / decoder for FieldSets - allows messages to be JSON encoded.
 
 **Fixes**
 
 - Fix WSGI callable to use ``session_name`` parameter correctly.
+
+**Breaking changes**
+
+- FIX messages that are submitted to the pipeline via ``RESTfulServiceApp`` no longer need to be pickled. Use
+to convert any messages to be sent to JSON instead ``encoders.to_json(message)``. This should be more portable with
+better cross-platform support.
 
 ## v0.3.0 (2019-03-10)
 

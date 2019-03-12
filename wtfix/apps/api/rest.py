@@ -15,8 +15,6 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import base64
-import pickle
 import uuid
 
 import requests
@@ -27,7 +25,7 @@ from unsync import unsync
 from wtfix.apps.api.utils import JsonResultResponse
 from wtfix.apps.base import BaseApp
 from wtfix.conf import settings
-
+from wtfix.core import decoders
 
 logger = settings.logger
 
@@ -59,25 +57,16 @@ class Send(Resource):
         """
         Endpoint for sending a FIX message.
 
-        'message' should be an instance of FIXMessage that has been pickled and base64 encoded, for example:
-
-            import base64
-            import pickle
-            import requests
-
-            pickled = pickle.dumps(TestRequestMessage("TEST123"))
-            pickled_b64 = base64.b64encode(pickled)
-
-            requests.post("http://localhost:5000/send", data={"message": pickled_b64})
+        'message' should be a FIXMessage that was previously JSON-encoded with encoders.to_json(message).
 
         """
         args = self.parser.parse_args()
-        message = pickle.loads(base64.b64decode(args["message"]))
+        message = decoders.from_json(args["message"])
 
         self.app.send(message)
 
         return JsonResultResponse(
-            True, "Successfully added message to pipeline!", {"message": f"{message}"}
+            True, "Successfully added message to pipeline!", {"message": args["message"]}
         )
 
 
@@ -163,4 +152,4 @@ class RESTfulServiceApp(BaseApp):
     async def stop(self, *args, **kwargs):
         await super().stop(*args, **kwargs)
 
-        requests.post("http://localhost:5000/shutdown", data={"token": self.secret_key})
+        return requests.post("http://localhost:5000/shutdown", data={"token": self.secret_key})

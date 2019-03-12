@@ -56,11 +56,16 @@ if __name__ == "__main__":
         fix_pipeline.start().result()
 
     except futures.TimeoutError as e:
-        logger.info(e)
+        logger.error(e)
 
     except KeyboardInterrupt:
         logger.info("Received keyboard interrupt! Initiating shutdown...")
-        fix_pipeline.stop().result()
 
     except futures.CancelledError:
         logger.error("Cancelled: session terminated abnormally!")
+
+    finally:
+        try:
+            fix_pipeline.stop().result()
+        except futures.CancelledError:
+            logger.error("Cancelled: session terminated abnormally!")
