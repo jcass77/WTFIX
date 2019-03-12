@@ -146,7 +146,7 @@ class RESTfulServiceApp(BaseApp):
     @unsync
     def _run_flask_dev_server(self, flask_app):
         # Start Flask in a separate thread
-        flask_app.run(debug=False)  # Disable automatic restarting of the Flask server
+        flask_app.run(debug=False)  # debug=False: disable automatic restarting of the Flask server
 
     @unsync
     async def stop(self, *args, **kwargs):
