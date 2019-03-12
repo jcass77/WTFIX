@@ -29,4 +29,4 @@ class TestRESTfulServiceApp:
         assert result["message"] == "Successfully added message to pipeline!"
         assert result["data"]["message"] == encoded_msg
 
-        assert decoders.from_json(result["data"]["message"]) == msg  # Test idempotency while we at it.
+        assert decoders.from_json(result["data"]["message"]) == msg  # Test idempotency while we're at it.
