@@ -180,7 +180,7 @@ class RawMessage(FIXMessage, OrderedDictFieldSet):
         """
         :return: name (type): ((tag_name_1, value_1), (tag_name_2, value_2))
         """
-        return f"{super().__str__()}, with content - {self.encoded_body}"
+        return f"{super().__str__()}, with byte-encoded content: {self.encoded_body}"
 
 
 def generic_message_factory(*fields, **kwargs):

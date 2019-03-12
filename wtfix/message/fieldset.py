@@ -52,6 +52,7 @@ class FieldSet(abc.ABC):
     def __eq__(self, other):
         """
         Compare this FieldSet to other.
+
         :param other: Another Fieldset, tuple, or list of tuples.
         :return: True if other is equivalent to this FieldSet, False otherwise.
         """
@@ -168,6 +169,7 @@ class FieldSet(abc.ABC):
     def append(self, field):
         """
         Append a field to the FieldSet
+
         :param field: The Field to append
         :return: a new FieldSet containing field.
         """
@@ -189,6 +191,7 @@ class FieldSet(abc.ABC):
     def _repr(self, fields):
         """
         Shared implementation for printing a list of fields
+
         :param fields: The list of Fields to render
         :return: repr(Field) separated by |
         """
@@ -203,6 +206,7 @@ class FieldSet(abc.ABC):
     def _str(self, fields):
         """
         Shared implementation for printing a list of fields
+
         :param fields: The list of Fields to render
         :return: str(Field) separated by |
         """
@@ -220,6 +224,7 @@ class FieldSet(abc.ABC):
         """
         Shared implementation for returning a list of all Fields within the FieldSet. Group fields will be
         unpacked into their constituent Fields.
+
         :param fields: The list of Fields to unpack
         :return: a list of Field instances
         """
@@ -271,6 +276,7 @@ class FieldSet(abc.ABC):
     def get_group(self, tag):
         """
         Tries to retrieve the Group at the given tag number.
+
         :param tag: The tag number of the repeating Group's identifier.
         :return: The repeating Group for tag.
         :raises TagNotFound: if the Group does not exist.
@@ -491,6 +497,12 @@ class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
     def append(self, field):
         return self.__setitem__(field[0], field[1])
 
+    def set_group(self, group):
+        # Also add group templates when a new group is set.
+        self.add_group_templates({group.identifier.tag: group.template})
+
+        super().set_group(group)
+
     def _parse_fields(self, fields, **kwargs):
         """
         Parses the list of field tuples recursively into Field instances.
@@ -693,6 +705,10 @@ class Group:
         :return: A list of GroupInstances that make up this Group.
         """
         return self._instances
+
+    @property
+    def template(self):
+        return self._instance_template
 
     @property
     def fields(self):

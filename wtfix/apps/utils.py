@@ -22,19 +22,27 @@ from wtfix.conf import settings
 logger = settings.logger
 
 
-class LoggingApp(BaseApp):
+class OutboundLoggingApp(BaseApp):
     """
-    Logs inbound and outbound messages.
+    Logs outbound messages.
     """
 
-    name = "logger"
-
-    def on_receive(self, message):
-        logger.info(f" <-- {message}")
-
-        return message
+    name = "outbound_logger"
 
     def on_send(self, message):
         logger.info(f" --> {message}")
+
+        return message
+
+
+class InboundLoggingApp(BaseApp):
+    """
+    Logs inbound messages.
+    """
+
+    name = "inbound_logger"
+
+    def on_receive(self, message):
+        logger.info(f" <-- {message}")
 
         return message

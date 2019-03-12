@@ -16,7 +16,7 @@ should do.
     gunicorn --workers 1 --bind unix:<path_to_your_project>/wtfix.sock 'config.wsgi:get_wsgi_application(session_name="default")'
 ```
 
-- **NOTE**: many FIX servers do not allow multiple connections using the same logon credentials, so it probably noes not
+> **NOTE**: many FIX servers do not allow multiple connections using the same logon credentials, so it probably noes not
 make sense to run more than one worker process. You should also consider monitoring the above process with something
 like [supervisord](http://supervisord.org):
 

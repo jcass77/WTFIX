@@ -94,8 +94,8 @@ class TestRawMessage:
 
         assert (
             str(rm)
-            == "QuoteStatusRequest (a): {BeginString (8):FIX.4.4 | BodyLength (9):12 | "
-            "MsgType (35):a | MsgSeqNum (34):1 | CheckSum (10):15}, with content - b'12345\\x0167890\\x01'"
+            == "QuoteStatusRequest (a): {BeginString (8):FIX.4.4 | BodyLength (9):12 | MsgType (35):a | "
+            "MsgSeqNum (34):1 | CheckSum (10):15}, with byte-encoded content: b'12345\\x0167890\\x01'"
         )
 
 

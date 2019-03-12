@@ -4,7 +4,7 @@ from unsync import unsync
 from wtfix.message import admin
 from wtfix.protocol.common import MsgType, Tag
 from wtfix.message.message import GenericMessage, OptimizedGenericMessage
-from wtfix.message.fieldset import Group
+from wtfix.message.fieldset import Group, OrderedDictFieldSet, ListFieldSet
 
 from pytest_socket import socket_allow_hosts
 
@@ -35,6 +35,11 @@ def unsync_event_loop(event_loop):
 
     # Use pytest-asyncio's event loop instead
     unsync.loop = event_loop
+
+
+@pytest.fixture(params=[OrderedDictFieldSet, ListFieldSet])
+def fieldset_class(request):
+    return request.param
 
 
 @pytest.fixture(scope="session")

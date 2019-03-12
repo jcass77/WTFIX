@@ -259,7 +259,7 @@ class TestFieldSet:
         assert ng[0][805] == "cc"
 
 
-class TesListFieldSet:
+class TestListFieldSet:
     def test_repr_list(self):
         fs = ListFieldSet()
         assert repr(fs) == "[]"
