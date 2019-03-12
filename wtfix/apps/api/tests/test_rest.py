@@ -9,7 +9,7 @@ from wtfix.message import admin
 class TestRESTfulServiceApp:
 
     def test_get_status(self, api_app, unsync_event_loop):
-        response = requests.get("http://localhost:5000/")
+        response = requests.get("http://127.0.0.1:5000/")
 
         assert response.status_code == 200
 
@@ -22,7 +22,7 @@ class TestRESTfulServiceApp:
         msg = admin.TestRequestMessage("TEST123")
         encoded_msg = encoders.to_json(msg)
 
-        response = requests.post("http://localhost:5000/send", data={"message": encoded_msg})
+        response = requests.post("http://127.0.0.1:5000/send", data={"message": encoded_msg})
 
         assert response.status_code == 200
 

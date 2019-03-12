@@ -122,7 +122,7 @@ class RESTfulServiceApp(BaseApp):
 
             if settings.DEBUG is True:
                 # We need to start our own Flask application
-                logger.info(f"{self.name}: Starting Flask development server at http://localhost:5000")
+                logger.info(f"{self.name}: Starting Flask development server at http://127.0.0.1:5000")
 
                 self._flask_app = Flask(__name__)
                 self._run_flask_dev_server(self._flask_app)
@@ -152,4 +152,4 @@ class RESTfulServiceApp(BaseApp):
     async def stop(self, *args, **kwargs):
         await super().stop(*args, **kwargs)
 
-        return requests.post("http://localhost:5000/shutdown", data={"token": self.secret_key})
+        return requests.post("http://127.0.0.1:5000/shutdown", data={"token": self.secret_key})
