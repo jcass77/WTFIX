@@ -168,6 +168,10 @@ class TestField:
         f = Field(1, "123")
         assert f.as_int == 123
 
+    def test_as_int_decimal(self):
+        f = Field(1, "123.456")
+        assert f.as_int == 123
+
     def test_as_bool(self):
         true_values = ("y", "yes", "t", "true", "on", "1")
         assert all(Field(1, value).as_bool is True for value in true_values)

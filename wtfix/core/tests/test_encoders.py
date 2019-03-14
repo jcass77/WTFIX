@@ -7,7 +7,7 @@ from wtfix.core.exceptions import DuplicateTags
 from wtfix.message.fieldset import OrderedDictFieldSet, ListFieldSet
 
 
-class TestFieldSetJSONEncoder:
+class TestJSONMessageEncoder:
     def test_to_json_encodes_nested_orderedfieldset_as_expected(
         self, nested_parties_group, encoded_dict_sample
     ):

@@ -19,14 +19,14 @@ import json
 from json import JSONDecoder
 from json.decoder import WHITESPACE
 
-from wtfix.message.fieldset import ListFieldSet, OrderedDictFieldSet
+from wtfix.message.message import OptimizedGenericMessage, GenericMessage
 
 
 def from_json(json_):
-    return json.loads(json_, cls=FieldSetJSONDecoder)
+    return json.loads(json_, cls=JSONMessageDecoder)
 
 
-class FieldSetJSONDecoder(JSONDecoder):
+class JSONMessageDecoder(JSONDecoder):
     def _decode_group(self, group_identifier, group_instances):
         """
         Recursively decode a repeating group.
@@ -54,7 +54,7 @@ class FieldSetJSONDecoder(JSONDecoder):
         decoded = json.loads(s)
 
         if isinstance(decoded, list):
-            return ListFieldSet(*decoded)
+            return GenericMessage(*decoded)
 
         if isinstance(decoded, dict):
             fields = []
@@ -69,7 +69,7 @@ class FieldSetJSONDecoder(JSONDecoder):
                 else:
                     fields.append((int(k), v))
 
-            return OrderedDictFieldSet(
+            return OptimizedGenericMessage(
                 *fields,
                 group_templates=group_teplates
             )
