@@ -243,7 +243,7 @@ class Field(collections.namedtuple("Field", ["tag", "value_ref"])):
         if value is None:
             return None
 
-        return int(value)
+        return int(value.split(".")[0])
 
     @property
     def as_bool(self):

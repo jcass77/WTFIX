@@ -23,10 +23,10 @@ from wtfix.message.fieldset import ListFieldSet, OrderedDictFieldSet, Group
 
 
 def to_json(message):
-    return json.dumps(message, cls=FieldSetJSONEncoder)
+    return json.dumps(message, cls=JSONMessageEncoder)
 
 
-class FieldSetJSONEncoder(JSONEncoder):
+class JSONMessageEncoder(JSONEncoder):
     def _encode_group(self, group):
         """
         Recursively encode a repeating group.
