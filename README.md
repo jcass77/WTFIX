@@ -58,7 +58,7 @@ code.
           logger.info(f"Received message {message}!")
     ```
 
-- A simple message tag syntax, with various convenience methods for quick access to commonly
+- A simple message tag syntax, with various convenience methods, for quick access to commonly
 used message attributes.
 
     ```python
@@ -111,16 +111,18 @@ messages mean that you never need to deal with byte sequences directly.
     >>> logon_msg = generic_message_factory(*fields)
     >>> str(logon_msg)
     'A: {(35, A) | (98, 0) | (108, 30) | (553, my_username) | (554, my_password)}'
-     
-    >>> logon_msg.Username
-    Field(553, 'my_username')
+    
+    # Fields are tuples of (tag, value) pairs 
+    >>> username = logon_msg.Username
+
+    >>> username.tag
+    553
   
-    # Access field values using the value attribute, or by casting the Field to the desired built-in type.
-    >>> logon_msg.Username.value == str(logon_msg.Username) == "my_username"
-    True
+    >>> username.value
+    "my_username"
   
     # Fields are immutable, and behave just like Python's built-in literals.
-    >>> logon_msg.Username + "_123"
+    >>> username + "_123"
     Field(553, 'my_username_123')
     ```
 - Access to the underlying byte sequence when you need it:
@@ -136,7 +138,7 @@ messages mean that you never need to deal with byte sequences directly.
     >>> f"{logon_msg:t}"
     'Logon (A): {MsgType (35): A | EncryptMethod (98): 0 | HeartBtInt (108): 30 | Username (553): my_username | Password (554): my_password | PossDupFlag (43): Y}'
 
-    # Cast FIX field ASCII values to Python built-in types
+    # Most FIX field values can be cast to their corresponding Python built-in type 
     >>> bool(logon_msg.PossDupFlag) is True
     True
     
@@ -165,7 +167,7 @@ messages mean that you never need to deal with byte sequences directly.
     >>> group.instances[1]
     GroupInstance(Field(137, '20.0'), Field(139, 'A'))
    
-    # Without a pre-defined group template we fall back to using a (slightly slower) list structure for representing message fields internally
+    # Without a pre-defined group template, WTFIX falls back to using a (slightly slower) list structure for representing message fields internally
     >>> msg = generic_message_factory((Tag.MsgType, MsgType.ExecutionReport), (Tag.NoMiscFees, 2), (Tag.MiscFeeAmt, 10.00), (Tag.MiscFeeType, 2), (Tag.MiscFeeAmt, 20.00), (Tag.MiscFeeType, "A"))
     >>> msg.fields
     [Field(35, '8'), Field(136, '2'), Field(137, '10.0'), Field(139, '2'), Field(137, '20.0'), Field(139, 'A')]
