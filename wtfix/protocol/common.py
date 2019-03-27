@@ -20,12 +20,12 @@
 from wtfix.core.exceptions import UnknownType, UnknownTag
 
 
-class Side(object):
+class Side:
     Buy = "1"
     Sell = "2"
 
 
-class MsgType(object):
+class MsgType:
     AdjustedPositionReport = "BL"
     Advertisement = "7"
     AllocationInstruction = "J"

@@ -255,25 +255,25 @@ class TestBasePipeline:
         pipeline = BasePipeline(installed_apps=three_level_app_chain)
 
         message = await pipeline.receive(admin.TestRequestMessage("Test"))
-        assert message.TestReqID.as_str == "Test r1 r2 r3"
+        assert message.TestReqID == "Test r1 r2 r3"
 
     @pytest.mark.asyncio
     async def test_receive_stop(self, unsync_event_loop, three_level_stop_app_chain):
         pipeline = BasePipeline(installed_apps=three_level_stop_app_chain)
 
         message = await pipeline.receive(admin.TestRequestMessage("Test"))
-        assert message.TestReqID.as_str == "Test r1"
+        assert message.TestReqID == "Test r1"
 
     @pytest.mark.asyncio
     async def test_send(self, unsync_event_loop, three_level_app_chain):
         pipeline = BasePipeline(installed_apps=three_level_app_chain)
 
         message = await pipeline.send(admin.TestRequestMessage("Test"))
-        assert message.TestReqID.as_str == "Test s3 s2 s1"
+        assert message.TestReqID == "Test s3 s2 s1"
 
     @pytest.mark.asyncio
     async def test_send_stop(self, unsync_event_loop, three_level_stop_app_chain):
         pipeline = BasePipeline(installed_apps=three_level_stop_app_chain)
 
         message = await pipeline.send(admin.TestRequestMessage("Test"))
-        assert message.TestReqID.as_str == "Test s3"
+        assert message.TestReqID == "Test s3"

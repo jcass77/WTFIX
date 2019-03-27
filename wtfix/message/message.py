@@ -35,11 +35,17 @@ class FIXMessage(abc.ABC):
     lookups.
     """
 
-    def __str__(self):
+    def __format__(self, format_spec):
         """
         :return: name (type): ((tag_name_1, value_1), (tag_name_2, value_2))
         """
-        return f"{self.name} ({self.type}): {super().__str__()}"
+        return f"{self.name} ({self.type}): {super().__format__(format_spec)}"
+
+    def __str__(self):
+        """
+        :return: type: ((tag_1, value_1), (tag_2, value_2))
+        """
+        return f"{self.type}: {super().__str__()}"
 
     @property
     def type(self):
@@ -48,7 +54,7 @@ class FIXMessage(abc.ABC):
         :return: Value of tag 35 or None if no message type has been defined.
         """
         try:
-            return self[Tag.MsgType].as_str
+            return str(self[Tag.MsgType])
         except TagNotFound:
             return None
 
@@ -69,7 +75,7 @@ class FIXMessage(abc.ABC):
         :return: Message sequence number
         """
         try:
-            return self[Tag.MsgSeqNum].as_int
+            return int(self[Tag.MsgSeqNum])
         except TagNotFound:
             return None
 
@@ -80,7 +86,7 @@ class FIXMessage(abc.ABC):
     @property
     def sender_id(self):
         try:
-            return self[Tag.SenderCompID].as_str
+            return str(self[Tag.SenderCompID])
         except TagNotFound:
             return None
 
@@ -91,7 +97,7 @@ class FIXMessage(abc.ABC):
     @property
     def target_id(self):
         try:
-            return self[Tag.TargetCompID].as_str
+            return str(self[Tag.TargetCompID])
         except TagNotFound:
             return None
 
@@ -168,13 +174,19 @@ class RawMessage(FIXMessage, OrderedDictFieldSet):
 
     def copy(self):
         return RawMessage(
-            begin_string=self.BeginString.value_ref.value,
-            body_length=self.BodyLength.value_ref.value,
-            message_type=self.MsgType.value_ref.value,
-            message_seq_num=self.MsgSeqNum.value_ref.value,
+            begin_string=self.BeginString.value,
+            body_length=self.BodyLength.value,
+            message_type=self.MsgType.value,
+            message_seq_num=self.MsgSeqNum.value,
             encoded_body=self.encoded_body,
-            checksum=self.CheckSum.value_ref.value,
+            checksum=self.CheckSum.value,
         )
+
+    def __format__(self, format_spec):
+        """
+        :return: name (type): ((tag_name_1, value_1), (tag_name_2, value_2))
+        """
+        return f"{super().__format__(format_spec)}, with byte-encoded content: {self.encoded_body}"
 
     def __str__(self):
         """

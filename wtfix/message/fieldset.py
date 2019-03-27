@@ -37,7 +37,7 @@ from wtfix.protocol import common
 class FieldSet(abc.ABC):
     """
     A FieldSet is a collection of a one or more Fields. This class provides the interface that all FieldSets
-    should implement in order to support the Python builtins that are typically used for collections.
+    should implement in order to support the Python built-ins that are typically used for Sequences.
     """
 
     @abc.abstractmethod
@@ -49,22 +49,53 @@ class FieldSet(abc.ABC):
         :return: A new FieldSet, which contains the concatenation of the FieldSet with other.
         """
 
+    def _compare_fields(self, other_sequence):
+
+        try:
+            if not all(len(field) == 2 and type(field[0]) is int for field in other_sequence):
+                # Value being compared to must be a tuple of (tag, value) pairs.
+                return False
+
+            # Sort the sequences to be compared so that we can perform an unordered comparison
+            for other_field, self_field in zip(sorted(other_sequence), sorted(self.fields)):
+                # Compare tags and string-converted values one by one.
+                if self_field.tag != other_field[0] or str(self_field.value) != str(other_field[1]):
+                    return False
+
+        except (TypeError, AttributeError):
+            # Values cannot be compared.
+            return False
+
+        return True
+
     def __eq__(self, other):
         """
         Compare this FieldSet to other.
 
+        Since the order in which fields appear in a FIX message is usually not significant, the field order is ignored
+        when doing the comparison.
+
+        This implementation tries various shortcuts to terminate the comparison as quickly as possible, before
+        moving on to a more expensive full comparison (that requires the items being compared to be sorted first).
+
         :param other: Another Fieldset, tuple, or list of tuples.
         :return: True if other is equivalent to this FieldSet, False otherwise.
         """
-        if len(self) == len(other):
-            if isinstance(other, FieldSet):
-                return self.fields == other.fields
-            if isinstance(other, tuple):
-                return all(field in self for field in other)
-            if isinstance(other, list):
-                return self.fields == other
+        try:
+            other_sequence = other.fields
+        except AttributeError:
+            # 'other' is not a FieldSet, continue.
+            other_sequence = other
 
-        return False
+        try:
+            if len(self) != len(other_sequence):
+                # Can't be equal if Sequences do not have the same length.
+                return False
+        except TypeError:
+            # Not a sequence, cannot compare
+            return False
+
+        return self._compare_fields(other_sequence)
 
     def __len__(self):
         """
@@ -101,7 +132,7 @@ class FieldSet(abc.ABC):
         """
         try:
             tag_num = common.Tag.get_tag(key)
-            self[tag_num].value_ref.value = value
+            self[tag_num] = value
         except UnknownTag:
             # Not a known tag number, fall back to default Python implementation
             return super().__setattr__(key, value)
@@ -181,12 +212,37 @@ class FieldSet(abc.ABC):
         :return: A list of Fields that this FieldSet contains
         """
 
-    @property
     @abc.abstractmethod
-    def raw(self):
+    def __bytes__(self):
         """
-        :return: The FIX-compliant, raw binary string representation for this FieldSet.
+        :return: The FIX-compliant, raw binary sequence for this FieldSet.
         """
+
+    @abc.abstractmethod
+    def __format__(self, format_spec):
+        """
+        Add support for formatting FieldSets using the custom 't' option to add tag names.
+
+        :param format_spec: specification in Format Specification Mini-Language format.
+        :return: A formatted string representation this Field.
+        """
+
+    def _format(self, fields, format_spec):
+        """
+        Shared implementation for formatting a list of fields
+
+        :param fields: The list of Fields to render
+        :param format_spec: The format spec to apply. Usually the custom 't' option.
+        :return: formatted Fields separated by |
+        """
+        fields_str = ""
+        for field in fields:
+            fields_str += f"{{:{format_spec}}} | ".format(field)
+
+        else:
+            fields_str = fields_str[:-3]
+
+        return f"{fields_str}"
 
     def _repr(self, fields):
         """
@@ -208,12 +264,11 @@ class FieldSet(abc.ABC):
         Shared implementation for printing a list of fields
 
         :param fields: The list of Fields to render
-        :return: str(Field) separated by |
+        :return: Field, formatted to print tag names, separated by |
         """
         fields_str = ""
         for field in fields:
-            fields_str += f"{str(field)} | "
-
+            fields_str += f"({field.tag}, {str(field)}) | "
         else:
             fields_str = fields_str[:-3]
 
@@ -271,7 +326,7 @@ class FieldSet(abc.ABC):
         :param group: a Group instance.
         :param group: a Group instance.
         """
-        self[group.identifier.tag] = group
+        self[group.tag] = group
 
     def get_group(self, tag):
         """
@@ -368,14 +423,6 @@ class ListFieldSet(FieldSet):
     def fields(self):
         return super()._fields(self._fields)
 
-    @property
-    def raw(self):
-        buf = b""
-        for field in self._fields:
-            buf += field.raw
-
-        return buf
-
     def append(self, field):
         return self.__setitem__(field[0], field[1])
 
@@ -396,11 +443,21 @@ class ListFieldSet(FieldSet):
 
         return parsed_fields
 
+    def __bytes__(self):
+        buf = b""
+        for field in self._fields:
+            buf += bytes(field)
+
+        return buf
+
+    def __format__(self, format_spec):
+        return f"[{FieldSet._format(self, self._fields, format_spec)}]"
+
     def __repr__(self):
         """
         :return: [(tag_1, value_1), (tag_2, value_2)]
         """
-        return f"[{FieldSet._repr(self, self._fields)}]"
+        return f"{self.__class__.__name__}({FieldSet._repr(self, self._fields)})"
 
     def __str__(self):
         """
@@ -486,20 +543,12 @@ class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
     def fields(self):
         return super()._fields(list(self._fields.values()))
 
-    @property
-    def raw(self):
-        buf = b""
-        for field in self._fields.values():
-            buf += field.raw
-
-        return buf
-
     def append(self, field):
         return self.__setitem__(field[0], field[1])
 
     def set_group(self, group):
         # Also add group templates when a new group is set.
-        self.add_group_templates({group.identifier.tag: group.template})
+        self.add_group_templates({group.tag: group.template})
 
         super().set_group(group)
 
@@ -564,11 +613,21 @@ class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
 
         return parsed_fields
 
+    def __bytes__(self):
+        buf = b""
+        for field in self._fields.values():
+            buf += bytes(field)
+
+        return buf
+
+    def __format__(self, format_spec):
+        return f"{{{FieldSet._format(self, self._fields.values(), format_spec)}}}"
+
     def __repr__(self):
         """
         :return: {(tag_1, value_1), (tag_2, value_2)}
         """
-        return f"{{{FieldSet._repr(self, self._fields.values())}}}"
+        return f"{self.__class__.__name__}({FieldSet._repr(self, self._fields.values())})"
 
     def __str__(self):
         """
@@ -587,7 +646,7 @@ class GroupInstance(ListFieldSet):
     pass
 
 
-class Group:
+class Group(ListFieldSet):
     """
     A repeating group of GroupInstances that form the Group.
     """
@@ -604,7 +663,7 @@ class Group:
         self.identifier = Field(*identifier)
         if template is None:
             try:
-                template = settings.default_session.GROUP_TEMPLATES[self.identifier.tag]
+                template = settings.default_session.GROUP_TEMPLATES[self.tag]
             except KeyError:
                 raise (
                     ImproperlyConfigured(
@@ -657,12 +716,48 @@ class Group:
 
         if len(parsed_fields) != self.size:
             raise InvalidGroup(
-                self.identifier.tag,
+                self.tag,
                 fields,
                 f"Cannot make {self.size} instances of {self._instance_template} with {fields}.",
             )
 
         return parsed_fields
+
+    def __eq__(self, other):
+        """
+        Compare this Group to other.
+
+        The only difference between this implementation and that of FieldSet is that we also need to compare the
+        'identifier' tag.
+
+        :param other: Another Group, tuple, or list of tuples.
+        :return: True if other is equivalent to this Group, False otherwise.
+        """
+        try:
+            if self.identifier != other.identifier:
+                return False
+            other_sequence = other.fields
+
+        except AttributeError:
+            # Not a Group, try tuple
+            try:
+                if self.identifier != other[0]:
+                    return False
+                other_sequence = other[1:]
+
+            except KeyError:
+                # Not a tuple, cannot compare
+                return False
+
+        try:
+            if len(self) - 1 != len(other_sequence):
+                # Can't be equal if Sequences do not have the same length.
+                return False
+        except TypeError:
+            # Not a sequence, cannot compare
+            return False
+
+        return self._compare_fields(other_sequence)
 
     def __len__(self):
         length = 1  # Count identifier field
@@ -675,6 +770,20 @@ class Group:
     def __getitem__(self, item):
         return self._instances[item]
 
+    def __format__(self, format_spec):
+        # Allows groups to be rendered as part of FieldSets.
+        if "t" in format_spec:
+            group_instances_str = ""
+
+            for instance in self._instances:
+                group_instances_str += f"{{:{format_spec}}} | ".format(instance)
+            else:
+                group_instances_str = group_instances_str[:-3]
+            return f"[{{:{format_spec}}}] | {group_instances_str}".format(self.identifier)
+
+        else:
+            raise ValueError(f"Unknown format code '{format_spec}' for object of type 'Group'.")
+
     def __repr__(self):
         """
         :return: [(identifier tag, num instances)]:((tag_1, value_1), (tag_2, value_2)), ((tag_1, value_1), (tag_2, value_2))
@@ -685,7 +794,9 @@ class Group:
         else:
             group_instances_repr = group_instances_repr[:-2]
 
-        return f"[{repr(self.identifier)}]:{group_instances_repr}"
+        group_instances_repr = group_instances_repr.replace("GroupInstance(", "").replace("))", ")")
+
+        return f"{self.__class__.__name__}({repr(self.identifier)}, {group_instances_repr})"
 
     def __str__(self):
         """
@@ -697,7 +808,7 @@ class Group:
         else:
             group_instances_str = group_instances_str[:-3]
 
-        return f"[{str(self.identifier)}] | {group_instances_str}"
+        return f"[({self.tag}, {self.size})] | {group_instances_str}"
 
     @property
     def instances(self):
@@ -723,17 +834,6 @@ class Group:
         return group_fields
 
     @property
-    def raw(self):
-        """
-        :return: The FIX-compliant, raw binary string representation for this Group.
-        """
-        buf = b""
-        for instance in self._instances:
-            buf += instance.raw
-
-        return self.identifier.raw + buf
-
-    @property
     def tag(self):
         """
         :return: The tag number of the Field that identifies this group.
@@ -745,11 +845,21 @@ class Group:
         """
         :return: The value of the identifier Field for this group.
         """
-        return self.identifier.value_ref.value
+        return self.identifier.value
 
     @property
     def size(self):
         """
         :return: The number of GroupInstances in this group.
         """
-        return self.identifier.as_int
+        return int(self.identifier)
+
+    def __bytes__(self):
+        """
+        :return: The FIX-compliant, raw binary string representation for this Group.
+        """
+        buf = b""
+        for instance in self._instances:
+            buf += bytes(instance)
+
+        return bytes(self.identifier) + buf

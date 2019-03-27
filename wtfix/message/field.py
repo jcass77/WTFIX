@@ -14,242 +14,341 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 import numbers
-from builtins import tuple as _tuple
 import collections
-from collections import abc
 from distutils.util import strtobool
+import operator
+from typing import Callable, Union
 
 import wtfix.conf.global_settings
 from wtfix.core import exceptions
 from wtfix.conf import settings
+from wtfix.core.exceptions import ParsingError
 from ..protocol import common
 from wtfix.core import utils
 
 
-class FieldValue(abc.Sequence):
-    """
-    Used to store Field values (i.e. strings or bytes). Adds some convenience methods for making comparison
-    checks easier.
-    """
-
-    def __init__(self, value):
-        if utils.is_null(value):
-            # Convert FIX negative limit values to Python equivalent (i.e. NoneType).
-            value = None
-
-        elif isinstance(value, FieldValue):
-            # FieldValues should be terminal nodes - don't wrap FieldValues in other FieldValues
-            value = value.value
-        elif isinstance(value, bool):
-            if value is True:
-                value = "Y"
-            else:
-                value = "N"
-
-        self._value = value
-
-    def __getitem__(self, i: int):
-        return self._value[i]
-
-    def __len__(self) -> int:
-        return len(self._value)
-
-    def __eq__(self, other):
-        """
-        Allows comparison against a wide range of other types.
-
-        :param other: The object to compare to.
-        :return: If other is a boolean: True values are 'y', 'yes', 't', 'true', 'on', and '1'; false values
-        are 'n', 'no', 'f', 'false', 'off', and '0'. If other is bytes: compares this FieldValue's decoded
-        value with other. If other is str: compares this FieldValues's encoded value with other. Does standard
-        comparison of this FieldValue's value against other in all other instances.
-        :raises ValueError: if comparison cannot be made.
-        """
-        if self._value is None:
-            return other is None
-
-        return self._equality_check("eq", other)
-
-    def _equality_check(self, check_method, other):
-        comparitor = None
-        if isinstance(other, bool):
-            comparitor = strtobool(str(self._value))
-
-        elif isinstance(other, bytes):
-            comparitor = utils.encode(self._value)
-
-        elif isinstance(other, numbers.Integral):
-            try:
-                comparitor = int(self._value)
-            except ValueError:
-                # self._value is not a numbers.Integral
-                return False
-
-        elif isinstance(other, FieldValue):
-            comparitor = self
-            other = other._value
-
-        else:
-            comparitor = str(utils.decode(self._value))
-
-        if check_method == "eq":
-            check_method = comparitor.__eq__
-
-        elif check_method == "lt":
-            check_method = comparitor.__lt__
-
-        elif check_method == "le":
-            check_method = comparitor.__le__
-
-        elif check_method == "gt":
-            check_method = comparitor.__gt__
-
-        elif check_method == "ge":
-            check_method = comparitor.__ge__
-
-        else:
-            raise exceptions.ValidationError(
-                f"Unknown equality operator '{check_method}'."
-            )
-
-        return check_method(other)
-
-    def __lt__(self, other):
-        return self._equality_check("lt", other)
-
-    def __le__(self, other):
-        return self._equality_check("le", other)
-
-    def __gt__(self, other):
-        return self._equality_check("gt", other)
-
-    def __ge__(self, other):
-        return self._equality_check("ge", other)
-
-    def __str__(self):
-        """
-        :return: The decoded string representation of this FieldValue.
-        """
-        return str(utils.decode(self._value))
-
-    def __contains__(self, item):
-        return item in self._value
-
-    def __iter__(self):
-        return iter(self._value)
-
-    @property
-    def value(self):
-        return self._value
-
-    @value.setter
-    def value(self, value):
-        if utils.is_null(value):
-            value = None
-
-        self._value = value
-
-    @property
-    def raw(self):
-        """
-        :return: The byte encoded value of this FieldValue
-        """
-        return utils.encode(self._value)
-
-
-class Field(collections.namedtuple("Field", ["tag", "value_ref"])):
+class Field(collections.namedtuple("Field", ["tag", "value"])):
     """
     A FIX field implemented as a simple (tag, value) namedtuple for use in FieldSets and Messages.
+
+    Fields are implemented using the 'unicode sandwich' convention, so if 'value' is a byte sequence
+    it will always be decoded to strings when the Field is instantiated.
     """
 
     UNKNOWN_TAG = "Unknown"
 
-    def __new__(_cls, tag: numbers.Integral, value):
+    __slots__ = ()  # Don't use __dict__ for storing instance attributes - more memory efficient.
+
+    def __new__(cls, tag: Union[numbers.Integral, str, bytes], value: Union[numbers.Integral, bool, str, bytes, None]):
         """
         Create new instance of Field(tag, value)
 
-        :param tag: The tag number of the Field. Must be an integer-like number.
-        :param value: The tag value.
+        :param tag: The tag number of the Field. Must be an integer, a string, or bytes than can be
+        converted to an integer.
+        :param value: The tag value. Usually one of the built-in Python types.
         :raises InvalidField if the tag is not an integer.
         """
-        if not isinstance(tag, numbers.Integral):
-            # Tag is not an integer. We might be able to convert it to one if it is
-            # a str or bytes.
-            try:
-                tag = int(tag)
-            except ValueError as e:
-                raise exceptions.InvalidField(f"Tag '{tag}' must be an integer.") from e
-
-        return _tuple.__new__(_cls, (tag, FieldValue(value)))
-
-    def __eq__(self, other):
+        tag_error_msg = f"Tag '{tag}' must be an integer."
+        if isinstance(tag, numbers.Number) and not isinstance(tag, numbers.Integral):
+            # Don't implicitly convert floats or Decimals to tag numbers.
+            raise exceptions.InvalidField(tag_error_msg)
         try:
-            # Try to compare as Field
-            return self.value_ref == other.value_ref
-        except AttributeError:
-            # Perhaps it is a tuple?
-            if isinstance(other, tuple):
-                return self.value_ref == other[1]
-            else:
-                # Fallback to comparing field values
-                return self.value_ref == other
+            tag = int(tag)
+        except ValueError as e:
+            raise exceptions.InvalidField(tag_error_msg) from e
 
-    def __repr__(self):
-        """
-        :return: (tag number, value)
-        """
-        return f"({self.tag}, {self.value_ref})"
+        value = utils.decode(value)
 
-    def __str__(self):
-        """
-        :return: 'tag name:value' if the tag has been defined in one of the specifications,
-        'tag_number:value' otherwise.
-        """
-        if self.name == self.UNKNOWN_TAG:
-            return f"{self.tag}:{self.value_ref}"
-
-        return f"{self.name} ({self.tag}):{self.value_ref}"
+        return tuple.__new__(cls, (tag, value))
 
     @property
     def name(self):
         """
-        :return: The name of the tag as defined in one of the supported specifications, or 'Unknown' otherwise.
+        :return: The name of the tag for this Field as defined in one of the supported specifications,
+        or 'Unknown' otherwise.
         """
         try:
             return common.Tag.get_name(self.tag)
         except wtfix.core.exceptions.UnknownTag:
             return self.UNKNOWN_TAG
 
-    @property
-    def raw(self):
+    @classmethod
+    def fields_frombytes(cls, octets):
         """
-        :return: The FIX-compliant, raw binary string representation for this Field.
+        Parses the raw byte sequence of encoded field pairs into Field instances.
+
+        :param octets: A byte sequence that containing one or more fields in format b'tag=valueSOH'
+        :return: A generator of parsed Field objects.
         """
-        return utils.encode(self.tag) + b"=" + self.value_ref.raw + settings.SOH
+        if octets[-1] != settings.SOH_INT:
+            raise ParsingError(f"Could not parse {octets} into a new Field: No SOH found at end of byte sequence!")
 
-    @property
-    def as_str(self):
-        if self.value_ref.value is None:
-            return None
+        # Remove last SOH at end of byte stream and split into fields
+        raw_pairs = octets.rstrip(settings.SOH).split(settings.SOH)
 
-        return str(self.value_ref)
+        for raw_pair in raw_pairs:
+            try:
+                tag, value = raw_pair.split(b"=", maxsplit=1)
+            except ValueError as e:
+                raise ParsingError(f"Could not parse {octets}: {e}.") from e
 
-    @property
-    def as_int(self):
-        value = self.as_str
+            yield Field(tag, value)
 
-        if value is None:
-            return None
+    @classmethod
+    def frombytes(cls, octets):
+        """
+        Construct a new Field from a byte sequence that represents a single FIX (tag, value) pair.
 
-        return int(value.split(".")[0])
+        :param octets:  A byte sequence that contains exactly one field in format b'tag=valueSOH'
+        :return: A newly constructed Field instance.
+        """
+        fields = cls.fields_frombytes(octets)
+        field = next(fields)
 
-    @property
-    def as_bool(self):
-        value = self.as_str
+        try:
+            next(fields)
+            # Should not reach here - ensures that octets contains only one field
+            raise ParsingError(f"Byte sequence {octets} contains more than one field.")
 
-        if value is None:
-            return None
+        except StopIteration:
+            # Expected - ignore
+            pass
 
-        return strtobool(self.as_str) == 1
+        return field
+
+    def _perform_operation(self, operation: Callable, *args, **kwargs):
+        """
+        Utility method for wrapping arithmetic and other operations so that they can be performed
+        directly on this Field's 'value'.
+
+        Allows us to treat a Field as a built-in type in certain situations:
+
+            a.) if args[0] is another tuple or Field with the same tag number, perform operation
+                on this Field.
+
+                >>> Field(1, "abc") == (1, "abc")
+                True
+
+                >>> Field(1, "abc") == (2, "abc")
+                False
+
+            b.) in all other instances, perform operation on this Field's value.
+
+                >>> Field(1, "abc") == "abc"
+                True
+
+        :param operation: The operation to perform on the Field. Must be a callable.
+        :param args: args will be passed as-is to 'operation'.
+        :param kwargs: kwargs will be passed as-is to 'operation'.
+        :return: The result of 'operation' applied to the Field or it's value.
+        """
+        try:
+            if args and len(args[0]) == 2 and not isinstance(args[0], str):
+                # Sequence with length 2. We create a new, temporary tuple
+                # so that we can leverage the standard operators for tuples.
+                return operation((self.tag, self.value), *args, **kwargs)
+        except TypeError:
+            # Not a suitable sequence. Continue processing as-is
+            pass
+
+        # If arg is not a tuple, then perform the operation based on this Field's
+        # value. Allows us to do quick comparisons like Field(1, "abc") == "abc".
+        return Field(self.tag, operation(self.value, *args, **kwargs))
+
+    def _validated_operand(self, operand: Union["Field", tuple]):
+        """
+        To perform operations on other Fields, the tags need to match first.
+
+        To perform operations using other tuples, the tuples should be exactly two elements
+        long and share a common tag element at index 0.
+
+        :param operand: The Field or tuple that the operation should be performed on.
+        :return: The object that the operation should be performed on. Usually a built-in literal.
+        """
+        if isinstance(operand, str):
+            # Always perform operations directly on strings.
+            return operand
+
+        try:
+            # Check if we are performing the operation on a sequence.
+            operand_length = len(operand)
+        except TypeError as e:
+            # Cannot be a sequence. Use as-is.
+            return operand
+
+        if operand_length == 2 and operand[0] != self.tag:
+            raise (TypeError(f"Cannot perform arithmetic operation on different tag numbers: "
+                             f"{self.tag} and {operand[0]}."))
+        if operand_length > 2:
+            raise(TypeError(f"Cannot perform arithmetic operation with {operand} - "
+                            f"tuple contains more than 2 elements."))
+
+        return operand[1]
+
+    def __lt__(self, other):
+        return self._perform_operation(operator.lt, other)
+
+    def __le__(self, other):
+        return self._perform_operation(operator.le, other)
+
+    def __eq__(self, other):
+        return self._perform_operation(operator.eq, other)
+
+    def __ne__(self, other):
+        return self._perform_operation(operator.ne, other)
+
+    def __ge__(self, other):
+        return self._perform_operation(operator.ge, other)
+
+    def __gt__(self, other):
+        return self._perform_operation(operator.gt, other)
+
+    def __hash__(self):
+        return hash((self.tag, self.value))
+
+    def __abs__(self):
+        return self._perform_operation(operator.abs)
+
+    def __add__(self, other):
+        return self._perform_operation(operator.add, self._validated_operand(other))
+
+    def __floordiv__(self, other):
+        return self._perform_operation(operator.floordiv, self._validated_operand(other))
+
+    def __invert__(self):
+        return self._perform_operation(operator.invert)
+
+    def __lshift__(self, other):
+        return self._perform_operation(operator.lshift, self._validated_operand(other))
+
+    def __mod__(self, other):
+        return self._perform_operation(operator.mod, self._validated_operand(other))
+
+    def __mul__(self, other):
+        return self._perform_operation(operator.mul, self._validated_operand(other))
+
+    def __neg__(self):
+        return self._perform_operation(operator.neg)
+
+    def __pos__(self):
+        return self._perform_operation(operator.pos)
+
+    def __pow__(self, power, modulo=None):
+        return self._perform_operation(operator.pow, power)
+
+    def __rshift__(self, other):
+        return self._perform_operation(operator.rshift, self._validated_operand(other))
+
+    def __sub__(self, other):
+        return self._perform_operation(operator.sub, self._validated_operand(other))
+
+    def __truediv__(self, other):
+        return self._perform_operation(operator.truediv, self._validated_operand(other))
+
+    def __contains__(self, item):
+        return self._perform_operation(operator.contains, item)
+
+    def __getitem__(self, key):
+        cls = type(self)
+        if isinstance(key, slice):  # Slice, return a new Field
+            slice_ = (self.tag, self.value)[key]
+            return cls(*slice_)
+
+        elif isinstance(key, numbers.Integral):  # int, return element at key
+            return super().__getitem__(key)
+        else:
+            raise TypeError(f"{cls.__name__} indices must be integers")
+
+    # def __setitem__(self, key, value):
+    #     return self._perform_operation(operator.setitem, key, value)
+
+    def __iadd__(self, other):
+        raise AttributeError("Cannot change attributes of Field")
+
+    def __ifloordiv__(self, other):
+        raise AttributeError("Cannot change attributes of Field")
+
+    def __ilshift__(self, other):
+        raise AttributeError("Cannot change attributes of Field")
+
+    def __imod__(self, other):
+        raise AttributeError("Cannot change attributes of Field")
+
+    def __imul__(self, other):
+        raise AttributeError("Cannot change attributes of Field")
+
+    def __ipow__(self, other):
+        raise AttributeError("Cannot change attributes of Field")
+
+    def __irshift__(self, other):
+        raise AttributeError("Cannot change attributes of Field")
+
+    def __isub__(self, other):
+        raise AttributeError("Cannot change attributes of Field")
+
+    def __itruediv__(self, other):
+        raise AttributeError("Cannot change attributes of Field")
+
+    def __int__(self):
+        """
+        :return: the value of this Field cast to an integer.
+        """
+        try:
+            return int(self.value)
+        except ValueError:
+            # See if this might be a float / decimal encoded as a string
+            return int(self.value.split(".")[0])
+
+    def __float__(self):
+        """
+        :return: the value of this Field cast to a float.
+        """
+        return float(self.value)
+
+    def __bool__(self):
+        """
+        :return: the value of this Field cast to a boolean.
+        """
+        if self.value is None:
+            return bool(self.value)
+
+        try:
+            return strtobool(str(self)) == 1
+        except ValueError:
+            return len(self) > 0
+
+    def __bytes__(self):
+        """
+        Convert this Field to a byte sequence that is ready to be transmitted over the wire.
+
+        :return: The FIX-compliant, raw byte sequence for this Field.
+        """
+        return utils.encode(self.tag) + b"=" + utils.encode(self.value) + settings.SOH
+
+    def __format__(self, format_spec):
+        """
+        Introduces the custom format option 't', which adds user-friendly tag names to the output.
+
+        :param format_spec: specification in Format Specification Mini-Language format.
+        :return: A formatted string representation this Field.
+        """
+        if "t" in format_spec:
+            if self.name == self.UNKNOWN_TAG:
+                return f"{self.tag}: {self.value}"
+            return f"{self.name} ({self.tag}): {{:{format_spec.replace('t', '')}}}".format(self.value)
+        else:
+            return self.value.__format__(format_spec)
+
+    def __str__(self):
+        """
+        :return: the value of this Field as a decoded string.
+        """
+        return str(utils.decode(self.value))
+
+    def __repr__(self):
+        """
+        :return: 'tag name:value' if the tag has been defined in one of the specifications,
+        'tag_number:value' otherwise.
+        """
+        return f"{self.__class__.__name__}({self.tag}, '{self.value}')"

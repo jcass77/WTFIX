@@ -53,7 +53,7 @@ ENCODING_ERRORS = (
 BEGIN_STRING = b"FIX.4.4"
 
 SOH = b"\x01"  # Start of header / field delimiter
-SOH_BYTE = ord(SOH)
+SOH_INT = ord(SOH)  # Used for parsing raw byte streams.
 
 # Timeouts for app initialization and startup
 INIT_TIMEOUT = 10

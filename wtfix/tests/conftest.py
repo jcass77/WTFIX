@@ -46,12 +46,12 @@ class Below(BaseApp):
     name = "below"
 
     def on_receive(self, message):
-        message.TestReqID = f"{message.TestReqID.as_str} r1"
+        message.TestReqID = f"{message.TestReqID} r1"
 
         return message
 
     def on_send(self, message):
-        message.TestReqID = f"{message.TestReqID.as_str} s1"
+        message.TestReqID = f"{message.TestReqID} s1"
 
         return message
 
@@ -60,12 +60,12 @@ class Middle(BaseApp):
     name = "middle"
 
     def on_receive(self, message):
-        message.TestReqID = f"{message.TestReqID.as_str} r2"
+        message.TestReqID = f"{message.TestReqID} r2"
 
         return message
 
     def on_send(self, message):
-        message.TestReqID = f"{message.TestReqID.as_str} s2"
+        message.TestReqID = f"{message.TestReqID} s2"
 
         return message
 
@@ -84,12 +84,12 @@ class Top(BaseApp):
     name = "top"
 
     def on_receive(self, message):
-        message.TestReqID = f"{message.TestReqID.as_str} r3"
+        message.TestReqID = f"{message.TestReqID} r3"
 
         return message
 
     def on_send(self, message):
-        message.TestReqID = f"{message.TestReqID.as_str} s3"
+        message.TestReqID = f"{message.TestReqID} s3"
 
         return message
 

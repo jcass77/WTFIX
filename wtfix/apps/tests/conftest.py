@@ -74,7 +74,7 @@ def failing_server_heartbeat_app():
         nonlocal num_responses
 
         if num_responses < 3:
-            app.on_heartbeat(HeartbeatMessage(message.TestReqID.as_str))
+            app.on_heartbeat(HeartbeatMessage(str(message.TestReqID)))
         num_responses += 1
 
     app.pipeline.send.side_effect = simulate_heartbeat_response

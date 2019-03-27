@@ -58,7 +58,7 @@ def routing_id_group():
 def nested_parties_group():
     """Sample of a nested group based on NoNestedPartyIDs"""
     nested_party = Group(
-        (539, "2"),
+        (539, 2),
         (524, "a"),
         (525, "aa"),
         (538, "aaa"),
@@ -68,7 +68,7 @@ def nested_parties_group():
         template=[524, 525, 538, 804],
     )
     nested_sub_party_1 = Group(
-        (804, "2"),
+        (804, 2),
         (545, "c"),
         (805, "cc"),
         (545, "d"),
@@ -76,7 +76,7 @@ def nested_parties_group():
         template=[545, 805],
     )
     nested_sub_party_2 = Group(
-        (804, "2"),
+        (804, 2),
         (545, "e"),
         (805, "ee"),
         (545, "f"),

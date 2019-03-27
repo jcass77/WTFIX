@@ -16,7 +16,7 @@ class TestRawMessageParser:
         )  # Pre-process message as would be the case in normal pipeline
 
         rm = raw_msg_parser_app.on_receive(rm)
-        assert rm.raw == raw_encoding
+        assert bytes(rm) == raw_encoding
 
     def test_parse_uses_group_template_to_create_optimized_messages(
         self, raw_msg_parser_app

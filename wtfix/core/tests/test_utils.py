@@ -70,12 +70,20 @@ def test_decode_str():
     assert utils.decode("abc") == "abc"
 
 
+def test_decode_str_null():
+    assert utils.decode(str(utils.null)) is None
+
+
 def test_decode_int():
     assert utils.decode(123) == 123
 
 
+def test_decode_int_null():
+    assert utils.decode(utils.null) is None
+
+
 def test_decode_none():
-    assert utils.decode(None) == "None"
+    assert utils.decode(None) is None
 
 
 def test_decode_float():

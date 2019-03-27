@@ -19,68 +19,83 @@ from wtfix.core.exceptions import (
 class TestFieldSet:
     """Base class to test all implementations of 'FieldSet' interface."""
 
-    def test_add(self, fieldset_class, fieldset_impl_ab):
-        fs = fieldset_impl_ab + fieldset_class((3, "ccc"), (4, "dddd"))
+    def test_add(self, fieldset_class, fieldset_impl_abc_123):
+        fs = fieldset_impl_abc_123 + fieldset_class((3, "ccc"), (4, "dddd"))
 
         assert len(fs) == 4
         assert all(tag in fs for tag in [3, 4])
         assert fs[3] == "ccc"
         assert fs[4] == "dddd"
 
-    def test_add_field(self, fieldset_impl_ab):
-        fs = fieldset_impl_ab + Field(3, "ccc")
+    def test_add_field(self, fieldset_impl_abc_123):
+        fs = fieldset_impl_abc_123 + Field(3, "ccc")
         assert len(fs) == 3
         assert fs[3] == "ccc"
 
-    def test_add_list_of_fields(self, fieldset_impl_ab):
-        fs = fieldset_impl_ab + [Field(3, "ccc"), Field(4, "dddd")]
+    def test_add_list_of_fields(self, fieldset_impl_abc_123):
+        fs = fieldset_impl_abc_123 + [Field(3, "ccc"), Field(4, "dddd")]
         assert len(fs) == 4
         assert fs[3] == "ccc"
         assert fs[4] == "dddd"
 
-    def test_add_tuple(self, fieldset_impl_ab):
-        fs = fieldset_impl_ab + (3, "ccc")
+    def test_add_tuple(self, fieldset_impl_abc_123):
+        fs = fieldset_impl_abc_123 + (3, "ccc")
         assert len(fs) == 3
         assert fs[3] == "ccc"
 
-    def test_add_list_of_tuples(self, fieldset_impl_ab):
-        fs = fieldset_impl_ab + [(3, "ccc"), (4, "dddd")]
+    def test_add_list_of_tuples(self, fieldset_impl_abc_123):
+        fs = fieldset_impl_abc_123 + [(3, "ccc"), (4, "dddd")]
         assert len(fs) == 4
         assert fs[4] == "dddd"
 
-    def test_add_not_a_tuple_raises_error(self, fieldset_impl_ab):
+    def test_add_not_a_tuple_raises_error(self, fieldset_impl_abc_123):
         with pytest.raises(TypeError):
-            fieldset_impl_ab + 1
+            fieldset_impl_abc_123 + 1
 
-    def test_eq(self, fieldset_class, fieldset_impl_ab):
-        assert fieldset_impl_ab == fieldset_class((1, "a"), (2, "bb"))
+    def test_eq(self, fieldset_class, fieldset_impl_abc_123):
+        assert fieldset_impl_abc_123 == fieldset_class((1, "abc"), (2, 123))
 
-    def test_eq_list_of_tuples(self, fieldset_class, fieldset_impl_ab):
-        assert fieldset_impl_ab == [(1, "a"), (2, "bb")]
+    def test_eq_different_lengths_returns_false(self, fieldset_class, fieldset_impl_abc_123):
+        assert fieldset_impl_abc_123 != fieldset_class((1, "abc"))
 
-    def test_len(self, fieldset_impl_ab):
-        assert len(fieldset_impl_ab) == 2
+    def test_eq_different_types_converts_to_string(self, fieldset_class, fieldset_impl_abc_123):
+        assert fieldset_impl_abc_123 == fieldset_class((1, "abc"), (2, "123"))
+
+    def test_eq_ordering_is_not_significant(self, fieldset_class, fieldset_impl_abc_123):
+        assert fieldset_impl_abc_123 == fieldset_class((2, 123), (1, "abc"))
+
+    def test_eq_list_of_tuples(self, fieldset_class, fieldset_impl_abc_123):
+        assert fieldset_impl_abc_123 == [(1, "abc"), (2, 123)]
+
+    def test_eq_unequal_tuples_returns_false(self, fieldset_class, fieldset_impl_abc_123):
+        assert fieldset_impl_abc_123 != [(1, "abc"), (2, 123, 456)]
+
+    def test_eq_incompatible_type(self, fieldset_class, fieldset_impl_abc_123):
+        assert fieldset_impl_abc_123 != 1
+
+    def test_len(self, fieldset_impl_abc_123):
+        assert len(fieldset_impl_abc_123) == 2
 
     def test_len_group(self, fieldset_class, nested_parties_group):
-        fs = fieldset_class((1, "a"), (2, "bb"))
+        fs = fieldset_class((1, "abc"), (2, 123))
         fs.set_group(nested_parties_group)
 
         assert len(fs) == 19
 
     def test_setitem_by_tag_number(self, fieldset_class):
-        fs = fieldset_class((1, "a"), (2, "b"))
+        fs = fieldset_class((1, "abc"), (2, 123))
 
         fs[3] = "c"
         assert fs[3] == "c"
 
     def test_setitem_by_tag_name(self, fieldset_class):
-        fs = fieldset_class((1, "a"), (2, "b"))
+        fs = fieldset_class((1, "abc"), (2, 123))
 
         fs.MsgSeqNum = 1
         assert fs.MsgSeqNum == 1
 
     def test_setitem_replace_by_tag_number(self, fieldset_class):
-        fs = fieldset_class((1, "a"), (2, "b"))
+        fs = fieldset_class((1, "abc"), (2, 123))
         fs[3] = "c"
 
         fs[2] = "aa"
@@ -99,45 +114,45 @@ class TestFieldSet:
             fs.fields[1].tag == Tag.MsgType
         )  # Confirm position in FieldSet is maintained
 
-    def test_getitem(self, fieldset_impl_ab):
-        assert fieldset_impl_ab[1] == "a"
+    def test_getitem(self, fieldset_impl_abc_123):
+        assert fieldset_impl_abc_123[1] == "abc"
 
-    def test_getitem_unknown(self, fieldset_impl_ab):
+    def test_getitem_unknown(self, fieldset_impl_abc_123):
         with pytest.raises(TagNotFound):
-            fieldset_impl_ab[3]
+            fieldset_impl_abc_123[3]
 
-    def test_iter(self, fieldset_impl_ab):
-        fields = [field for field in fieldset_impl_ab]
-        assert fields == [(1, "a"), (2, "bb")]
+    def test_iter(self, fieldset_impl_abc_123):
+        fields = [field for field in fieldset_impl_abc_123]
+        assert fields == [(1, "abc"), (2, 123)]
 
-        values = [field.as_str for field in fieldset_impl_ab]
-        assert values == ["a", "bb"]
+        values = [str(field) for field in fieldset_impl_abc_123]
+        assert values == ["abc", "123"]
 
-        tags = [field.tag for field in fieldset_impl_ab]
+        tags = [field.tag for field in fieldset_impl_abc_123]
         assert tags == [1, 2]
 
-    def test_iter_nested_groups(self, fieldset_impl_ab, nested_parties_group):
-        fieldset_impl_ab.set_group(nested_parties_group)
-        fieldset_impl_ab[3] = "c"
+    def test_iter_nested_groups(self, fieldset_impl_abc_123, nested_parties_group):
+        fieldset_impl_abc_123.set_group(nested_parties_group)
+        fieldset_impl_abc_123[3] = "c"
 
-        fields = [field for field in fieldset_impl_ab]
-        assert fields == fieldset_impl_ab.fields
+        fields = [field for field in fieldset_impl_abc_123]
+        assert fields == fieldset_impl_abc_123.fields
 
-    def test_delitem(self, fieldset_impl_ab):
-        assert len(fieldset_impl_ab) == 2
+    def test_delitem(self, fieldset_impl_abc_123):
+        assert len(fieldset_impl_abc_123) == 2
 
-        del fieldset_impl_ab[1]
-        assert len(fieldset_impl_ab) == 1
-        assert 2 in fieldset_impl_ab
+        del fieldset_impl_abc_123[1]
+        assert len(fieldset_impl_abc_123) == 1
+        assert 2 in fieldset_impl_abc_123
 
-    def test_delitem_unknown(self, fieldset_impl_ab):
+    def test_delitem_unknown(self, fieldset_impl_abc_123):
         with pytest.raises(TagNotFound):
-            del fieldset_impl_ab[3]
+            del fieldset_impl_abc_123[3]
 
-    def test_contains(self, fieldset_impl_ab):
-        assert 1 in fieldset_impl_ab
-        assert 3 not in fieldset_impl_ab
-        assert "4" not in fieldset_impl_ab
+    def test_contains(self, fieldset_impl_abc_123):
+        assert 1 in fieldset_impl_abc_123
+        assert 3 not in fieldset_impl_abc_123
+        assert "4" not in fieldset_impl_abc_123
 
     def test_contains_group(self, fieldset_class, routing_id_group):
         fs = fieldset_class((1, "a"), (2, "bb"))
@@ -147,8 +162,8 @@ class TestFieldSet:
         assert 216 in fs
         assert 217 in fs
 
-    def test_getattr(self, fieldset_impl_ab):
-        assert fieldset_impl_ab.Account == "a"
+    def test_getattr(self, fieldset_impl_abc_123):
+        assert fieldset_impl_abc_123.Account == "abc"
 
     def test_getattr_unknown(self, fieldset_class):
         with pytest.raises(AttributeError):
@@ -160,17 +175,17 @@ class TestFieldSet:
             fs = fieldset_class((2, "a"))
             fs.Account
 
-    def test_fields_getter(self, fieldset_impl_ab):
-        assert fieldset_impl_ab.fields == [(1, "a"), (2, "bb")]
+    def test_fields_getter(self, fieldset_impl_abc_123):
+        assert fieldset_impl_abc_123.fields == [(1, "abc"), (2, 123)]
 
-    def test_nested_fields_getter(self, fieldset_impl_ab, nested_parties_group):
-        fieldset_impl_ab.set_group(nested_parties_group)
-        fieldset_impl_ab[3] = "c"
+    def test_bytes(self, fieldset_impl_abc_123):
+        assert bytes(fieldset_impl_abc_123) == b"1=abc" + settings.SOH + b"2=123" + settings.SOH
 
-        assert len(fieldset_impl_ab.fields) == 20
+    def test_nested_fields_getter(self, fieldset_impl_abc_123, nested_parties_group):
+        fieldset_impl_abc_123.set_group(nested_parties_group)
+        fieldset_impl_abc_123[3] = "c"
 
-    def test_raw_getter(self, fieldset_impl_ab):
-        assert fieldset_impl_ab.raw == b"1=a" + settings.SOH + b"2=bb" + settings.SOH
+        assert len(fieldset_impl_abc_123.fields) == 20
 
     def test_parse_fields_tuple(self, fieldset_class):
         fs = fieldset_class((1, "a"), (2, "b"))
@@ -236,13 +251,13 @@ class TestFieldSet:
 
         assert fs.get_group(routing_id_group.tag) == routing_id_group
 
-    def test_get_group_not_found(self, fieldset_impl_ab):
+    def test_get_group_not_found(self, fieldset_impl_abc_123):
         with pytest.raises(TagNotFound):
-            fieldset_impl_ab.get_group(215)
+            fieldset_impl_abc_123.get_group(215)
 
-    def test_get_group_invalid(self, fieldset_impl_ab):
+    def test_get_group_invalid(self, fieldset_impl_abc_123):
         with pytest.raises(InvalidGroup):
-            fieldset_impl_ab.get_group(1)
+            fieldset_impl_abc_123.get_group(1)
 
     def test_get_nested_group(self, fieldset_class, nested_parties_group):
         fs = fieldset_class((1, "a"), (2, "bb"))
@@ -260,19 +275,34 @@ class TestFieldSet:
 
 
 class TestListFieldSet:
-    def test_repr_list(self):
+    def test_repr_list_output(self):
         fs = ListFieldSet()
-        assert repr(fs) == "[]"
+        assert repr(fs) == "ListFieldSet()"
 
         fs = ListFieldSet((1, "a"), (2, "bb"))
-        assert repr(fs) == "[(1, a), (2, bb)]"
+        assert repr(fs) == "ListFieldSet(Field(1, 'a'), Field(2, 'bb'))"
+
+    def test_format_list_pretty_print_tags(self):
+        fs = ListFieldSet((34, "a"), (35, "bb"), (1, "ccc"))
+        assert f"{fs:t}" == "[MsgSeqNum (34): a | MsgType (35): bb | Account (1): ccc]"
+
+    def test_format_list_pretty_print_tags_multiple_options(self):
+        fs = ListFieldSet((34, 123))
+        assert f"{fs:t0.2f}" == "[MsgSeqNum (34): 123.00]"
+
+    def test_repr_list_eval(self):
+        fs = ListFieldSet()
+        assert eval(repr(fs)) == fs
+
+        fs = ListFieldSet((1, "a"), (2, "bb"))
+        assert eval(repr(fs)) == fs
 
     def test_str_list(self):
         fs = ListFieldSet()
         assert str(fs) == "[]"
 
         fs = ListFieldSet((34, "a"), (35, "bb"), (1, "ccc"))
-        assert str(fs) == "[MsgSeqNum (34):a | MsgType (35):bb | Account (1):ccc]"
+        assert str(fs) == "[(34, a) | (35, bb) | (1, ccc)]"
 
 
 class TestOrderedDictFieldSet:
@@ -422,21 +452,36 @@ class TestOrderedDictFieldSet:
         assert len(nested_instance_1) == 2
         assert nested_instance_1[805] == "cc"
 
-        assert fs[1].value_ref == "a"
+        assert fs[1] == "a"
 
-    def test_repr_dict(self):
+    def test_repr_dict_output(self):
         fs = OrderedDictFieldSet()
-        assert repr(fs) == "{}"
+        assert repr(fs) == "OrderedDictFieldSet()"
 
         fs = OrderedDictFieldSet((1, "a"), (2, "bb"))
-        assert repr(fs) == "{(1, a), (2, bb)}"
+        assert repr(fs) == "OrderedDictFieldSet(Field(1, 'a'), Field(2, 'bb'))"
+
+    def test_format_dict_pretty_print_tags(self):
+        fs = OrderedDictFieldSet((34, "a"), (35, "bb"), (1, "ccc"))
+        assert f"{fs:t}" == "{MsgSeqNum (34): a | MsgType (35): bb | Account (1): ccc}"
+
+    def test_format_dict_pretty_print_tags_multiple_options(self):
+        fs = OrderedDictFieldSet((34, 123))
+        assert f"{fs:t0.2f}" == "{MsgSeqNum (34): 123.00}"
+
+    def test_repr_dict_eval(self):
+        fs = OrderedDictFieldSet()
+        assert eval(repr(fs)) == fs
+
+        fs = OrderedDictFieldSet((1, "a"), (2, "bb"))
+        assert eval(repr(fs)) == fs
 
     def test_str_dict(self):
         fs = OrderedDictFieldSet()
         assert str(fs) == "{}"
 
         fs = OrderedDictFieldSet((34, "a"), (35, "bb"), (1, "ccc"))
-        assert str(fs) == "{MsgSeqNum (34):a | MsgType (35):bb | Account (1):ccc}"
+        assert str(fs) == "{(34, a) | (35, bb) | (1, ccc)}"
 
     def test_regression_for_getting_fields_for_message_with_repeating_groups(self):
         """
@@ -539,6 +584,34 @@ class TestGroup:
         with pytest.raises(AttributeError):
             Group((1, "1"), *(2, "a"), template=[2])
 
+    def test_eq(self, routing_id_group):
+        assert routing_id_group == Group(
+            Field(215, "2"),
+            Field(216, "a"),
+            Field(217, "b"),
+            Field(216, "c"),
+            Field(217, "d")
+        )
+
+    def test_eq_tuple(self, routing_id_group):
+        assert routing_id_group == (
+            (215, "2"),
+            (216, "a"),
+            (217, "b"),
+            (216, "c"),
+            (217, "d")
+        )
+
+    def test_eq_different_identifiers_returns_false(self, routing_id_group):
+        assert routing_id_group != Group(
+            Field(999, "2"),
+            Field(216, "a"),
+            Field(217, "b"),
+            Field(216, "c"),
+            Field(217, "d"),
+            template=[216, 217]
+        )
+
     def test_len(self, routing_id_group, nested_parties_group):
         assert len(routing_id_group) == 5
         assert len(nested_parties_group) == 17
@@ -549,17 +622,28 @@ class TestGroup:
     def test_len_nested_group(self, nested_parties_group):
         assert len(nested_parties_group) == 17
 
-    def test_repr(self, routing_id_group):
+    def test_format_pretty_print_tags(self, routing_id_group):
+        assert (
+            f"{routing_id_group:t}"
+            == "[NoRoutingIDs (215): 2] | [RoutingType (216): a | RoutingID (217): b] | "
+            "[RoutingType (216): c | RoutingID (217): d]"
+        )
+
+    def test_repr_output(self, routing_id_group):
         assert (
             repr(routing_id_group)
-            == "[(215, 2)]:[(216, a), (217, b)], [(216, c), (217, d)]"
+            == "Group(Field(215, '2'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'))"
+        )
+
+    def test_repr_eval(self, routing_id_group):
+        assert (
+            eval(repr(routing_id_group)) == routing_id_group
         )
 
     def test_str(self, routing_id_group):
         assert (
             str(routing_id_group)
-            == "[NoRoutingIDs (215):2] | [RoutingType (216):a | RoutingID (217):b] | "
-            "[RoutingType (216):c | RoutingID (217):d]"
+            == "[(215, 2)] | [(216, a) | (217, b)] | [(216, c) | (217, d)]"
         )
 
     def test_instances_getter(self, nested_parties_group):
@@ -621,9 +705,6 @@ class TestGroup:
             (805, "ff"),
         ]
 
-    def test_raw_getter(self, routing_id_group):
-        assert routing_id_group.raw == b"215=2\x01216=a\x01217=b\x01216=c\x01217=d\x01"
-
     def test_tag_getter(self, routing_id_group):
         assert routing_id_group.tag == 215
 
@@ -637,3 +718,6 @@ class TestGroup:
         assert (
             nested_parties_group.instances[1].get_group(804).size == 2
         )  # Get sub group using explicit call
+
+    def test_bytes(self, routing_id_group):
+        assert bytes(routing_id_group) == b"215=2\x01216=a\x01217=b\x01216=c\x01217=d\x01"

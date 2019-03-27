@@ -163,7 +163,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
         :param message: The Logon message received. Should contain a HeartBtInt tag that will be used
         to set the heartbeat interval to monitor.
         """
-        self._heartbeat = message.HeartBtInt.as_int
+        self._heartbeat = int(message.HeartBtInt)
 
         return message
 
@@ -177,7 +177,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
         logger.debug(
             f"{self.name}: Sending heartbeat in response to request {message.TestReqID}."
         )
-        self.send(admin.HeartbeatMessage(message.TestReqID.as_str))
+        self.send(admin.HeartbeatMessage(str(message.TestReqID)))
 
         return message
 
@@ -278,14 +278,14 @@ class AuthenticationApp(MessageTypeHandlerApp):
         :param message: The logon FIX message received from the server.
         :raises: MessageProcessingError if any of the session parameters do not match what was sent to the server.
         """
-        heartbeat_time = message.HeartBtInt.as_int
+        heartbeat_time = int(message.HeartBtInt)
         if heartbeat_time != self.heartbeat_int:
             raise SessionError(
                 f"{self.name}: Heartbeat confirmation '{heartbeat_time}' does not match logon value {self.heartbeat_int}."
             )
 
         try:
-            test_mode = message.TestMessageIndicator.as_bool
+            test_mode = bool(message.TestMessageIndicator)
         except TagNotFound:
             test_mode = False
 
@@ -294,7 +294,7 @@ class AuthenticationApp(MessageTypeHandlerApp):
                 f"{self.name}: Test mode confirmation '{test_mode}' does not match logon value {self.test_mode}."
             )
 
-        reset_seq_nums = message.ResetSeqNumFlag.as_bool
+        reset_seq_nums = bool(message.ResetSeqNumFlag)
         if reset_seq_nums != self.reset_seq_nums:
             raise SessionError(
                 f"{self.name}: Reset sequence number confirmation '{reset_seq_nums}' does not match logon value {self.reset_seq_nums}."
@@ -404,7 +404,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             error_msg = f"Unexpected message sequence number '{message.seq_num}'. Expected '{self.expected_seq_num}'."
 
             try:
-                if message.PossDupFlag.as_bool is True:
+                if bool(message.PossDupFlag) is True:
                     raise StopMessageProcessing(
                         f"Ignoring duplicate message {message}."
                     )
@@ -417,8 +417,8 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
     @on(MsgType.ResendRequest)
     def on_resend_request(self, message):
-        begin_seq_no = message.BeginSeqNo.as_int
-        end_seq_no = message.EndSeqNo.as_int
+        begin_seq_no = int(message.BeginSeqNo)
+        end_seq_no = int(message.EndSeqNo)
 
         if end_seq_no == 0:
             # Server requested all messages
@@ -451,7 +451,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             )  # Make a copy so that we do not change entries in the send log.
             resend_msg.MsgSeqNum = next_seq_num
             resend_msg.PossDupFlag = "Y"
-            resend_msg.OrigSendingTime = resend_msg.SendingTime.value_ref
+            resend_msg.OrigSendingTime = resend_msg.SendingTime
 
             self.send(resend_msg)
             next_seq_num += 1
@@ -475,7 +475,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
         Inject MsgSeqNum for every message to be sent, except duplicates.
         """
         try:
-            is_duplicate = message.PossDupFlag.as_bool
+            is_duplicate = bool(message.PossDupFlag)
         except TagNotFound:
             is_duplicate = False
 

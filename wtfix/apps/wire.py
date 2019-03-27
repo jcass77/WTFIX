@@ -87,7 +87,7 @@ class EncoderApp(BaseApp):
         for field in message.fields:
             if field.tag in self.DYNAMIC_TAGS:  # These tags will be generated - ignore.
                 continue
-            body += field.raw
+            body += bytes(field)
 
         header = (
             utils.encode(f"{Tag.BeginString}=")
@@ -227,7 +227,8 @@ class DecoderApp(BaseApp):
 
         return checksum, checksum_end
 
-    def decode_message(self, data):
+    @classmethod
+    def decode_message(cls, data):
         """
         Constructs a GenericMessage from the provided data. Also uses the BeginString (8), BodyLength (9),
         and Checksum (10) tags to verify the message before decoding.
@@ -236,14 +237,14 @@ class DecoderApp(BaseApp):
         :return: a GenericMessage instance initialised from the raw data.
         """
         # Message MUST start with begin_string
-        begin_string, begin_tag_end = self.check_begin_string(data, start=0)
+        begin_string, begin_tag_end = cls.check_begin_string(data, start=0)
 
         # Optimization: Find checksum now so that we can re-use its
         # index in both the body_length and subsequent 'check_checksum' calls.
         checksum_check, checksum_tag_start, _ = utils.rindex_tag(10, data)
 
         # Body length must match what was sent by server
-        body_length, body_length_tag_end = self.check_body_length(
+        body_length, body_length_tag_end = cls.check_body_length(
             data, start=begin_tag_end, body_end=checksum_tag_start
         )
 
@@ -257,7 +258,7 @@ class DecoderApp(BaseApp):
             Tag.MsgSeqNum, data, msg_type_end_tag
         )
 
-        checksum, _ = self.check_checksum(
+        checksum, _ = cls.check_checksum(
             data, body_start=0, body_end=checksum_tag_start
         )
 

@@ -10,7 +10,7 @@ def ordered_dict_fieldset_ab():
 
 def pytest_generate_tests(metafunc):
     """A test generator for testing all permutations of FieldSet implementations."""
-    if "fieldset_impl_ab" in metafunc.fixturenames:
-        list_impl = ListFieldSet((1, "a"), (2, "bb"))
-        dict_impl = OrderedDictFieldSet((1, "a"), (2, "bb"))
-        metafunc.parametrize("fieldset_impl_ab", [list_impl, dict_impl])
+    if "fieldset_impl_abc_123" in metafunc.fixturenames:
+        list_impl = ListFieldSet((1, "abc"), (2, 123))
+        dict_impl = OrderedDictFieldSet((1, "abc"), (2, 123))
+        metafunc.parametrize("fieldset_impl_abc_123", [list_impl, dict_impl])

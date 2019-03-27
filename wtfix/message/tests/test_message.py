@@ -85,6 +85,19 @@ class TestRawMessage:
         new_rm = rm.copy()
         assert new_rm == rm
 
+    def test_format_pretty_print_tags(self):
+        rm = RawMessage(
+            message_type=MsgType.QuoteStatusRequest,
+            message_seq_num=1,
+            encoded_body=b"12345" + settings.SOH + b"67890" + settings.SOH,
+        )
+
+        assert (
+            f"{rm:t}"
+            == "QuoteStatusRequest (a): {BeginString (8): FIX.4.4 | BodyLength (9): 12 | MsgType (35): a | "
+            "MsgSeqNum (34): 1 | CheckSum (10): 15}, with byte-encoded content: b'12345\\x0167890\\x01'"
+        )
+
     def test_str(self):
         rm = RawMessage(
             message_type=MsgType.QuoteStatusRequest,
@@ -94,8 +107,8 @@ class TestRawMessage:
 
         assert (
             str(rm)
-            == "QuoteStatusRequest (a): {BeginString (8):FIX.4.4 | BodyLength (9):12 | MsgType (35):a | "
-            "MsgSeqNum (34):1 | CheckSum (10):15}, with byte-encoded content: b'12345\\x0167890\\x01'"
+            == "a: {(8, FIX.4.4) | (9, 12) | (35, a) | "
+            "(34, 1) | (10, 15)}, with byte-encoded content: b'12345\\x0167890\\x01'"
         )
 
 
@@ -112,13 +125,22 @@ class TestGenericMessage:
 
         assert isinstance(m, GenericMessage)
 
+    def test_format_pretty_print_tags(self):
+        m = GenericMessage((35, "a"), (2, "bb"))
+        m += Field(3, "ccc")
+
+        assert (
+            f"{m:t}"
+            == "QuoteStatusRequest (a): [MsgType (35): a | AdvId (2): bb | AdvRefID (3): ccc]"
+        )
+
     def test_str(self):
         m = GenericMessage((35, "a"), (2, "bb"))
         m += Field(3, "ccc")
 
         assert (
             str(m)
-            == "QuoteStatusRequest (a): [MsgType (35):a | AdvId (2):bb | AdvRefID (3):ccc]"
+            == "a: [(35, a) | (2, bb) | (3, ccc)]"
         )
 
 
