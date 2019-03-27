@@ -40,7 +40,6 @@ class FieldSet(abc.ABC):
     should implement in order to support the Python built-ins that are typically used for Sequences.
     """
 
-    @abc.abstractmethod
     def __add__(self, other):
         """
         Concatenate two FieldSets, add a Field to a Fieldset, or add a (tag, value) tuple to the FieldSet.
@@ -48,6 +47,15 @@ class FieldSet(abc.ABC):
         :param other: Another FieldSet, Field, (tag, value) tuple, or list of these.
         :return: A new FieldSet, which contains the concatenation of the FieldSet with other.
         """
+        try:
+            return self.__class__(*itertools.chain(self.fields, other.fields))
+        except AttributeError:
+            # Other is not a valid Fieldset
+            if not isinstance(other, list):
+                other = [other]
+
+            fields = self.fields + other
+            return self.__class__(*fields)
 
     def _compare_fields(self, other_sequence):
 
@@ -212,13 +220,16 @@ class FieldSet(abc.ABC):
         :return: A list of Fields that this FieldSet contains
         """
 
-    @abc.abstractmethod
     def __bytes__(self):
         """
         :return: The FIX-compliant, raw binary sequence for this FieldSet.
         """
+        buf = b""
+        for field in self.fields:
+            buf += bytes(field)
 
-    @abc.abstractmethod
+        return buf
+
     def __format__(self, format_spec):
         """
         Add support for formatting FieldSets using the custom 't' option to add tag names.
@@ -226,49 +237,10 @@ class FieldSet(abc.ABC):
         :param format_spec: specification in Format Specification Mini-Language format.
         :return: A formatted string representation this Field.
         """
-
-    def _format(self, fields, format_spec):
-        """
-        Shared implementation for formatting a list of fields
-
-        :param fields: The list of Fields to render
-        :param format_spec: The format spec to apply. Usually the custom 't' option.
-        :return: formatted Fields separated by |
-        """
         fields_str = ""
-        for field in fields:
+        for field in self.fields:
             fields_str += f"{{:{format_spec}}} | ".format(field)
 
-        else:
-            fields_str = fields_str[:-3]
-
-        return f"{fields_str}"
-
-    def _repr(self, fields):
-        """
-        Shared implementation for printing a list of fields
-
-        :param fields: The list of Fields to render
-        :return: repr(Field) separated by |
-        """
-        fields_repr = ""
-        for field in fields:
-            fields_repr += f"{repr(field)}, "
-        else:
-            fields_repr = fields_repr[:-2]
-
-        return f"{fields_repr}"
-
-    def _str(self, fields):
-        """
-        Shared implementation for printing a list of fields
-
-        :param fields: The list of Fields to render
-        :return: Field, formatted to print tag names, separated by |
-        """
-        fields_str = ""
-        for field in fields:
-            fields_str += f"({field.tag}, {str(field)}) | "
         else:
             fields_str = fields_str[:-3]
 
@@ -349,13 +321,27 @@ class FieldSet(abc.ABC):
 
     def __repr__(self):
         """
-        :return: (tag_1, value_1), (tag_2, value_2)
+        :return: :return: repr(Field) separated by |
         """
+        fields_repr = ""
+        for field in self.fields:
+            fields_repr += f"{repr(field)}, "
+        else:
+            fields_repr = fields_repr[:-2]
+
+        return f"{fields_repr}"
 
     def __str__(self):
         """
         :return: 'tag_name_1:value_1 | tag_name_2:value_2'
         """
+        fields_str = ""
+        for field in self.fields:
+            fields_str += f"({field.tag}, {str(field)}) | "
+        else:
+            fields_str = fields_str[:-3]
+
+        return f"{fields_str}"
 
 
 class ListFieldSet(FieldSet):
@@ -371,21 +357,6 @@ class ListFieldSet(FieldSet):
         :param kwargs: Unused.
         """
         self._fields = self._parse_fields(fields)
-
-    def __add__(self, other):
-        try:
-            return self.__class__(*itertools.chain(self._fields, other.fields))
-        except AttributeError:
-            # Other is not a valid ListFieldset, explode list of fields to construct
-            if isinstance(other, tuple):
-                other = [other]
-            elif not isinstance(other, list):
-                raise TypeError(
-                    f"Can only concatenate tuples, lists of tuples, or other Fieldsets, not {type(other).__name__}."
-                )
-
-            fields = self._fields + other
-            return self.__class__(*fields)
 
     def __setitem__(self, tag, value):
         if not (isinstance(value, Field) or isinstance(value, Group)):
@@ -443,27 +414,20 @@ class ListFieldSet(FieldSet):
 
         return parsed_fields
 
-    def __bytes__(self):
-        buf = b""
-        for field in self._fields:
-            buf += bytes(field)
-
-        return buf
-
     def __format__(self, format_spec):
-        return f"[{FieldSet._format(self, self._fields, format_spec)}]"
+        return f"[{super().__format__(format_spec)}]"
 
     def __repr__(self):
         """
         :return: [(tag_1, value_1), (tag_2, value_2)]
         """
-        return f"{self.__class__.__name__}({FieldSet._repr(self, self._fields)})"
+        return f"{self.__class__.__name__}({super().__repr__()})"
 
     def __str__(self):
         """
         :return: '[tag_name_1:value_1 | tag_name_2:value_2]'
         """
-        return f"[{FieldSet._str(self, self._fields)}]"
+        return f"[{super().__str__()}]"
 
 
 class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
@@ -492,21 +456,6 @@ class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
         self._fields = collections.OrderedDict(
             (field.tag, field) for field in self._parse_fields(fields)
         )
-
-    def __add__(self, other):
-        try:
-            return self.__class__(*itertools.chain(self._fields.values(), other.fields))
-        except AttributeError:
-            # Other is not a valid OrderedDictFieldSet, explode list of fields to construct
-            if isinstance(other, tuple):
-                other = [other]
-            elif not isinstance(other, list):
-                raise TypeError(
-                    f"Can only concatenate tuples, lists of tuples, or other Fieldsets, not {type(other).__name__}."
-                )
-
-            fields = list(self._fields.values()) + other
-            return self.__class__(*fields)
 
     def __setitem__(self, tag, value):
         if not (isinstance(value, Field) or isinstance(value, Group)):
@@ -613,27 +562,20 @@ class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
 
         return parsed_fields
 
-    def __bytes__(self):
-        buf = b""
-        for field in self._fields.values():
-            buf += bytes(field)
-
-        return buf
-
     def __format__(self, format_spec):
-        return f"{{{FieldSet._format(self, self._fields.values(), format_spec)}}}"
+        return f"{{{super().__format__(format_spec)}}}"
 
     def __repr__(self):
         """
         :return: {(tag_1, value_1), (tag_2, value_2)}
         """
-        return f"{self.__class__.__name__}({FieldSet._repr(self, self._fields.values())})"
+        return f"{self.__class__.__name__}({super().__repr__()})"
 
     def __str__(self):
         """
         :return: '{tag_name_1:value_1 | tag_name_2:value_2}'
         """
-        return f"{{{FieldSet._str(self, self._fields.values())}}}"
+        return f"{{{super().__str__()}}}"
 
 
 class GroupInstance(ListFieldSet):

@@ -49,7 +49,7 @@ class TestFieldSet:
         assert fs[4] == "dddd"
 
     def test_add_not_a_tuple_raises_error(self, fieldset_impl_abc_123):
-        with pytest.raises(TypeError):
+        with pytest.raises(Exception):
             fieldset_impl_abc_123 + 1
 
     def test_eq(self, fieldset_class, fieldset_impl_abc_123):
