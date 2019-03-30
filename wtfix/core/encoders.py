@@ -38,7 +38,7 @@ class JSONMessageEncoder(JSONEncoder):
         for instance in group.instances:
             group_fields = {}
 
-            for field in instance._fields:
+            for field in instance.data:
                 if isinstance(field, Group):
                     group_fields[field.tag] = self._encode_group(field)
                 else:
@@ -51,7 +51,7 @@ class JSONMessageEncoder(JSONEncoder):
     def default(self, o):
         if isinstance(o, ListFieldSet):
             fields = []
-            for field in o._fields:
+            for field in o.data:
                 fields.append([field.tag, str(field)])
 
             return fields
@@ -59,7 +59,7 @@ class JSONMessageEncoder(JSONEncoder):
         if isinstance(o, OrderedDictFieldSet):
             fields = {}
 
-            for k, v in o._fields.items():
+            for k, v in o.data.items():
                 if isinstance(v, Group):
                     fields[v.tag] = self._encode_group(v)
                 else:

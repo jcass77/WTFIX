@@ -105,12 +105,6 @@ class FIXMessage(abc.ABC):
     def target_id(self, value):
         self[Tag.TargetCompID] = value
 
-    def clear(self):
-        """
-        Clear the message of all Fields.
-        """
-        self._fields.clear()
-
     @abc.abstractmethod
     def copy(self):
         """
@@ -213,7 +207,7 @@ class GenericMessage(FIXMessage, ListFieldSet):
 
     def copy(self):
         copy = GenericMessage()
-        copy._fields = self._fields.copy()
+        copy._data = self._data.copy()
 
         return copy
 
@@ -231,6 +225,6 @@ class OptimizedGenericMessage(FIXMessage, OrderedDictFieldSet):
         copy = OptimizedGenericMessage()
         copy.group_templates = self.group_templates.copy()
 
-        copy._fields = self._fields.copy()
+        copy._data = self._data.copy()
 
         return copy

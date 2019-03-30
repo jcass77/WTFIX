@@ -42,7 +42,7 @@ def fieldset_class(request):
     return request.param
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def routing_id_group():
     """Example of a RoutingID repeating group"""
     return Group(
@@ -51,6 +51,7 @@ def routing_id_group():
         (Tag.RoutingID, "b"),
         (Tag.RoutingType, "c"),
         (Tag.RoutingID, "d"),
+        template=[Tag.RoutingType, Tag.RoutingID],
     )
 
 
@@ -84,8 +85,8 @@ def nested_parties_group():
         template=[545, 805],
     )
 
-    nested_party[0].set_group(nested_sub_party_1)
-    nested_party[1].set_group(nested_sub_party_2)
+    nested_party[0][nested_sub_party_1.tag] = nested_sub_party_1
+    nested_party[1][nested_sub_party_2.tag] = nested_sub_party_2
 
     return nested_party
 

@@ -57,13 +57,6 @@ class TestFixMessageMixin:
         m = generic_message_class((35, "a"), (2, "bb"))
         assert m.target_id is None
 
-    def test_clear(self, generic_message_class, sdr_message_fields):
-        m = generic_message_class(*sdr_message_fields)
-        assert len(m) > 0
-
-        m.clear()
-        assert len(m) == 0
-
     def test_validate(self, generic_message_class, sdr_message_fields):
         m = generic_message_class(*sdr_message_fields)
         m.validate()

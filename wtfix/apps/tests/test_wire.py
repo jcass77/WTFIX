@@ -26,7 +26,7 @@ class TestEncoderApp:
 
     def test_encode_message_nested_group(self, encoder_app, nested_parties_group):
         m = generic_message_factory((35, "a"), (34, 1), (2, "bb"))
-        m.set_group(nested_parties_group)
+        m[nested_parties_group.tag] = nested_parties_group
 
         # Compare just the group-related bytes.
         assert encoder_app.encode_message(m)[82:-7] == (

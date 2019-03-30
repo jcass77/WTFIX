@@ -90,13 +90,6 @@ class DuplicateTags(_TagException):
         super().__init__(tag, data, message)
 
 
-class InvalidGroup(_TagException):
-    def __init__(self, tag, data, message=None):
-        if message is None:
-            message = f"{tag} is not a group tag in {data!r}."
-        super().__init__(tag, data, message)
-
-
 class UnknownType(Exception):
     def __init__(self, type_):
         self.type_ = type_

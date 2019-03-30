@@ -153,7 +153,7 @@ class MsgType:
         :return: the name associated with the type string.
         """
         try:
-            return TYPE2NAME[type_]
+            return TYPE_MAPPINGS[type_]
         except KeyError as e:
             # Not a known type
             raise UnknownType(type_) from e
@@ -166,14 +166,13 @@ class MsgType:
         :return: the binary string type associated with the tag name.
         """
         try:
-            return NAME2TYPE[type_name]
+            return MsgType.__dict__[type_name]
         except KeyError as e:
             # Not a known tag
             raise UnknownType(type_name) from e
 
 
-TYPE2NAME = {v: k for k, v in MsgType.__dict__.items() if "_" != k[0]}
-NAME2TYPE = MsgType.__dict__
+TYPE_MAPPINGS = {v: k for k, v in MsgType.__dict__.items() if "_" != k[0]}
 
 
 class Tag:
@@ -1798,7 +1797,7 @@ class Tag:
         :return: the name associated with the tag number.
         """
         try:
-            return TAG2NAME[tag]
+            return TAG_MAPPINGS[tag]
         except KeyError as e:
             # Not a known tag
             raise UnknownTag(tag) from e
@@ -1811,11 +1810,10 @@ class Tag:
         :return: the number associated with the tag name.
         """
         try:
-            return NAME2TAG[tag_name]
+            return cls.__dict__[tag_name]
         except KeyError as e:
             # Not a known tag
             raise UnknownTag(tag_name) from e
 
 
-TAG2NAME = {v: k for k, v in Tag.__dict__.items() if "_" != k[0]}
-NAME2TAG = Tag.__dict__
+TAG_MAPPINGS = {v: k for k, v in Tag.__dict__.items() if "_" != k[0]}

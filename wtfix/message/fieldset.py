@@ -18,44 +18,78 @@
 import abc
 import collections
 import itertools
-import numbers
+from typing import Union, Sequence, Generator, List, ValuesView
 
 from wtfix.conf import settings
 from wtfix.core.exceptions import (
     TagNotFound,
-    InvalidGroup,
     UnknownTag,
     DuplicateTags,
     ParsingError,
-    ImproperlyConfigured,
-)
+    ImproperlyConfigured)
 from wtfix.core.utils import GroupTemplateMixin
 from wtfix.message.field import Field
 from wtfix.protocol import common
+from wtfix.protocol.common import Tag
 
 
-class FieldSet(abc.ABC):
+class FieldSet(collections.abc.Sequence):
     """
-    A FieldSet is a collection of a one or more Fields. This class provides the interface that all FieldSets
-    should implement in order to support the Python built-ins that are typically used for Sequences.
+    A FieldSet is a Sequence of a one or more Fields. This class provides the interface that all FieldSets
+    should implement.
+
+    See https://docs.python.org/3/reference/datamodel.html?highlight=__add__#emulating-container-types for a list
+    of methods that should be implemented in order to emulate Python's built-in container types.
     """
 
-    def __add__(self, other):
+    @property
+    @abc.abstractmethod
+    def data(self) -> Sequence:
         """
-        Concatenate two FieldSets, add a Field to a Fieldset, or add a (tag, value) tuple to the FieldSet.
+        Provide direct access to this FieldSet's container, similar to UserDict and UserList.
+         
+        :return: The underlying container that this FieldSet's Fields are stored in.
+        """
 
-        :param other: Another FieldSet, Field, (tag, value) tuple, or list of these.
-        :return: A new FieldSet, which contains the concatenation of the FieldSet with other.
+    @property
+    @abc.abstractmethod
+    def fields(self) -> List[Field]:
+        """
+        Get all of the Fields that have been added to this FieldSet. Group instances should be unpacked into
+        their constituent Fields.
+
+        :return: a list of all Field values.
+        """
+
+    @classmethod
+    def as_sequence(cls, other: Union["FieldSet", Field, tuple, Sequence[Field], Sequence[tuple]]) -> Union[Sequence, Generator[Field, None, None]]:
+        """
+        :return: wrap other in tuple to create a Sequence, if required
         """
         try:
-            return self.__class__(*itertools.chain(self.fields, other.fields))
+            return other.fields
         except AttributeError:
-            # Other is not a valid Fieldset
-            if not isinstance(other, list):
-                other = [other]
+            # Not a FieldSet
+            try:
+                if len(other[0]) > 0:
+                    # Might be a sequence valid sequence - use as-is.
+                    return other
+            except TypeError:
+                # Convert to tuple
+                try:
+                    return other,
+                except TypeError:
+                    raise ParsingError(f"Cannot process '{other}': not a valid (tag, value) pair.")
 
-            fields = self.fields + other
-            return self.__class__(*fields)
+    def __add__(self, other: Union["FieldSet", Field, tuple, Sequence[Field], Sequence[tuple]]) -> "FieldSet":
+        """
+        Add another FieldSet to this FieldSet, or add a Field or a (tag, value) tuple or Sequences of these
+        to the FieldSet.
+
+        :param other: Another FieldSet, Field, (tag, value) tuple, or Sequence of these.
+        :return: A new FieldSet, which contains the concatenation of the FieldSet with other.
+        """
+        return self.__class__(*itertools.chain(self.fields, self.as_sequence(other)))
 
     def _compare_fields(self, other_sequence):
 
@@ -65,7 +99,7 @@ class FieldSet(abc.ABC):
                 return False
 
             # Sort the sequences to be compared so that we can perform an unordered comparison
-            for other_field, self_field in zip(sorted(other_sequence), sorted(self.fields)):
+            for other_field, self_field in itertools.zip_longest(sorted(other_sequence), sorted(self.fields)):
                 # Compare tags and string-converted values one by one.
                 if self_field.tag != other_field[0] or str(self_field.value) != str(other_field[1]):
                     return False
@@ -76,7 +110,7 @@ class FieldSet(abc.ABC):
 
         return True
 
-    def __eq__(self, other):
+    def __eq__(self, other: Union["FieldSet", Sequence[Field], Sequence[tuple]]) -> bool:
         """
         Compare this FieldSet to other.
 
@@ -86,7 +120,7 @@ class FieldSet(abc.ABC):
         This implementation tries various shortcuts to terminate the comparison as quickly as possible, before
         moving on to a more expensive full comparison (that requires the items being compared to be sorted first).
 
-        :param other: Another Fieldset, tuple, or list of tuples.
+        :param other: Another Fieldset, sequence of Fields, or sequence of (tag, value) tuples.
         :return: True if other is equivalent to this FieldSet, False otherwise.
         """
         try:
@@ -112,22 +146,21 @@ class FieldSet(abc.ABC):
         return len(self.fields)
 
     @abc.abstractmethod
-    def __setitem__(self, tag, value):
+    def __setitem__(self, tag: int, value: any):
         """
         Sets a Field in the FieldSet with the specified tag number and value.
 
         :param tag: The tag number to set in the FieldSet.
         :param value: The value of the Field.
-        :return:
         """
 
     @abc.abstractmethod
-    def __getitem__(self, tag):
+    def __getitem__(self, tag: int) -> Union[Field, list]:
         """
         Tries to retrieve a Field with the given tag number from this FieldSet.
 
         :param tag: The tag number of the Field to look up.
-        :return: A Field object.
+        :return: A Field object (or list of Field objects if more than one Field matching the tag is found).
         :raises: TagNotFound if a Field with the specified tag number could not be found.
         """
 
@@ -138,15 +171,10 @@ class FieldSet(abc.ABC):
         :param key: The Field's tag name
         :param value: The value to set the Field to
         """
-        try:
-            tag_num = common.Tag.get_tag(key)
-            self[tag_num] = value
-        except UnknownTag:
-            # Not a known tag number, fall back to default Python implementation
-            return super().__setattr__(key, value)
-        except TagNotFound:
-            # Valid tag, but it has not been added to FieldSet yet - do so now
-            self[tag_num] = value
+        if key in Tag.__dict__.keys():
+            self[Tag.__dict__[key]] = value
+        else:
+            super().__setattr__(key, value)
 
     def __iter__(self):
         """
@@ -155,7 +183,7 @@ class FieldSet(abc.ABC):
         yield from self.fields
 
     @abc.abstractmethod
-    def __delitem__(self, tag):
+    def __delitem__(self, tag: int):
         """
         Tries to remove a Field with the given tag number from this FieldSet.
 
@@ -163,14 +191,13 @@ class FieldSet(abc.ABC):
         :raises: TagNotFound if a Field with the specified tag number could not be found.
         """
 
-    def __contains__(self, tag):
+    def __contains__(self, tag: int):
         """
         :return: True if the Fieldset contains a Field with the given tag number, False otherwise.
         """
-        if isinstance(tag, numbers.Integral):
-            for elem in self.fields:
-                if elem[0] == tag:
-                    return True
+        for elem in self.fields:
+            if elem.tag == tag:
+                return True
 
         return False
 
@@ -188,9 +215,9 @@ class FieldSet(abc.ABC):
             # First, try to get the tag number associated with 'name'.
             tag = common.Tag.get_tag(name)
         except UnknownTag as e:
-            # No tag
+            # Not a known tag, ignore.
             raise AttributeError(
-                f"{self.__class__.__name__} instance has no attribute '{name}'."
+                f"{type(self).__name__} instance has no attribute '{name}'."
             ) from e
 
         try:
@@ -200,27 +227,22 @@ class FieldSet(abc.ABC):
             raise TagNotFound(
                 tag,
                 self,
-                f"Tag {tag} not found in {self!r}. Perhaps you are looking"
-                f"for a group tag? If so, use 'get_group' instead.",
+                f"Tag {tag} not found in {self!r}.",
             ) from e
 
-    @abc.abstractmethod
-    def append(self, field):
+    def count(self, tag: int) -> int:
         """
-        Append a field to the FieldSet
+        Counts the number of times that tag occurs in this FieldSet.
 
-        :param field: The Field to append
-        :return: a new FieldSet containing field.
+        :param tag: The tag to count occurrences of.
+        :return: The number of occurrences.
         """
+        try:
+            return collections.Counter(field.tag for field in self.fields)[tag]
+        except KeyError:
+            return 0
 
-    @property
-    @abc.abstractmethod
-    def fields(self):
-        """
-        :return: A list of Fields that this FieldSet contains
-        """
-
-    def __bytes__(self):
+    def __bytes__(self) -> bytes:
         """
         :return: The FIX-compliant, raw binary sequence for this FieldSet.
         """
@@ -230,7 +252,7 @@ class FieldSet(abc.ABC):
 
         return buf
 
-    def __format__(self, format_spec):
+    def __format__(self, format_spec) -> str:
         """
         Add support for formatting FieldSets using the custom 't' option to add tag names.
 
@@ -246,34 +268,28 @@ class FieldSet(abc.ABC):
 
         return f"{fields_str}"
 
-    # TODO: cache this result until the message changes.
-    def _fields(self, fields):
+    def tags(self) -> Generator[int, None, None]:
         """
-        Shared implementation for returning a list of all Fields within the FieldSet. Group fields will be
-        unpacked into their constituent Fields.
+        Get all of the unique tags for the Fields that have been added to this FieldSet
 
-        :param fields: The list of Fields to unpack
-        :return: a list of Field instances
+        :return: a generator of integers, representing the unique tag numbers.
         """
-        all_fields = []
-        for field in fields:
-            if isinstance(field, Group):
-                all_fields = all_fields + [field.identifier] + field.fields
-            else:
-                all_fields.append(field)
+        unique_tags = set()
+        for field in self.fields:
+            if field.tag not in unique_tags:
+                unique_tags.add(field.tag)
+                yield field.tag
 
-        return all_fields
-
-    @abc.abstractmethod
-    def _parse_fields(cls, fields, **kwargs):
+    def values(self) -> Generator[any, None, None]:
         """
-        Creates a list of Fields from the provided (tag, value) pairs.
+        Get the values of all of the Fields that have been added to this FieldSet
 
-        :param fields: Any combination of (tag, value) pairs or other Field objects.
-        :return: An list of Fields.
+        :return: a generator of all Field values.
         """
+        for field in self.fields:
+            yield field.value
 
-    def get(self, tag, default=None):
+    def get(self, tag: int, default: any = None):
         """
         Try to retrieve the given tag from the FieldSet.
 
@@ -290,34 +306,11 @@ class FieldSet(abc.ABC):
 
             return default
 
-    def set_group(self, group):
+    @abc.abstractmethod
+    def clear(self):
         """
-        Sets the repeating Group of Fields for this FieldSet based on the tag number of the group's identifier Field.
-
-        Overwrites any previous groups with the same tag number.
-        :param group: a Group instance.
-        :param group: a Group instance.
+        Clear the FieldSet of all Fields.
         """
-        self[group.tag] = group
-
-    def get_group(self, tag):
-        """
-        Tries to retrieve the Group at the given tag number.
-
-        :param tag: The tag number of the repeating Group's identifier.
-        :return: The repeating Group for tag.
-        :raises TagNotFound: if the Group does not exist.
-        :raises InvalidGroup: if the Field at tag is not a Group instance.
-        """
-        try:
-            group = self[tag]
-        except KeyError as e:
-            raise TagNotFound(tag, self) from e
-
-        if isinstance(group, Group):
-            return group
-        else:
-            raise InvalidGroup(tag, self)
 
     def __repr__(self):
         """
@@ -345,61 +338,41 @@ class FieldSet(abc.ABC):
 
 
 class ListFieldSet(FieldSet):
-    def __init__(self, *fields, **kwargs):
-        """
-        A simple FieldSet that stores all of its Fields in a list.
+    """
+    A simple FieldSet that stores all of its Fields in a list.
 
-        This type of FieldSet is easy to instantiate as it does not require any knowledge of the intended
-        message structure. The downside is that the internal list structure is not very efficient when it comes
-        to performing Field lookups.
+    This type of FieldSet is easy to instantiate as it does not require any knowledge of the intended
+    message structure. The downside is that the internal list structure is not very efficient when it comes
+    to performing Field lookups.
+    """
+
+    def __init__(self, *fields: Union[Field, tuple], **kwargs):
+        """
+        Initialize the FieldSet from the fields provided, storing the parsed Fields internally in a list.
 
         :param fields: List of Field or (tag, value) tuples.
         :param kwargs: Unused.
         """
-        self._fields = self._parse_fields(fields)
-
-    def __setitem__(self, tag, value):
-        if not (isinstance(value, Field) or isinstance(value, Group)):
-            # Create a new Field if value is not a Field or Group already.
-            value = Field(tag, value)
-
-        if tag in self:
-            # Update value, retaining the Field's position in the list
-            self._fields = [
-                value if field.tag == tag else field for field in self._fields
-            ]
-        else:
-            self._fields.append(value)
-
-        return self
-
-    def __getitem__(self, tag):
-        for field in self._fields:
-            if field.tag == tag:
-                return field
-
-        raise TagNotFound(tag, self)
-
-    def __delitem__(self, tag):
-        idx = 0
-        for field in self._fields:
-            if field.tag == tag:
-                del self._fields[idx]
-                return
-            idx += 1
-
-        raise TagNotFound(tag, self)
+        self._data = self._parse_fields(fields)
 
     @property
-    def fields(self):
-        return super()._fields(self._fields)
+    def data(self) -> Sequence:
+        return self._data
 
-    def append(self, field):
-        return self.__setitem__(field[0], field[1])
+    @property
+    def fields(self) -> List[Field]:
+        return Group.unpack_group_fields(self.data)
 
     @classmethod
     def _parse_fields(cls, fields, **kwargs):
+        """
+        Creates a list of Fields from the provided (tag, value) pairs.
+
+        :param fields: Any combination of (tag, value) pairs or other Field objects.
+        :return: An list of Fields.
+        """
         parsed_fields = []
+
         for field in fields:
             # For each field in the fieldset
             if isinstance(field, Field) or isinstance(field, Group):
@@ -407,12 +380,74 @@ class ListFieldSet(FieldSet):
                 parsed_fields.append(field)
                 continue
 
-            # Add new field
-            parsed_fields.append(
-                Field(*field)  # Make sure that this is an actual, well-formed Field.
-            )
+            try:
+                # Add new field
+                parsed_fields.append(
+                    Field(*field)  # Make sure that this is an actual, well-formed Field.
+                )
+            except TypeError:
+                raise ParsingError(f"Invalid Field: '{field}' mut be a (tag, value) tuple.")
 
         return parsed_fields
+
+    def __setitem__(self, tag: int, value: any):
+        count = self.count(tag)
+        if count > 1:
+            raise DuplicateTags(
+                tag,
+                self.fields,
+                message=f"Cannot set value: FieldSet contains {count} occurrence(s) of '{tag}'."
+            )
+
+        if not (isinstance(value, Field) or isinstance(value, Group)):
+            # Create a new Field if value is not a Field or Group already.
+            value = Field(tag, value)
+
+        if tag in self:
+            # Update value, retaining the Field's position in the list
+            self._data = [
+                value if field.tag == tag else field for field in self.data
+            ]
+        else:
+            # Add a new Field
+            self.data.append(value)
+
+    def __getitem__(self, tag: int) -> Union[Field, list]:
+        items = [field for field in self.data if field.tag == tag]
+
+        if len(items) == 0:
+            # Might be a group instance field - fall back to searching all fields.
+            items = [field for field in self.fields if field.tag == tag]
+
+            if len(items) == 0:
+                raise TagNotFound(tag, self)
+
+        if len(items) == 1:
+            return items[0]
+
+        return items
+
+    def __delitem__(self, tag: int):
+        count = self.count(tag)
+        if count > 1:
+            raise DuplicateTags(
+                tag,
+                self.fields,
+                message=f"Cannot delete tag: FieldSet contains {count} occurrences of '{tag}'."
+            )
+
+        idx = 0
+        for field in self._data:
+            if field.tag == tag:
+                del self._data[idx]
+
+                return
+            idx += 1
+
+        raise TagNotFound(tag, self)
+
+    def clear(self):
+        self._data.clear()
 
     def __format__(self, format_spec):
         return f"[{super().__format__(format_spec)}]"
@@ -421,7 +456,7 @@ class ListFieldSet(FieldSet):
         """
         :return: [(tag_1, value_1), (tag_2, value_2)]
         """
-        return f"{self.__class__.__name__}({super().__repr__()})"
+        return f"{type(self).__name__}({super().__repr__()})"
 
     def __str__(self):
         """
@@ -431,12 +466,14 @@ class ListFieldSet(FieldSet):
 
 
 class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
+    """
+    A FieldSet that stores all of its Fields in an OrderedDict.
+
+    This type of FieldSet should be faster at doing Field lookups and manipulating the FieldSet in general.
+    """
+
     def __init__(self, *fields, **kwargs):
         """
-        A FieldSet that stores all of its Fields in an OrderedDict.
-
-        This type of FieldSet should be faster at doing Field lookups and manipulating the FieldSet in general.
-
         If 'fields' contain one or more repeating groups then you *have* to provide the corresponding repeating group
         template(s) in order for the FieldSet to know how to parse and store those groups.
 
@@ -449,57 +486,18 @@ class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
         automatically initialized from the GROUP_TEMPLATES setting.
         :raises: DuplicateTags if 'fields' contain repeating Fields for which no group_template has been provided.
         """
-        group_templates = kwargs.get("group_templates", {})
-        if len(group_templates) > 0:
-            self.group_templates = group_templates
-
-        self._fields = collections.OrderedDict(
+        self.group_templates = kwargs.get("group_templates", {})
+        self._data = collections.OrderedDict(
             (field.tag, field) for field in self._parse_fields(fields)
         )
 
-    def __setitem__(self, tag, value):
-        if not (isinstance(value, Field) or isinstance(value, Group)):
-            # Create a new Field if value is not a Field or Group already.
-            value = Field(tag, value)
-
-        self._fields[tag] = value
-        return self
-
-    def __getitem__(self, tag):
-        try:
-            return self._fields[tag]
-        except KeyError as e:
-            raise TagNotFound(tag, self) from e
-
-    def __delitem__(self, tag):
-        try:
-            del self._fields[tag]
-        except KeyError:
-            raise TagNotFound(tag, self)
-
-    def __contains__(self, tag):
-        # Optimization, look for tag in dictionary first
-        if isinstance(tag, numbers.Integral):
-            if tag in self._fields:
-                return True
-
-            # Fallback, might be a group tag - search in list
-            return FieldSet.__contains__(self, tag)
-
-        return False
+    @property
+    def data(self) -> Sequence:
+        return self._data
 
     @property
-    def fields(self):
-        return super()._fields(list(self._fields.values()))
-
-    def append(self, field):
-        return self.__setitem__(field[0], field[1])
-
-    def set_group(self, group):
-        # Also add group templates when a new group is set.
-        self.add_group_templates({group.tag: group.template})
-
-        super().set_group(group)
+    def fields(self) -> List[Field]:
+        return Group.unpack_group_fields(self.data.values())
 
     def _parse_fields(self, fields, **kwargs):
         """
@@ -514,9 +512,8 @@ class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
         idx = 0
         instance_template = []
         group_index = kwargs.get("group_index", None)
-        busy_parsing_group = group_index is not None
 
-        if busy_parsing_group:
+        if group_index is not None:
             # Retrieve the template for this repeating group
             instance_template = self.group_templates[fields[group_index][0]]
             idx = group_index + 1
@@ -526,8 +523,11 @@ class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
         while idx < len(fields):
             field = fields[idx]
 
-            if type(fields[idx]) is tuple:
-                field = Field(*fields[idx])
+            if not isinstance(fields[idx], Field):
+                try:
+                    field = Field(*fields[idx])
+                except TypeError:
+                    raise ParsingError(f"Invalid Field: '{field}' mut be a (tag, value) tuple.")
 
             if field.tag in tags_seen:
                 raise DuplicateTags(
@@ -536,9 +536,14 @@ class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
                     f"No repeating group template defined for duplicate tag {field.tag} in {fields}.",
                 )
 
-            if busy_parsing_group and field.tag not in instance_template:
-                # No more group fields to process - done.
-                break
+            if instance_template:
+                # Busy parsing a group tag.
+                if field.tag not in instance_template:
+                    # No more group fields to process - done.
+                    break
+            else:
+                # Busy parsing a non-group tag.
+                tags_seen.add(field.tag)
 
             if field.tag in self.group_templates:
                 # Tag denotes the start of a new repeating group.
@@ -553,14 +558,88 @@ class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
                 continue
 
             parsed_fields.append(field)
-
-            if not busy_parsing_group:
-                # Busy parsing a non-group tag.
-                tags_seen.add(field.tag)
-
             idx += 1
 
         return parsed_fields
+
+    def _parse_group_fields(self, fields, group_index):
+        parsed_fields = []
+
+        # Retrieve the template for this repeating group
+        group_identifier = Field(fields[group_index][0], fields[group_index][1])
+        instance_template = self.group_templates[group_identifier.tag]
+        idx = group_index + 1
+
+        while idx < len(fields):
+            field = fields[idx]
+
+            if not isinstance(fields[idx], Field):
+                try:
+                    field = Field(*fields[idx])
+                except TypeError:
+                    raise ParsingError(f"Invalid Field: '{field}' mut be a (tag, value) tuple.")
+
+            if field.tag not in instance_template:
+                # No more group fields to process - done.
+                break
+
+            if field.tag in self.group_templates:
+                # Tag denotes the start of a new repeating group.
+                group = self._parse_group_fields(fields, group_index=idx)
+
+                parsed_fields.append(group)
+                # Skip over all of the fields that were processed as part of the group.
+                idx += len(group)
+                continue
+
+            parsed_fields.append(field)
+
+            idx += 1
+
+        return Group(group_identifier, *parsed_fields, template=self.group_templates[group_identifier.tag])
+
+    def __setitem__(self, tag: int, value: any):
+        if isinstance(value, Group):
+            # Also add group templates when a new group is set.
+            self.add_group_templates({tag: value.template})
+
+        elif not (isinstance(value, Field)):
+            # Create a new Field if value is not a Field or Group already.
+            value = Field(tag, value)
+
+        self._data[tag] = value
+
+    def __getitem__(self, tag: int):
+        try:
+            return self._data[tag]  # Shortcut: lookup Field by tag
+        except KeyError:
+            # Might be a group instance field - fall back to searching all fields.
+            items = [field for field in self.fields if field.tag == tag]
+
+            if len(items) == 0:
+                raise TagNotFound(tag, self)
+
+            if len(items) == 1:
+                return items[0]
+
+            return items
+
+    def __delitem__(self, tag: int):
+        try:
+            del self._data[tag]
+        except KeyError:
+            raise TagNotFound(tag, self)
+
+    def __contains__(self, tag: int):
+        # Optimization, look for tag in dictionary first
+        if tag in self._data:
+            return True
+
+        # Fallback, might be a group tag - search full field list
+        return super().__contains__(tag)
+
+    def clear(self):
+        self._data.clear()
 
     def __format__(self, format_spec):
         return f"{{{super().__format__(format_spec)}}}"
@@ -569,7 +648,7 @@ class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
         """
         :return: {(tag_1, value_1), (tag_2, value_2)}
         """
-        return f"{self.__class__.__name__}({super().__repr__()})"
+        return f"{type(self).__name__}({super().__repr__()})"
 
     def __str__(self):
         """
@@ -578,114 +657,175 @@ class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
         return f"{{{super().__str__()}}}"
 
 
-class GroupInstance(ListFieldSet):
+class Group(FieldSet):
     """
-    A special type of Fieldset used to denote the unique sequence of Fields that form part of a repeating Group.
-
-    All of the fields in the GroupInstance together form one 'instance'.
-    """
-
-    pass
-
-
-class Group(ListFieldSet):
-    """
-    A repeating group of GroupInstances that form the Group.
+    A repeating group of FieldSet 'instances' that form the Group.
     """
 
     def __init__(self, identifier, *fields, template=None):
         """
         :param identifier: A Field that identifies the repeating Group. The value of the 'identifier' Field
         indicates the number of times that GroupInstance repeats in this Group.
-        :param fields: A GroupInstance or list of (tag, value) tuples.
+        :param fields: A FieldSet or list of (tag, value) tuples.
         :param template: Optional. The list of tags that this repeating group consists of. If no template is
         provided then tries to find a template corresponding to identifier.tag in the default GROUP_TEMPLATES setting.
         :raises: ImproperlyConfigured if no template is specified and no template could be found in settings.
         """
-        self.identifier = Field(*identifier)
+        group_identifier = Field(*identifier)  # First, make sure the group identifier is a valid Field.
         if template is None:
-            try:
-                template = settings.default_session.GROUP_TEMPLATES[self.tag]
-            except KeyError:
-                raise (
-                    ImproperlyConfigured(
-                        f"No template available for repeating group identifier {self.identifier}."
-                    )
-                )
+            template = self._get_template(group_identifier)
 
+        self.identifier = group_identifier
         self._instance_template = template
+        self._instances = self._parse_fields(group_identifier, fields, template=template)
 
-        self._instances = self._parse_fields(fields)
+        if len(self._instances) != self.size:
+            raise ParsingError(
+                self.tag,
+                fields,
+                f"Cannot make {self.size} instances of {template} with {fields}.",
+            )
 
-    def _parse_fields(self, fields, **kwargs):
+    @property
+    def data(self) -> Sequence:
+        return self._instances
+
+    @property
+    def fields(self) -> List[Field]:
+        """
+        :return: a generator of Fields that are part of this group, including the Fields of any nested sub-Groups.
+        """
+        return list(itertools.chain.from_iterable([Group.unpack_group_fields(instance) for instance in self.data]))
+
+    @classmethod
+    def unpack_group_fields(cls, data: Union[Sequence, ValuesView]) -> List[Field]:
+        """
+        Parse data recursively, unpacking nested group fields as they are encountered.
+
+        :param data: A sequence of Fields, potentially also containing group fields.
+        :return:
+        """
+        all_fields = []
+        for field in data:
+            try:
+                # Extend with group fields (if any)
+                all_fields += [field.identifier] + cls.unpack_group_fields(field.fields)
+            except AttributeError:
+                all_fields.append(field)
+
+        return all_fields
+
+    @classmethod
+    def _parse_fields(cls, identifier, fields, template=None):
+        if not fields and int(identifier) == 0:
+            # Empty group
+            return []
+        
+        if template is None:
+            template = cls._get_template(identifier)
+
+        parsed_fields = cls._parse_instance_fields(fields, template)
+
+        return parsed_fields
+
+    @classmethod
+    def _parse_instance_fields(cls, fields, template):
 
         parsed_fields = []
-        num_fields = len(fields)
-
-        if num_fields == 0 and self.size == 0:
-            # Empty group
-            return parsed_fields
-
-        instance_tags = set(self._instance_template)
+        instance_tags_remaining = set(template)
         instance_start = 0
         instance_end = 0
 
         for field in fields:  # Loop over group instances
-            if type(field) is tuple:
-                field = Field(*field)
+            if not isinstance(field, Field) and not isinstance(field, Group):
+                try:
+                    field = Field(*field)
+                except TypeError:
+                    raise ParsingError(f"Invalid Field: '{field}' mut be a (tag, value) tuple.")
 
-            if field.tag not in instance_tags:
-                if field.tag in self._instance_template:
+            if field.tag not in instance_tags_remaining:
+                if field.tag in template:
                     # Tag belongs to the next instance. Append the current instance to this group.
                     parsed_fields.append(
-                        GroupInstance(*fields[instance_start:instance_end])
+                        ListFieldSet(*fields[instance_start:instance_end])
                     )
 
                     instance_start = instance_end
-                    instance_tags = set(self._instance_template)
+                    instance_tags_remaining = set(template)
 
                 else:
                     raise ParsingError(
-                        f"Unknown tag {field.tag} found while parsing group fields {self._instance_template}."
+                        f"Unknown tag {field.tag} found while parsing group fields {template}."
                     )
 
-            instance_tags.remove(field.tag)
+            instance_tags_remaining.remove(field.tag)
             instance_end += 1
 
         else:
             # Add last instance
-            parsed_fields.append(GroupInstance(*fields[instance_start:instance_end]))
-
-        if len(parsed_fields) != self.size:
-            raise InvalidGroup(
-                self.tag,
-                fields,
-                f"Cannot make {self.size} instances of {self._instance_template} with {fields}.",
-            )
+            parsed_fields.append(ListFieldSet(*fields[instance_start:instance_end]))
 
         return parsed_fields
+    
+    @classmethod
+    def _get_template(cls, group_identifier):
+            try:
+                return settings.default_session.GROUP_TEMPLATES[group_identifier.tag]
+            except KeyError:
+                raise (
+                    ImproperlyConfigured(
+                        f"No template available for repeating group identifier {group_identifier}."
+                    )
+                )
 
-    def __eq__(self, other):
+    def __add__(self, other: Union["Group", FieldSet, Sequence[Field], Sequence[tuple]]) -> "Group":
+        """
+        Add group instance(s) to this group.
+
+        The instance(s) to add can be contained in another Group, FieldSet, sequence of Fields, or a sequence of
+        (tag, value) tuples.
+
+        The instance fields to add will be validated against this group's template and a ParsingError raise for
+        any template violations that occur.
+
+        :param other: Another Group, FieldSet, sequence of Fields, or sequence of (tag, value) tuples.
+        :return: A new Group, which includes the newly added instance fields.
+        :return: A new Group, which includes the newly added instance fields.
+        """
+        instances = self._parse_fields(self.identifier, self.as_sequence(other), template=self.template)
+
+        return self.__class__(
+            (self.tag, self.size + len(instances)),
+             *itertools.chain(self.fields, itertools.chain.from_iterable(instances))
+         )
+
+    def __eq__(self, other: Union["Group", FieldSet, Sequence[Field], Sequence[tuple]]):
         """
         Compare this Group to other.
 
         The only difference between this implementation and that of FieldSet is that we also need to compare the
         'identifier' tag.
 
-        :param other: Another Group, tuple, or list of tuples.
+        :param other: Another Group, FieldSet, sequence of Fields, or sequence of (tag, value) tuples.
         :return: True if other is equivalent to this Group, False otherwise.
         """
         try:
-            if self.identifier != other.identifier:
+            if self.identifier.tag != other.identifier.tag or str(self.identifier.value) != str(other.identifier.value):
                 return False
             other_sequence = other.fields
 
         except AttributeError:
-            # Not a Group, try tuple
+            # Not a Group, try FieldSet
             try:
-                if self.identifier != other[0]:
+                other_sequence = other.fields
+            except AttributeError:
+                # Not a FieldSet, use sequence as-is
+                other_sequence = other
+
+            try:
+                if self.identifier.tag != other_sequence[0][0] or str(self.identifier.value) != str(other_sequence[0][1]):
                     return False
-                other_sequence = other[1:]
+                other_sequence = other_sequence[1:]
 
             except KeyError:
                 # Not a tuple, cannot compare
@@ -703,21 +843,34 @@ class Group(ListFieldSet):
 
     def __len__(self):
         length = 1  # Count identifier field
-        for instance in self._instances:
+        for instance in self.instances:
             # Count all fields in each group instance
             length += len(instance)
 
         return length
 
-    def __getitem__(self, item):
-        return self._instances[item]
+    def __setitem__(self, index: int, value: Union[FieldSet, Sequence[Field], Sequence[tuple]]):
+        try:
+            value_sequence = value.fields
+        except AttributeError:
+            # Not a FieldSet, use as-is
+            value_sequence = value
+
+        instance = self._parse_instance_fields(value_sequence, self.template)
+        if len(instance) != 1:
+            raise ParsingError(f"{value} does not adhere to Group template '{self.template}'.")
+
+        self._instances[index] = instance[0]
+
+    def __getitem__(self, index):
+        return self.instances[index]
 
     def __format__(self, format_spec):
         # Allows groups to be rendered as part of FieldSets.
         if "t" in format_spec:
             group_instances_str = ""
 
-            for instance in self._instances:
+            for instance in self.instances:
                 group_instances_str += f"{{:{format_spec}}} | ".format(instance)
             else:
                 group_instances_str = group_instances_str[:-3]
@@ -728,15 +881,15 @@ class Group(ListFieldSet):
 
     def __repr__(self):
         """
-        :return: [(identifier tag, num instances)]:((tag_1, value_1), (tag_2, value_2)), ((tag_1, value_1), (tag_2, value_2))
+        :return: Group(identifier tag, num instances), (tag_1, value_1), (tag_2, value_2), (tag_1, value_1), (tag_2, value_2))
         """
         group_instances_repr = ""
-        for instance in self._instances:
+        for instance in self.instances:
             group_instances_repr += f"{repr(instance)}, "
         else:
             group_instances_repr = group_instances_repr[:-2]
 
-        group_instances_repr = group_instances_repr.replace("GroupInstance(", "").replace("))", ")")
+        group_instances_repr = group_instances_repr.replace("ListFieldSet(", "").replace("))", ")")
 
         return f"{self.__class__.__name__}({repr(self.identifier)}, {group_instances_repr})"
 
@@ -745,7 +898,7 @@ class Group(ListFieldSet):
         :return: [identifier_tag_name:num_instances] | tag_1_name:value_1 | tag_2_name:value_2 | tag_1_name:value_1) | tag_2_name:value_2
         """
         group_instances_str = ""
-        for instance in self._instances:
+        for instance in self.instances:
             group_instances_str += f"{str(instance)} | "
         else:
             group_instances_str = group_instances_str[:-3]
@@ -755,7 +908,7 @@ class Group(ListFieldSet):
     @property
     def instances(self):
         """
-        :return: A list of GroupInstances that make up this Group.
+        :return: A list of FieldSets that make up this Group.
         """
         return self._instances
 
@@ -763,17 +916,15 @@ class Group(ListFieldSet):
     def template(self):
         return self._instance_template
 
-    @property
-    def fields(self):
-        """
-        :return: The Fields that are part of this group, including the Fields of any nested sub-Groups.
-        """
-        group_fields = []
-        for instance in self._instances:
-            for field in instance.fields:
-                group_fields.append(field)
+    def __delitem__(self, index: int):
+        del self._instances[index]
+        self.identifier = Field(self.tag, int(self.value) - 1)
 
-        return group_fields
+    def clear(self):
+        for instance in self.instances:
+            instance.clear()
+
+        self.identifier = Field(self.identifier.tag, 0)
 
     @property
     def tag(self):
@@ -801,7 +952,7 @@ class Group(ListFieldSet):
         :return: The FIX-compliant, raw binary string representation for this Group.
         """
         buf = b""
-        for instance in self._instances:
+        for instance in self.instances:
             buf += bytes(instance)
 
         return bytes(self.identifier) + buf
