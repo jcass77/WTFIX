@@ -296,9 +296,6 @@ class Field(collections.abc.MutableSequence):
     def __gt__(self, other):
         return self._perform_operation(operator.gt, other)
 
-    def __hash__(self):
-        return hash((self.tag, self.value))
-
     def __abs__(self):
         return self._perform_operation(operator.abs)
 
@@ -428,8 +425,6 @@ class Field(collections.abc.MutableSequence):
         """
         return f"{type(self).__name__}({self.tag}, '{self.value}')"
 
-    def insert(self, index: int, object) -> None:
-        raise NotImplementedError(f"{type(self).__name__} does not support inserting items.")
-
-    def __delitem__(self, i: int) -> None:
-        raise NotImplementedError(f"{type(self).__name__} does not support the deletion of items.")
+    # Unsupported ABC methods.
+    insert = None
+    __delitem__ = None

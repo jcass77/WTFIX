@@ -199,12 +199,12 @@ class TestField:
         assert Field(1, utils.encode((utils.null))) == None
 
     def test_deletion_raises_exception(self):
-        with pytest.raises(NotImplementedError):
+        with pytest.raises(TypeError):
             f = Field(1, "abc")
             del f[0]
 
     def test_insertion_raises_exception(self):
-        with pytest.raises(NotImplementedError):
+        with pytest.raises(TypeError):
             f = Field(1, "abc")
             f.insert(1, "abc")
 
@@ -284,9 +284,6 @@ class TestField:
 
         false_vals = ("n", "no", "f", "false", "off", "0")
         assert all(bool(Field(1, value)) != True for value in false_vals)
-
-    def test_hash(self):
-        assert hash(Field(1, "abc")) == hash((1, "abc"))
 
     def test_abs(self):
         assert abs(Field(1, -123)) == 123
