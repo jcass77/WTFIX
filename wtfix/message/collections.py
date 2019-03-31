@@ -33,10 +33,19 @@ from wtfix.protocol import common
 from wtfix.protocol.common import Tag
 
 
-class FieldMap(collections.abc.Sequence):
+class FieldMap(collections.abc.MutableMapping):
     """
-    A FieldMap is a Sequence of a one or more Fields. This class provides the interface that all FieldMaps
+    A FieldMap is a collection of a one or more Fields. This class provides the interface that all FieldMaps
     should implement.
+
+    Implementations of FieldMap should accept a sequence of Fields or (tag, value) tuples to construct the sequence,
+    and then allow looking up Fields by their tag numbers:
+
+    >>> fm = FieldMap((123, "abc"))
+    >>> fm[123]
+    Field(123, 'abc')
+
+    FieldMaps are mutable and it should be
 
     See https://docs.python.org/3/reference/datamodel.html?highlight=__add__#emulating-container-types for a list
     of methods that should be implemented in order to emulate Python's built-in container types.

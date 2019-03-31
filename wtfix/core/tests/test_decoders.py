@@ -11,7 +11,7 @@ class TestJSONMessageDecoder:
     def test_default_nested_fielddict_decodes_as_expected(
         self, nested_parties_group, encoded_dict_sample
     ):
-        fs = FieldDict(
+        fm = FieldDict(
             (1, "a"),
             (2, "b"),
             nested_parties_group.identifier,
@@ -20,7 +20,7 @@ class TestJSONMessageDecoder:
             group_templates={539: [524, 525, 538, 804], 804: [545, 805]},
         )
 
-        assert decoders.from_json(encoded_dict_sample) == fs
+        assert decoders.from_json(encoded_dict_sample) == fm
 
     def test_default_nested_fielddict_raises_exception_on_duplicate_tags_without_template_defined(
         self, nested_parties_group, encoded_dict_sample
@@ -35,7 +35,7 @@ class TestJSONMessageDecoder:
     def test_default_nested_fieldlist_encodes_as_expected(
         self, nested_parties_group, encoded_list_sample
     ):
-        fs = FieldList(
+        fm = FieldList(
             (1, "a"),
             (2, "b"),
             nested_parties_group.identifier,
@@ -43,7 +43,7 @@ class TestJSONMessageDecoder:
             (3, "c"),
         )
 
-        assert decoders.from_json(encoded_list_sample) == fs
+        assert decoders.from_json(encoded_list_sample) == fm
 
 
 def test_serialization_is_idempotent(fieldmap_class, nested_parties_group):
@@ -59,14 +59,14 @@ def test_serialization_is_idempotent(fieldmap_class, nested_parties_group):
     if fieldmap_class.__name__ == FieldDict.__name__:
         kwargs["group_templates"] = {539: [524, 525, 538, 804], 804: [545, 805]}
 
-    fs = fieldmap_class(*fields, **kwargs)
+    fm = fieldmap_class(*fields, **kwargs)
 
-    encoded = encoders.to_json(fs)
+    encoded = encoders.to_json(fm)
     decoded = decoders.from_json(encoded)
 
-    assert fs == decoded
+    assert fm == decoded
 
     encoded = encoders.to_json(decoded)
     decoded = decoders.from_json(encoded)
 
-    assert fs == decoded
+    assert fm == decoded

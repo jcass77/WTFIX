@@ -9,15 +9,15 @@ This changelog is used to track all major changes to WTFIX.
 - Refactor `FieldSet` to better emulate the Python built-it container types.
 - Rename `FieldSet` to `FieldMap`, `ListFieldSet` to `FieldList`, and `OrderedDictFieldSet` to `FieldDict`. Deprecate
 and remove old classes.
-- Implement all of the [`Set`](https://docs.python.org/3/library/collections.abc.html#module-collections.abc) abstract
-base class methods for `Field`.  
+- Implement all of the [`MutableSequence`](https://docs.python.org/3/library/collections.abc.html#module-collections.abc)
+abstract base class methods for `Field`.  
 - Operations can now be performed directly between `Field.value` and Python's built-in literals (e.g.
 `Field(1, "abc") + "def"` will return `Field(1, "abcdef")`).
 - Replace `as_str`, `as_bool`, and `as_int` with Python special methods to allow more natural casting using `str()`,
 `bool()`, and `int()`. Add new `float()` method for casting `Field`s to float.
 - Deprecate and remove `FieldValue` class.
-- Field ordering is no longer significant when comparing `FieldSet`s with other `Sequence`s.
-- Replace `raw` property for converting `Field`s and `FieldSet`s to a byte sequence with `bytes()`. 
+- Field ordering is no longer significant when comparing `FieldMap`s with other `Sequence`s.
+- Replace `raw` property for converting `Field`s and `FieldMap`s to a byte sequence with `bytes()`. 
 - Add `frombytes()` and `fields_frombytes()` methods to `Field` for creating new `Field` instances from byte sequences.
 - Optimize memory usage of `Field`s by adding a `__slots__` attribute.
 - Make `Field` instances hashable by implementing `__hash__` and `__eq__`.

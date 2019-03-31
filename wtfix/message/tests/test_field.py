@@ -52,19 +52,29 @@ class TestField:
         assert f.tag == 1
         assert str(f) == "k"
 
-    def test_can_construct_from_iterable(self):
-        assert Field._make([1, "abc"]) == Field(1, "abc")
-        assert Field._make((1, "abc")) == Field(1, "abc")
-
-    def test_unpack_to_tuple(self):
-        tag, value = Field(1, "abc")
-
-        assert tag == 1
-        assert value == "abc"
-
-    def test_iter(self):
+    def test_tag_setter_wrong_numeric_type_raises_exception(self):
         f = Field(1, "abc")
-        assert next(iter(f)) == 1
+        with pytest.raises(InvalidField):
+            f.tag = 1.0
+        with pytest.raises(InvalidField):
+            f.tag = "1.0"
+
+    def test_tag_setter_cannot_cast_to_numeric_type_raises_exception(self):
+        with pytest.raises(InvalidField):
+            f = Field(1, "abc")
+            f.tag = "a"
+
+    def test_value_setter_decodes_values(self):
+        f = Field(1, "abc")
+        f.value = b"def"
+
+        assert f.value == "def"
+
+    def test_value_setter_preserves_no_byte_types(self):
+        f = Field(1, "abc")
+        f.value = 123
+
+        assert type(f[1]) == int
 
     def test_name_getter(self):
         f = Field(35, "k")
@@ -73,6 +83,14 @@ class TestField:
     def test_name_getter_unknown(self):
         f = Field(1234567890, "k")
         assert f.name == "Unknown"
+
+    def test_make_from_iterable(self):
+        assert Field._make([1, "abc"]) == Field(1, "abc")
+        assert Field._make((1, "abc")) == Field(1, "abc")
+
+    def test_make_from_iterable_iterable_wrong_length_raises_exception(self):
+        with pytest.raises(InvalidField):
+            Field._make((1, "abc", "def"))
 
     def test_fields_frombytes(self):
         f1 = Field(1, "abc")
@@ -106,6 +124,57 @@ class TestField:
     def test_len(self):
         assert len(Field(1, "abc")) == 2
 
+    def test_contains(self):
+        assert "a" in Field(1, "abc")
+        assert "a" in Field(1, b"abc")
+
+    def test_getitem_slice_returns_new_field(self):
+        f = Field(1, "abc")
+        slice_ = f[:]
+
+        assert type(slice_) is Field
+        assert slice_ == Field(1, "abc")
+        assert id(f) != id(slice_)
+
+    def test_getitem_int_0_returns_tag(self):
+        f = Field(1, "abc")
+        assert f[0] is f.tag is 1
+
+    def test_getitem_int_1_returns_value(self):
+        f = Field(1, "abc")
+        assert f[1] is f.value is "abc"
+
+    def test_getitem_index_out_of_bounds_raises_exception(self):
+        with pytest.raises(IndexError):
+            f = Field(1, "abc")
+            f[3]
+
+    def test_getitem_wrong_index_type_raises_exception(self):
+        with pytest.raises(TypeError):
+            f = Field(1, "abc")
+            f[1.0]
+
+    def test_setitem_int_0_sets_tag(self):
+        f = Field(1, "abc")
+        f[0] = 2
+        assert f[0] is f.tag is 2
+
+    def test_setitem_int_1_sets_value(self):
+        f = Field(1, "abc")
+        f[1] = "def"
+        assert f[1] is f.value is "def"
+
+    def test_setitem_index_out_of_bounds_raises_exception(self):
+        with pytest.raises(IndexError):
+            f = Field(1, "abc")
+            f[3] = "def"
+
+    def test_setitem_wrong_index_type_raises_exception(self):
+        with pytest.raises(TypeError):
+            f = Field(1, "abc")
+            f[1.0] = "def"
+
+    # -- NOTE: these tests confirm that implicit Python standard operations are still supported.
     def test_copy(self):
         f1 = Field(1, "abc")
         f2 = copy.copy(f1)
@@ -114,7 +183,39 @@ class TestField:
         assert f3 == f2 == f1
         assert id(f3) != id(f2) != id(f1)
 
+    def test_unpack_to_tuple(self):
+        tag, value = Field(1, "abc")
+
+        assert tag == 1
+        assert value == "abc"
+
+    def test_iter(self):
+        f = Field(1, "abc")
+        assert next(iter(f)) == 1
+
+    def test_null_value_casting(self):
+        assert Field(1, utils.null) == None
+        assert Field(1, str(utils.null)) == None
+        assert Field(1, utils.encode((utils.null))) == None
+
+    def test_deletion_raises_exception(self):
+        with pytest.raises(NotImplementedError):
+            f = Field(1, "abc")
+            del f[0]
+
+    def test_insertion_raises_exception(self):
+        with pytest.raises(NotImplementedError):
+            f = Field(1, "abc")
+            f.insert(1, "abc")
+
     # --- NOTE: All of the 'compare' methods below are proxies for testing _validated_operand ---
+    def test_implicit_type_conversion(self):
+        f = Field(1, "abc")
+        assert f == "abc"
+
+        assert f[0] is 1
+        assert f[1] is "abc"
+
     def test_compare_field_true(self):
         assert Field(1, "abc") == Field(1, "abc")
         assert Field(1, b"abc") == Field(1, "abc")
@@ -188,8 +289,8 @@ class TestField:
         assert hash(Field(1, "abc")) == hash((1, "abc"))
 
     def test_abs(self):
-        assert abs(Field(1, -123)) == Field(1, 123)
-        assert abs(Field(1, -123)) == (1, 123)
+        assert abs(Field(1, -123)) == 123
+        assert abs(Field(1, -123)) == 123
 
     def test_arithmetic_tuple_longer_than_2_raises_exception(self):
         with pytest.raises(TypeError):
@@ -202,17 +303,37 @@ class TestField:
         with pytest.raises(TypeError):
             Field(1, "abc") + (2, "def")
 
+    def test_arithmetic_literal(self):
+        assert Field(1, "abc") + "def" == "abcdef"
+        assert Field(1, 10) + 10 == 20
+
+    def test_iarithmetic_literal(self):
+        f = Field(1, "abc")
+        f += "def"
+
+        assert f == Field(1, "abcdef")
+        assert f == (1, "abcdef")
+
     def test_arithmetic_field(self):
-        assert Field(1, "abc") + Field(1, "def") == Field(1, "abcdef")
-        assert Field(1, "abc") + Field(1, "def") == (1, "abcdef")
+        assert Field(1, "abc") + Field(1, "def") == "abcdef"
+
+    def test_iarithmetic_field(self):
+        f = Field(1, "abc")
+        f += Field(1, "def")
+
+        assert f == Field(1, "abcdef")
+        assert f == (1, "abcdef")
 
     def test_arithmetic_tuple(self):
-        assert Field(1, "abc") + (1, "def") == Field(1, "abcdef")
-        assert Field(1, "abc") + (1, "def") == (1, "abcdef")
+        assert Field(1, "abc") + (1, "def") == "abcdef"
+        assert Field(1, "abc") + (1, "def") == "abcdef"
 
-    def test_arithmetic_literal(self):
-        assert Field(1, "abc") + "def" == Field(1, "abcdef")
-        assert Field(1, "abc") + "def" == (1, "abcdef")
+    def test_iarithmetic_tuple(self):
+        f = Field(1, "abc")
+        f += (1, "def")
+
+        assert f == Field(1, "abcdef")
+        assert f == (1, "abcdef")
 
     def test_unsupported_set_operations_raises_exception(self):
         with pytest.raises(TypeError):
@@ -225,122 +346,103 @@ class TestField:
             Field(1, "abc") - Field(1, "abc")
 
     def test_add(self):
-        assert Field(1, 2) + Field(1, 3) == Field(1, 5)
-        assert Field(1, 2) + 3 == Field(1, 5)
-        assert Field(1, 2) + 3 == (1, 5)
+        assert Field(1, 2) + Field(1, 3) == 5
+        assert Field(1, 2) + (1, 3) == 5
+        assert Field(1, 2) + 3 == 5
 
     def test_floor_div(self):
-        assert Field(1, 2.2) // Field(1, 2) == Field(1, 1.0)
-        assert Field(1, 2.2) // 2 == Field(1, 1.0)
-        assert Field(1, 2.2) // 2 == (1, 1.0)
+        assert Field(1, 2.2) // Field(1, 2) == 1.0
+        assert Field(1, 2.2) // Field(1, 2) == 1.0
+        assert Field(1, 2.2) // 2 == 1.0
 
     def test_invert(self):
-        assert ~Field(1, 123) == Field(1, ~123)
-        assert ~Field(1, 123) == (1, ~123)
+        assert ~Field(1, 123) == ~123
 
     def test_lshift(self):
-        assert Field(1, 123) << Field(1, 1) == Field(1, 123 << 1)
-        assert Field(1, 123) << 1 == Field(1, 123 << 1)
-        assert Field(1, 123) << 1 == (1, 123 << 1)
+        assert Field(1, 123) << Field(1, 1) == 246
+        assert Field(1, 123) << (1, 1) == 246
+        assert Field(1, 123) << 1 == 246
 
     def test_mod(self):
-        assert Field(1, 123) % Field(1, 2) == Field(1, 123 % 2)
-        assert Field(1, 123) % 2 == Field(1, 123 % 2)
-        assert Field(1, 123) % 2 == (1, 123 % 2)
+        assert Field(1, 123) % Field(1, 2) == 1
+        assert Field(1, 123) % (1, 2) == 1
+        assert Field(1, 123) % 2 == 1
 
     def test_mul(self):
-        assert Field(1, 123) * Field(1, 2) == Field(1, 123 * 2)
-        assert Field(1, 123) * 2 == Field(1, 123 * 2)
-        assert Field(1, 123) * 2 == (1, 123 * 2)
+        assert Field(1, 123) * Field(1, 2) == 246
+        assert Field(1, 123) * (1, 2) == 246
+        assert Field(1, 123) * 2 == 246
 
     def test_neg(self):
-        assert -Field(1, 123) == Field(1, -123)
-        assert -Field(1, 123) == Field(1, -123)
-        assert -Field(1, 123) == (1, -123)
+        assert -Field(1, 123) == -123
 
     def test_pos(self):
-        assert +Field(1, -123) == Field(1, -123)
-        assert +Field(1, -123) == Field(1, -123)
-        assert +Field(1, -123) == (1, -123)
+        assert +Field(1, -123) == -123
 
     def test_pow(self):
-        assert Field(1, 123) ** 2 == Field(1, 123 ** 2)
-        assert Field(1, 123) ** 2 == Field(1, 123 ** 2)
-        assert Field(1, 123) ** 2 == (1, 123 ** 2)
+        assert Field(1, 123) ** Field(1, 2) == 15129
+        assert Field(1, 123) ** (1, 2) == 15129
+        assert Field(1, 123) ** 2 == 15129
 
     def test_rshift(self):
-        assert Field(1, 123) >> Field(1, 1) == Field(1, 123 >> 1)
-        assert Field(1, 123) >> 1 == Field(1, 123 >> 1)
-        assert Field(1, 123) >> 1 == (1, 123 >> 1)
+        assert Field(1, 123) >> Field(1, 1) == 61
+        assert Field(1, 123) >> (1, 1) == 61
+        assert Field(1, 123) >> 1 == 61
 
     def test_sub(self):
-        assert Field(1, 5) - Field(1, 3) == Field(1, 2)
-        assert Field(1, 5) - 3 == Field(1, 2)
-        assert Field(1, 5) - 3 == (1, 2)
+        assert Field(1, 5) - Field(1, 3) == 2
+        assert Field(1, 5) - (1, 3) == 2
+        assert Field(1, 5) - 3 == 2
 
     def test_truediv(self):
-        assert Field(1, 4) / Field(1, 2) == Field(1, 2)
-        assert Field(1, 4) / 2 == Field(1, 2)
-        assert Field(1, 4) / 2 == (1, 2)
-
-    def test_contains(self):
-        assert "a" in Field(1, "abc")
-        assert "a" in Field(1, b"abc")
-
-    def test_getitem_slice_returns_field(self):
-        f = Field(1, "abc")
-        slice_ = f[:]
-        assert type(slice_) is Field
-        assert slice_ == Field(1, "abc")
-
-    def test_getitem_int_returns_element(self):
-        f = Field(1, "abc")
-        assert f[1] == "abc"
+        assert Field(1, 4) / Field(1, 2) == 2
+        assert Field(1, 4) / (1, 2) == 2
+        assert Field(1, 4) / 2 == 2
 
     def test_iadd_raises_exception(self):
-        with pytest.raises(AttributeError):
-            f = Field(1, "abc")
-            f += "xyz"
+        f = Field(1, "abc")
+        f += "xyz"
+        assert f == Field(1, "abcxyz")
 
     def test_ifloordiv_raises_exception(self):
-        with pytest.raises(AttributeError):
-            f = Field(1, 132)
-            f //= 2
+        f = Field(1, 132)
+        f //= 2
+        assert f == Field(1, 66)
 
     def test_ilshift_raises_exception(self):
-        with pytest.raises(AttributeError):
-            f = Field(1, 132)
-            f <<= 1
+        f = Field(1, 132)
+        f <<= 1
+        assert f == Field(1, 264)
 
     def test_imod_raises_exception(self):
-        with pytest.raises(AttributeError):
-            f = Field(1, 132)
-            f %= 2
+        f = Field(1, 132)
+        f %= 2
+        assert f == Field(1, 0)
 
     def test_imul_raises_exception(self):
-        with pytest.raises(AttributeError):
-            f = Field(1, 132)
-            f *= 2
+        f = Field(1, 132)
+        f *= 2
+        assert f == Field(1, 264)
 
     def test_ipow_raises_exception(self):
-        with pytest.raises(AttributeError):
-            f = Field(1, 132)
-            f **= 2
+        f = Field(1, 132)
+        f **= 2
+        assert f == Field(1, 17424)
 
     def test_irshift_raises_exception(self):
-        with pytest.raises(AttributeError):
-            f = Field(1, 132)
-            f >>= 2
+        f = Field(1, 132)
+        f >>= 2
+        assert f == Field(1, 33)
 
     def test_isub_raises_exception(self):
-        with pytest.raises(AttributeError):
-            f = Field(1, 132)
-            f -= 2
+        f = Field(1, 132)
+        f -= 2
+        assert f == Field(1, 130)
 
     def test_itruediv_raises_exception(self):
-        with pytest.raises(AttributeError):
-            f = Field(1, 132)
-            f /= 2
+        f = Field(1, 132)
+        f /= 2
+        assert f == Field(1, 66)
 
     def test_int(self):
         f = Field(1, "123")
@@ -403,13 +505,3 @@ class TestField:
     def test_repr_eval(self):
         f = Field(35, "k")
         assert eval(repr(f)) == f
-
-    def test_null_value_casting(self):
-        assert Field(1, utils.null) == None
-        assert Field(1, str(utils.null)) == None
-        assert Field(1, utils.encode((utils.null))) == None
-
-    def test_field_is_immutable(self):
-        with pytest.raises(AttributeError):
-            f = Field(1, "abc")
-            f.value = "xyz"
