@@ -121,8 +121,10 @@ messages mean that you never need to deal with byte sequences directly.
     >>> username.value
     "my_username"
   
-    # Fields are immutable, and behave just like Python's built-in literals.
-    >>> username + "_123"
+    # Fields behave just like Python's built-in types, and can most operations can be performed direclty
+    # on a field's 'value' attribute.
+    >>> username += "_123"
+    >>> username
     Field(553, 'my_username_123')
     ```
 - Access to the underlying byte sequence when you need it:
