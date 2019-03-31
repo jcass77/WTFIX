@@ -6,6 +6,9 @@ This changelog is used to track all major changes to WTFIX.
 
 **Enhancements**
 
+- Refactor `FieldSet` to better emulate the Python built-it container types.
+- Rename `FieldSet` to `FieldMap`, `ListFieldSet` to `FieldList`, and `OrderedDictFieldSet` to `FieldDict`. Deprecate
+and remove old classes.
 - Implement all of the [`Set`](https://docs.python.org/3/library/collections.abc.html#module-collections.abc) abstract
 base class methods for `Field`.  
 - Operations can now be performed directly between `Field.value` and Python's built-in literals (e.g.

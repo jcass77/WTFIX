@@ -26,12 +26,12 @@ from wtfix.core.exceptions import (
     DuplicateTags,
 )
 from wtfix.protocol.common import Tag, MsgType
-from .fieldset import OrderedDictFieldSet, ListFieldSet
+from .collections import FieldDict, FieldList
 
 
 class FIXMessage(abc.ABC):
     """
-    Mixin class that promotes FieldSets to FIX messages. Provides often-used shortcuts for common tag number
+    Mixin class that promotes FieldMaps to FIX messages. Provides often-used shortcuts for common tag number
     lookups.
     """
 
@@ -126,7 +126,7 @@ class FIXMessage(abc.ABC):
         return self
 
 
-class RawMessage(FIXMessage, OrderedDictFieldSet):
+class RawMessage(FIXMessage, FieldDict):
     """
     A raw message with most of its content still in byte-encoded format.
 
@@ -198,9 +198,9 @@ def generic_message_factory(*fields, **kwargs):
         return GenericMessage(*fields, **kwargs)  # Fall back to GenericMessage
 
 
-class GenericMessage(FIXMessage, ListFieldSet):
+class GenericMessage(FIXMessage, FieldList):
     """
-    The most basic type of FIX Message, consisting of one or more Fields in a FieldSet.
+    The most basic type of FIX Message, consisting of one or more Fields in a FieldMap.
 
     We think of FIX messages as lists of (tag, value) pairs, where tag is a number and value is a bytestring.
     """
@@ -212,7 +212,7 @@ class GenericMessage(FIXMessage, ListFieldSet):
         return copy
 
 
-class OptimizedGenericMessage(FIXMessage, OrderedDictFieldSet):
+class OptimizedGenericMessage(FIXMessage, FieldDict):
     """
     An optimized implementation based on storing fields in a dictionary instead of a list.
     """

@@ -13,7 +13,7 @@ The Pythonic Financial Information eXchange (FIX) client for humans.
 ## Project Highlights and Goals
 
 - Built from the ground up for Python 3.
-- Provides custom `Field` and `FieldSet` types for working with FIX tags and field values. These types are 'pythonic',
+- Provides custom `Field` and `FieldMap` types for working with FIX tags and field values. These types are 'pythonic',
 implementing many of the standard protocols, and behave as expected when you integrate them in existing Python
 code. 
 - Batteries included - comes with everything that you need to connect to a FIX server and start sending and receiving messages in minutes. Provides default implementations for:

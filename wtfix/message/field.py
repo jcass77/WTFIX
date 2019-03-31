@@ -30,7 +30,7 @@ from wtfix.core import utils
 
 class Field(collections.namedtuple("Field", ["tag", "value"])):
     """
-    A FIX field implemented as a simple (tag, value) namedtuple for use in FieldSets and Messages.
+    A FIX field implemented as a simple (tag, value) namedtuple for use in FieldMaps and Messages.
 
     Fields are implemented using the 'unicode sandwich' convention, so if 'value' is a byte sequence
     it will always be decoded to strings when the Field is instantiated.

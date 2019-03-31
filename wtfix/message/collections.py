@@ -33,9 +33,9 @@ from wtfix.protocol import common
 from wtfix.protocol.common import Tag
 
 
-class FieldSet(collections.abc.Sequence):
+class FieldMap(collections.abc.Sequence):
     """
-    A FieldSet is a Sequence of a one or more Fields. This class provides the interface that all FieldSets
+    A FieldMap is a Sequence of a one or more Fields. This class provides the interface that all FieldMaps
     should implement.
 
     See https://docs.python.org/3/reference/datamodel.html?highlight=__add__#emulating-container-types for a list
@@ -46,30 +46,30 @@ class FieldSet(collections.abc.Sequence):
     @abc.abstractmethod
     def data(self) -> Sequence:
         """
-        Provide direct access to this FieldSet's container, similar to UserDict and UserList.
+        Provide direct access to this FieldMap's container, similar to UserDict and UserList.
          
-        :return: The underlying container that this FieldSet's Fields are stored in.
+        :return: The underlying container that this FieldMap's Fields are stored in.
         """
 
     @property
     @abc.abstractmethod
     def fields(self) -> List[Field]:
         """
-        Get all of the Fields that have been added to this FieldSet. Group instances should be unpacked into
+        Get all of the Fields that have been added to this FieldMap. Group instances should be unpacked into
         their constituent Fields.
 
         :return: a list of all Field values.
         """
 
     @classmethod
-    def as_sequence(cls, other: Union["FieldSet", Field, tuple, Sequence[Field], Sequence[tuple]]) -> Union[Sequence, Generator[Field, None, None]]:
+    def as_sequence(cls, other: Union["FieldMap", Field, tuple, Sequence[Field], Sequence[tuple]]) -> Union[Sequence, Generator[Field, None, None]]:
         """
         :return: wrap other in tuple to create a Sequence, if required
         """
         try:
             return other.fields
         except AttributeError:
-            # Not a FieldSet
+            # Not a FieldMap
             try:
                 if len(other[0]) > 0:
                     # Might be a sequence valid sequence - use as-is.
@@ -81,13 +81,13 @@ class FieldSet(collections.abc.Sequence):
                 except TypeError:
                     raise ParsingError(f"Cannot process '{other}': not a valid (tag, value) pair.")
 
-    def __add__(self, other: Union["FieldSet", Field, tuple, Sequence[Field], Sequence[tuple]]) -> "FieldSet":
+    def __add__(self, other: Union["FieldMap", Field, tuple, Sequence[Field], Sequence[tuple]]) -> "FieldMap":
         """
-        Add another FieldSet to this FieldSet, or add a Field or a (tag, value) tuple or Sequences of these
-        to the FieldSet.
+        Add another FieldMap to this FieldMap, or add a Field or a (tag, value) tuple or Sequences of these
+        to the FieldMap.
 
-        :param other: Another FieldSet, Field, (tag, value) tuple, or Sequence of these.
-        :return: A new FieldSet, which contains the concatenation of the FieldSet with other.
+        :param other: Another FieldMap, Field, (tag, value) tuple, or Sequence of these.
+        :return: A new FieldMap, which contains the concatenation of the FieldMap with other.
         """
         return self.__class__(*itertools.chain(self.fields, self.as_sequence(other)))
 
@@ -110,9 +110,9 @@ class FieldSet(collections.abc.Sequence):
 
         return True
 
-    def __eq__(self, other: Union["FieldSet", Sequence[Field], Sequence[tuple]]) -> bool:
+    def __eq__(self, other: Union["FieldMap", Sequence[Field], Sequence[tuple]]) -> bool:
         """
-        Compare this FieldSet to other.
+        Compare this FieldMap to other.
 
         Since the order in which fields appear in a FIX message is usually not significant, the field order is ignored
         when doing the comparison.
@@ -120,13 +120,13 @@ class FieldSet(collections.abc.Sequence):
         This implementation tries various shortcuts to terminate the comparison as quickly as possible, before
         moving on to a more expensive full comparison (that requires the items being compared to be sorted first).
 
-        :param other: Another Fieldset, sequence of Fields, or sequence of (tag, value) tuples.
-        :return: True if other is equivalent to this FieldSet, False otherwise.
+        :param other: Another FieldMap, sequence of Fields, or sequence of (tag, value) tuples.
+        :return: True if other is equivalent to this FieldMap, False otherwise.
         """
         try:
             other_sequence = other.fields
         except AttributeError:
-            # 'other' is not a FieldSet, continue.
+            # 'other' is not a FieldMap, continue.
             other_sequence = other
 
         try:
@@ -141,23 +141,23 @@ class FieldSet(collections.abc.Sequence):
 
     def __len__(self):
         """
-        :return: Number of fields in this FieldSet, including all fields in repeating groups.
+        :return: Number of fields in this FieldMap, including all fields in repeating groups.
         """
         return len(self.fields)
 
     @abc.abstractmethod
     def __setitem__(self, tag: int, value: any):
         """
-        Sets a Field in the FieldSet with the specified tag number and value.
+        Sets a Field in the FieldMap with the specified tag number and value.
 
-        :param tag: The tag number to set in the FieldSet.
+        :param tag: The tag number to set in the FieldMap.
         :param value: The value of the Field.
         """
 
     @abc.abstractmethod
     def __getitem__(self, tag: int) -> Union[Field, list]:
         """
-        Tries to retrieve a Field with the given tag number from this FieldSet.
+        Tries to retrieve a Field with the given tag number from this FieldMap.
 
         :param tag: The tag number of the Field to look up.
         :return: A Field object (or list of Field objects if more than one Field matching the tag is found).
@@ -166,7 +166,7 @@ class FieldSet(collections.abc.Sequence):
 
     def __setattr__(self, key, value):
         """
-        Set the value of a Field in a Fieldset
+        Set the value of a Field in a FieldMap
 
         :param key: The Field's tag name
         :param value: The value to set the Field to
@@ -178,14 +178,14 @@ class FieldSet(collections.abc.Sequence):
 
     def __iter__(self):
         """
-        Enable iteration over the Fields in a FieldSet
+        Enable iteration over the Fields in a FieldMap
         """
         yield from self.fields
 
     @abc.abstractmethod
     def __delitem__(self, tag: int):
         """
-        Tries to remove a Field with the given tag number from this FieldSet.
+        Tries to remove a Field with the given tag number from this FieldMap.
 
         :param tag: The tag number of the Field to remove.
         :raises: TagNotFound if a Field with the specified tag number could not be found.
@@ -193,7 +193,7 @@ class FieldSet(collections.abc.Sequence):
 
     def __contains__(self, tag: int):
         """
-        :return: True if the Fieldset contains a Field with the given tag number, False otherwise.
+        :return: True if the FieldMap contains a Field with the given tag number, False otherwise.
         """
         for elem in self.fields:
             if elem.tag == tag:
@@ -207,9 +207,9 @@ class FieldSet(collections.abc.Sequence):
         retrieve tag number 35).
 
         :param name: The tag name.
-        :return: The Field in this FieldSet with name.
+        :return: The Field in this FieldMap with name.
         :raises UnknownTag if name is not defined in one of the available FIX specifications.
-        :raises TagNotFound if the tag name is valid, but no Field for that tag exists in the FieldSet.
+        :raises TagNotFound if the tag name is valid, but no Field for that tag exists in the FieldMap.
         """
         try:
             # First, try to get the tag number associated with 'name'.
@@ -221,7 +221,7 @@ class FieldSet(collections.abc.Sequence):
             ) from e
 
         try:
-            # Then, see if a Field with that tag number is available in this FieldSet.
+            # Then, see if a Field with that tag number is available in this FieldMap.
             return self[tag]
         except KeyError as e:
             raise TagNotFound(
@@ -232,7 +232,7 @@ class FieldSet(collections.abc.Sequence):
 
     def count(self, tag: int) -> int:
         """
-        Counts the number of times that tag occurs in this FieldSet.
+        Counts the number of times that tag occurs in this FieldMap.
 
         :param tag: The tag to count occurrences of.
         :return: The number of occurrences.
@@ -244,7 +244,7 @@ class FieldSet(collections.abc.Sequence):
 
     def __bytes__(self) -> bytes:
         """
-        :return: The FIX-compliant, raw binary sequence for this FieldSet.
+        :return: The FIX-compliant, raw binary sequence for this FieldMap.
         """
         buf = b""
         for field in self.fields:
@@ -254,7 +254,7 @@ class FieldSet(collections.abc.Sequence):
 
     def __format__(self, format_spec) -> str:
         """
-        Add support for formatting FieldSets using the custom 't' option to add tag names.
+        Add support for formatting FieldMaps using the custom 't' option to add tag names.
 
         :param format_spec: specification in Format Specification Mini-Language format.
         :return: A formatted string representation this Field.
@@ -270,7 +270,7 @@ class FieldSet(collections.abc.Sequence):
 
     def tags(self) -> Generator[int, None, None]:
         """
-        Get all of the unique tags for the Fields that have been added to this FieldSet
+        Get all of the unique tags for the Fields that have been added to this FieldMap
 
         :return: a generator of integers, representing the unique tag numbers.
         """
@@ -282,7 +282,7 @@ class FieldSet(collections.abc.Sequence):
 
     def values(self) -> Generator[any, None, None]:
         """
-        Get the values of all of the Fields that have been added to this FieldSet
+        Get the values of all of the Fields that have been added to this FieldMap
 
         :return: a generator of all Field values.
         """
@@ -291,12 +291,12 @@ class FieldSet(collections.abc.Sequence):
 
     def get(self, tag: int, default: any = None):
         """
-        Try to retrieve the given tag from the FieldSet.
+        Try to retrieve the given tag from the FieldMap.
 
         :param tag: The tag value to retrieve.
-        :param default: Optional, the default value to use if the tag does not exist in this FieldSet.
+        :param default: Optional, the default value to use if the tag does not exist in this FieldMap.
         :return: The value of the tag, or the value of default if the tag is not available.
-        :raises: TagNotFound if the tag does not exist in the FieldSet and no default value was provided.
+        :raises: TagNotFound if the tag does not exist in the FieldMap and no default value was provided.
         """
         try:
             return self[tag]
@@ -309,7 +309,7 @@ class FieldSet(collections.abc.Sequence):
     @abc.abstractmethod
     def clear(self):
         """
-        Clear the FieldSet of all Fields.
+        Clear the FieldMap of all Fields.
         """
 
     def __repr__(self):
@@ -337,18 +337,18 @@ class FieldSet(collections.abc.Sequence):
         return f"{fields_str}"
 
 
-class ListFieldSet(FieldSet):
+class FieldList(FieldMap):
     """
-    A simple FieldSet that stores all of its Fields in a list.
+    A simple FieldMap that stores all of its Fields in a list.
 
-    This type of FieldSet is easy to instantiate as it does not require any knowledge of the intended
+    This type of FieldMap is easy to instantiate as it does not require any knowledge of the intended
     message structure. The downside is that the internal list structure is not very efficient when it comes
     to performing Field lookups.
     """
 
     def __init__(self, *fields: Union[Field, tuple], **kwargs):
         """
-        Initialize the FieldSet from the fields provided, storing the parsed Fields internally in a list.
+        Initialize the FieldMap from the fields provided, storing the parsed Fields internally in a list.
 
         :param fields: List of Field or (tag, value) tuples.
         :param kwargs: Unused.
@@ -374,7 +374,7 @@ class ListFieldSet(FieldSet):
         parsed_fields = []
 
         for field in fields:
-            # For each field in the fieldset
+            # For each field in the FieldMap
             if isinstance(field, Field) or isinstance(field, Group):
                 # Add field as-is
                 parsed_fields.append(field)
@@ -396,7 +396,7 @@ class ListFieldSet(FieldSet):
             raise DuplicateTags(
                 tag,
                 self.fields,
-                message=f"Cannot set value: FieldSet contains {count} occurrence(s) of '{tag}'."
+                message=f"Cannot set value: FieldMap contains {count} occurrence(s) of '{tag}'."
             )
 
         if not (isinstance(value, Field) or isinstance(value, Group)):
@@ -433,7 +433,7 @@ class ListFieldSet(FieldSet):
             raise DuplicateTags(
                 tag,
                 self.fields,
-                message=f"Cannot delete tag: FieldSet contains {count} occurrences of '{tag}'."
+                message=f"Cannot delete tag: FieldMap contains {count} occurrences of '{tag}'."
             )
 
         idx = 0
@@ -465,17 +465,17 @@ class ListFieldSet(FieldSet):
         return f"[{super().__str__()}]"
 
 
-class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
+class FieldDict(FieldMap, GroupTemplateMixin):
     """
-    A FieldSet that stores all of its Fields in an OrderedDict.
+    A FieldMap that stores all of its Fields in an OrderedDict.
 
-    This type of FieldSet should be faster at doing Field lookups and manipulating the FieldSet in general.
+    This type of FieldMap should be faster at doing Field lookups and manipulating the FieldMap in general.
     """
 
     def __init__(self, *fields, **kwargs):
         """
         If 'fields' contain one or more repeating groups then you *have* to provide the corresponding repeating group
-        template(s) in order for the FieldSet to know how to parse and store those groups.
+        template(s) in order for the FieldMap to know how to parse and store those groups.
 
         :param fields: List of Field or (tag, value) tuples.
         :param kwargs: Can optionally contain a 'group_templates' keyword argument in the format:
@@ -657,16 +657,16 @@ class OrderedDictFieldSet(FieldSet, GroupTemplateMixin):
         return f"{{{super().__str__()}}}"
 
 
-class Group(FieldSet):
+class Group(FieldMap):
     """
-    A repeating group of FieldSet 'instances' that form the Group.
+    A repeating group of FieldMap 'instances' that form the Group.
     """
 
     def __init__(self, identifier, *fields, template=None):
         """
         :param identifier: A Field that identifies the repeating Group. The value of the 'identifier' Field
         indicates the number of times that GroupInstance repeats in this Group.
-        :param fields: A FieldSet or list of (tag, value) tuples.
+        :param fields: A FieldMap or list of (tag, value) tuples.
         :param template: Optional. The list of tags that this repeating group consists of. If no template is
         provided then tries to find a template corresponding to identifier.tag in the default GROUP_TEMPLATES setting.
         :raises: ImproperlyConfigured if no template is specified and no template could be found in settings.
@@ -747,7 +747,7 @@ class Group(FieldSet):
                 if field.tag in template:
                     # Tag belongs to the next instance. Append the current instance to this group.
                     parsed_fields.append(
-                        ListFieldSet(*fields[instance_start:instance_end])
+                        FieldList(*fields[instance_start:instance_end])
                     )
 
                     instance_start = instance_end
@@ -763,7 +763,7 @@ class Group(FieldSet):
 
         else:
             # Add last instance
-            parsed_fields.append(ListFieldSet(*fields[instance_start:instance_end]))
+            parsed_fields.append(FieldList(*fields[instance_start:instance_end]))
 
         return parsed_fields
     
@@ -778,17 +778,17 @@ class Group(FieldSet):
                     )
                 )
 
-    def __add__(self, other: Union["Group", FieldSet, Sequence[Field], Sequence[tuple]]) -> "Group":
+    def __add__(self, other: Union["Group", FieldMap, Sequence[Field], Sequence[tuple]]) -> "Group":
         """
         Add group instance(s) to this group.
 
-        The instance(s) to add can be contained in another Group, FieldSet, sequence of Fields, or a sequence of
+        The instance(s) to add can be contained in another Group, FieldMap, sequence of Fields, or a sequence of
         (tag, value) tuples.
 
         The instance fields to add will be validated against this group's template and a ParsingError raise for
         any template violations that occur.
 
-        :param other: Another Group, FieldSet, sequence of Fields, or sequence of (tag, value) tuples.
+        :param other: Another Group, FieldMap, sequence of Fields, or sequence of (tag, value) tuples.
         :return: A new Group, which includes the newly added instance fields.
         :return: A new Group, which includes the newly added instance fields.
         """
@@ -799,14 +799,14 @@ class Group(FieldSet):
              *itertools.chain(self.fields, itertools.chain.from_iterable(instances))
          )
 
-    def __eq__(self, other: Union["Group", FieldSet, Sequence[Field], Sequence[tuple]]):
+    def __eq__(self, other: Union["Group", FieldMap, Sequence[Field], Sequence[tuple]]):
         """
         Compare this Group to other.
 
-        The only difference between this implementation and that of FieldSet is that we also need to compare the
+        The only difference between this implementation and that of FieldMap is that we also need to compare the
         'identifier' tag.
 
-        :param other: Another Group, FieldSet, sequence of Fields, or sequence of (tag, value) tuples.
+        :param other: Another Group, FieldMap, sequence of Fields, or sequence of (tag, value) tuples.
         :return: True if other is equivalent to this Group, False otherwise.
         """
         try:
@@ -815,11 +815,11 @@ class Group(FieldSet):
             other_sequence = other.fields
 
         except AttributeError:
-            # Not a Group, try FieldSet
+            # Not a Group, try FieldMap
             try:
                 other_sequence = other.fields
             except AttributeError:
-                # Not a FieldSet, use sequence as-is
+                # Not a FieldMap, use sequence as-is
                 other_sequence = other
 
             try:
@@ -849,11 +849,11 @@ class Group(FieldSet):
 
         return length
 
-    def __setitem__(self, index: int, value: Union[FieldSet, Sequence[Field], Sequence[tuple]]):
+    def __setitem__(self, index: int, value: Union[FieldMap, Sequence[Field], Sequence[tuple]]):
         try:
             value_sequence = value.fields
         except AttributeError:
-            # Not a FieldSet, use as-is
+            # Not a FieldMap, use as-is
             value_sequence = value
 
         instance = self._parse_instance_fields(value_sequence, self.template)
@@ -866,7 +866,7 @@ class Group(FieldSet):
         return self.instances[index]
 
     def __format__(self, format_spec):
-        # Allows groups to be rendered as part of FieldSets.
+        # Allows groups to be rendered as part of FieldMaps.
         if "t" in format_spec:
             group_instances_str = ""
 
@@ -889,7 +889,7 @@ class Group(FieldSet):
         else:
             group_instances_repr = group_instances_repr[:-2]
 
-        group_instances_repr = group_instances_repr.replace("ListFieldSet(", "").replace("))", ")")
+        group_instances_repr = group_instances_repr.replace("FieldList(", "").replace("))", ")")
 
         return f"{self.__class__.__name__}({repr(self.identifier)}, {group_instances_repr})"
 
@@ -908,7 +908,7 @@ class Group(FieldSet):
     @property
     def instances(self):
         """
-        :return: A list of FieldSets that make up this Group.
+        :return: A list of FieldLists that make up this Group.
         """
         return self._instances
 

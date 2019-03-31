@@ -4,14 +4,14 @@ import pytest
 
 from wtfix.core import decoders, encoders
 from wtfix.core.exceptions import DuplicateTags
-from wtfix.message.fieldset import OrderedDictFieldSet, ListFieldSet
+from wtfix.message.collections import FieldDict, FieldList
 
 
 class TestJSONMessageDecoder:
-    def test_default_nested_orderedfieldset_decodes_as_expected(
+    def test_default_nested_fielddict_decodes_as_expected(
         self, nested_parties_group, encoded_dict_sample
     ):
-        fs = OrderedDictFieldSet(
+        fs = FieldDict(
             (1, "a"),
             (2, "b"),
             nested_parties_group.identifier,
@@ -22,7 +22,7 @@ class TestJSONMessageDecoder:
 
         assert decoders.from_json(encoded_dict_sample) == fs
 
-    def test_default_nested_orderedfieldset_raises_exception_on_duplicate_tags_without_template_defined(
+    def test_default_nested_fielddict_raises_exception_on_duplicate_tags_without_template_defined(
         self, nested_parties_group, encoded_dict_sample
     ):
         with pytest.raises(DuplicateTags):
@@ -32,10 +32,10 @@ class TestJSONMessageDecoder:
 
             decoders.from_json(broken_encoding)
 
-    def test_default_nested_listfieldset_encodes_as_expected(
+    def test_default_nested_fieldlist_encodes_as_expected(
         self, nested_parties_group, encoded_list_sample
     ):
-        fs = ListFieldSet(
+        fs = FieldList(
             (1, "a"),
             (2, "b"),
             nested_parties_group.identifier,
@@ -46,7 +46,7 @@ class TestJSONMessageDecoder:
         assert decoders.from_json(encoded_list_sample) == fs
 
 
-def test_serialization_is_idempotent(fieldset_class, nested_parties_group):
+def test_serialization_is_idempotent(fieldmap_class, nested_parties_group):
     kwargs = {}
     fields = [
         (1, "a"),
@@ -56,10 +56,10 @@ def test_serialization_is_idempotent(fieldset_class, nested_parties_group):
         (3, "c"),
     ]
 
-    if fieldset_class.__name__ == OrderedDictFieldSet.__name__:
+    if fieldmap_class.__name__ == FieldDict.__name__:
         kwargs["group_templates"] = {539: [524, 525, 538, 804], 804: [545, 805]}
 
-    fs = fieldset_class(*fields, **kwargs)
+    fs = fieldmap_class(*fields, **kwargs)
 
     encoded = encoders.to_json(fs)
     decoded = decoders.from_json(encoded)

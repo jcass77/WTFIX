@@ -18,7 +18,7 @@
 import json
 from json import JSONEncoder
 
-from wtfix.message.fieldset import ListFieldSet, OrderedDictFieldSet, Group
+from wtfix.message.collections import FieldList, FieldDict, Group
 
 
 def to_json(message):
@@ -49,14 +49,14 @@ class JSONMessageEncoder(JSONEncoder):
         return fields
 
     def default(self, o):
-        if isinstance(o, ListFieldSet):
+        if isinstance(o, FieldList):
             fields = []
             for field in o.data:
                 fields.append([field.tag, str(field)])
 
             return fields
 
-        if isinstance(o, OrderedDictFieldSet):
+        if isinstance(o, FieldDict):
             fields = {}
 
             for k, v in o.data.items():
