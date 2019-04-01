@@ -327,7 +327,7 @@ class AuthenticationApp(MessageTypeHandlerApp):
         if self.test_mode is True:
             logon_msg.TestMessageIndicator = "Y"
 
-        logger.info(f"{self.name}: Logging in with: {logon_msg}...")
+        logger.info(f"{self.name}: Logging in with: {logon_msg:t}...")
         self.send(logon_msg)
 
     @unsync
