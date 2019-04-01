@@ -238,7 +238,20 @@ class TestFieldMap:
         fieldmap_impl_abc_123[3] = "c"
 
         fields = [field for field in fieldmap_impl_abc_123]
-        assert fields == [1, 2]
+        assert fields == [
+            (1, 'abc'),
+            (2, 123),
+            (539, 2),
+                (524, 'a'), (525, 'aa'), (538, 'aaa'),
+                (804, 2),
+                    (545, 'c'), (805, 'cc'),
+                    (545, 'd'), (805, 'dd'),
+                (524, 'b'), (525, 'bb'), (538, 'bbb'),
+                (804, 2),
+                    (545, 'e'), (805, 'ee'),
+                    (545, 'f'), (805, 'ff'),
+            (3, 'c')
+        ]
 
     def test_delitem(self, fieldmap_impl_abc_123):
         assert len(fieldmap_impl_abc_123) == 2
