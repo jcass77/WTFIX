@@ -2,7 +2,7 @@
 
 This changelog is used to track all major changes to WTFIX.
 
-## v0.6.0 (UNRELEASED)
+## v0.6.0 (2019-04-01)
 
 **Enhancements**
 
@@ -24,6 +24,10 @@ abstract base class methods for `Field`.
 - Add `__format__` implementation to `Field`, with a custom `t` option, for printing fields with their tag names.
 - Convert the FIX representation of 'null' (`"-2147483648"`) to `None` when constructing a `Field` for more natural
 usage in Python.
+- Now Encodes boolean Field values to "Y/N".
+- Remove `Message.get_group()` and `Message.set_group()` in favor of handling group fields like any other Field in the
+message.
+- Remove deprecated `InvalidGroup` exception.
 
 ## v0.5.0 (2019-03-15)
 

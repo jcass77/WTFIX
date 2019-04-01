@@ -18,7 +18,7 @@
 import abc
 import collections
 import itertools
-from typing import Union, Sequence, Generator, Iterable, List
+from typing import Union, Sequence, Generator
 
 from wtfix.conf import settings
 from wtfix.core.exceptions import (

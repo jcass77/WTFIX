@@ -153,11 +153,11 @@ messages mean that you never need to deal with byte sequences directly.
   
     # If you provide a group template, then messages are stored in an 'OrderedDict' for fast lookups
     >>> msg = generic_message_factory((Tag.MsgType, MsgType.ExecutionReport), (Tag.NoMiscFees, 2), (Tag.MiscFeeAmt, 10.00), (Tag.MiscFeeType, 2), (Tag.MiscFeeAmt, 20.00), (Tag.MiscFeeType, "A"), group_templates={Tag.NoMiscFees: [Tag.MiscFeeAmt, Tag.MiscFeeType,]})
-    >>> msg._fields
+    >>> msg.data
     OrderedDict([(35, Field(35, '8')), (136, Group(Field(136, '2'), Field(137, '10.0'), Field(139, '2'), Field(137, '20.0'), Field(139, 'A')))])
   
     # Get 'NoMiscFees' group
-    >>> group = msg.get_group(Tag.NoMiscFees)
+    >>> group = msg[Tag.NoMiscFees]
     >>> f"{group:t}"
     '[NoMiscFees (136): 2] | [MiscFeeAmt (137): 10.0 | MiscFeeType (139): 2] | [MiscFeeAmt (137): 20.0 | MiscFeeType (139): A]'
    
@@ -167,11 +167,11 @@ messages mean that you never need to deal with byte sequences directly.
   
     # Retrieve the second group instance
     >>> group.instances[1]
-    GroupInstance(Field(137, '20.0'), Field(139, 'A'))
+    FieldList(Field(137, '20.0'), Field(139, 'A'))
    
     # Without a pre-defined group template, WTFIX falls back to using a (slightly slower) list structure for representing message fields internally
     >>> msg = generic_message_factory((Tag.MsgType, MsgType.ExecutionReport), (Tag.NoMiscFees, 2), (Tag.MiscFeeAmt, 10.00), (Tag.MiscFeeType, 2), (Tag.MiscFeeAmt, 20.00), (Tag.MiscFeeType, "A"))
-    >>> msg.fields
+    >>> msg.data
     [Field(35, '8'), Field(136, '2'), Field(137, '10.0'), Field(139, '2'), Field(137, '20.0'), Field(139, 'A')]
   
     ```

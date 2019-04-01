@@ -95,6 +95,8 @@ class FIXMessage(FieldMap, abc.ABC):
 
     @property
     def fields(self):
+        # This is just an alias: message.fields makes more sense in the context of
+        # Message's compared to self.values() for FieldMaps.
         return self.values()
 
     @abc.abstractmethod
