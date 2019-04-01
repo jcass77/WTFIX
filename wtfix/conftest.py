@@ -37,6 +37,7 @@ def unsync_event_loop(event_loop):
     unsync.loop = event_loop
 
 
+# Add future implementations of FieldMap to this list to include in tests.
 @pytest.fixture(params=[FieldDict, FieldList])
 def fieldmap_class(request):
     return request.param

@@ -14,19 +14,11 @@ from wtfix.core.exceptions import (
     TagNotFound,
     DuplicateTags,
     ImproperlyConfigured,
-    InvalidField, ParsingError)
+    ParsingError)
 
 
 class TestFieldMap:
     """Base class to test all implementations of 'FieldMap' interface."""
-
-    def test_parse_fields_tuple(self, fieldmap_class):
-        fm = fieldmap_class((1, "a"), (2, "b"))
-
-        assert len(fm) == 2
-        assert all([tag in fm for tag in [1, 2]])
-        assert all([field in fm.fields for field in [(1, "a"), (2, "b")]])
-        assert type(fm[1] is Field)
 
     def test_parse_fields_fields(self, fieldmap_class):
         fm = fieldmap_class(Field(1, "a"), Field(2, "b"))
@@ -34,7 +26,15 @@ class TestFieldMap:
         assert len(fm) == 2
         assert all([tag in fm for tag in [1, 2]])
         assert all([field in fm.fields for field in [(1, "a"), (2, "b")]])
-        assert type(fm[1] is Field)
+        assert all(type(field) is Field for field in fm)
+
+    def test_parse_fields_tuple(self, fieldmap_class):
+        fm = fieldmap_class((1, "a"), (2, "b"))
+
+        assert len(fm) == 2
+        assert all([tag in fm for tag in [1, 2]])
+        assert all([field in fm.fields for field in [(1, "a"), (2, "b")]])
+        assert all(type(field) is Field for field in fm)
 
     def test_parse_fields_fields_mixed(self, fieldmap_class):
         fm = fieldmap_class(Field(1, "a"), (2, "b"))
@@ -42,10 +42,10 @@ class TestFieldMap:
         assert len(fm) == 2
         assert all([tag in fm for tag in [1, 2]])
         assert all([field in fm.fields for field in [(1, "a"), (2, "b")]])
-        assert type(fm[1] is Field)
+        assert all(type(field) is Field for field in fm)
 
     def test_fields_getter(self, fieldmap_impl_abc_123):
-        assert list(fieldmap_impl_abc_123.fields) == [(1, "abc"), (2, 123)]
+        assert fieldmap_impl_abc_123.fields == [(1, "abc"), (2, 123)]
 
     def test_fields_getter_nested_group(self, fieldmap_impl_abc_123, nested_parties_group):
         fieldmap_impl_abc_123[nested_parties_group.tag] = nested_parties_group
@@ -56,7 +56,7 @@ class TestFieldMap:
     def test_fields_getter_and_slice(self, fieldmap_class, nested_parties_group):
         fm = fieldmap_class((1, "abc"), (2, 123))
         fm[nested_parties_group.tag] = nested_parties_group
-        fm = fieldmap_class(*list(fm.fields)[:2])
+        fm = fieldmap_class(*fm.fields[:2])
 
         assert fm == [(1, "abc"), (2, 123)]
 
@@ -145,7 +145,7 @@ class TestFieldMap:
         fm[2] = "aa"
         assert fm[2] == "aa"
         assert len(fm) == 3
-        assert list(fm.fields)[1].tag == 2  # Confirm position in FieldMap is maintained
+        assert fm.fields[1].tag == 2  # Confirm position in FieldMap is maintained
 
     def test_setitem_replace_by_tag_name(self, fieldmap_class):
         fm = fieldmap_class((1, "a"), (Tag.MsgType, "b"))
@@ -155,7 +155,7 @@ class TestFieldMap:
         assert fm.MsgType == "aa"
         assert len(fm) == 3
         assert (
-            list(fm.fields)[1].tag == Tag.MsgType
+            fm.fields[1].tag == Tag.MsgType
         )  # Confirm position in FieldMap is maintained
 
     def test_setitem_group(self, fieldmap_class, routing_id_group):
@@ -241,7 +241,7 @@ class TestFieldMap:
         fieldmap_impl_abc_123[3] = "c"
 
         fields = [field for field in fieldmap_impl_abc_123]
-        assert fields == list(fieldmap_impl_abc_123.fields)
+        assert fields == fieldmap_impl_abc_123.fields
 
     def test_delitem(self, fieldmap_impl_abc_123):
         assert len(fieldmap_impl_abc_123) == 2
@@ -393,7 +393,6 @@ class TestFieldDict:
         fm = FieldDict(
             (1, "a"),
             (2, "b"),
-            routing_id_group.identifier,
             *routing_id_group.fields,
             (3, "e"),
             group_templates={Tag.NoRoutingIDs: [Tag.RoutingType, Tag.RoutingID]}
@@ -514,7 +513,6 @@ class TestFieldDict:
         fm = FieldDict(
             (1, "a"),
             (2, "b"),
-            nested_parties_group.identifier,
             *nested_parties_group.fields,
             (3, "c"),
             group_templates={539: [524, 525, 538, 804], 804: [545, 805]},
@@ -527,6 +525,7 @@ class TestFieldDict:
         assert len(group_instance_1) == 8
 
         nested_group_1 = group_instance_1[804]
+        assert nested_group_1.size == 2
         assert len(nested_group_1) == 5
 
         nested_instance_1 = nested_group_1[0]
@@ -598,7 +597,7 @@ class TestFieldDict:
         mdr_message[9960] = 1
 
         assert len(mdr_message) == 13
-        assert len(list(mdr_message.fields)) == 13
+        assert len(mdr_message.fields) == 13
 
         assert all(
             field in mdr_message
@@ -621,7 +620,6 @@ class TestFieldDict:
 
 
 class TestGroup:
-
     def test_parse_fields(self):
         g = Group(
             (Tag.NoMDEntryTypes, 3),
@@ -689,6 +687,43 @@ class TestGroup:
     def test_poorly_formed_arguments_raises_exception(self):
         with pytest.raises(ParsingError):
             Group((1, "1"), *(2, "a"), template=[2])
+
+    def test_data_getter(self, routing_id_group):
+        assert isinstance(routing_id_group.data, list)
+
+    def test_fields_getter(self, routing_id_group):
+        fields = routing_id_group.fields
+        assert len(fields) == 5
+        assert fields == [
+            (Tag.NoRoutingIDs, "2"),
+            (Tag.RoutingType, "a"),
+            (Tag.RoutingID, "b"),
+            (Tag.RoutingType, "c"),
+            (Tag.RoutingID, "d"),
+        ]
+
+    def test_fields_getter_nested(self, nested_parties_group):
+        fields = nested_parties_group.fields
+        assert len(fields) == 17
+        assert fields == [
+            (539, 2),
+            (524, "a"),
+            (525, "aa"),
+            (538, "aaa"),
+            (804, 2),
+            (545, "c"),
+            (805, "cc"),
+            (545, "d"),
+            (805, "dd"),
+            (524, "b"),
+            (525, "bb"),
+            (538, "bbb"),
+            (804, 2),
+            (545, "e"),
+            (805, "ee"),
+            (545, "f"),
+            (805, "ff"),
+        ]
 
     def test_add_group(self, routing_id_group):
         other = Group(
@@ -884,11 +919,9 @@ class TestGroup:
             (805, "dd"),
         ]
 
-        assert list(nested_parties_group.instances[0][804].fields) == [
+        assert nested_parties_group.instances[0][804].instances[0] == [
             (545, "c"),
             (805, "cc"),
-            (545, "d"),
-            (805, "dd"),
         ]
 
         assert nested_parties_group.instances[1] == [
@@ -902,9 +935,7 @@ class TestGroup:
             (805, "ff"),
         ]
 
-        assert list(nested_parties_group.instances[1][804].fields) == [
-            (545, "e"),
-            (805, "ee"),
+        assert nested_parties_group.instances[1][804].instances[1] == [
             (545, "f"),
             (805, "ff"),
         ]
@@ -915,34 +946,13 @@ class TestGroup:
         del routing_id_group[0]
         assert routing_id_group.size == 1
 
-    def test_fields_getter(self, nested_parties_group):
-        assert len(list(nested_parties_group.fields)) == 16
-        assert list(nested_parties_group.fields) == [
-            (524, "a"),
-            (525, "aa"),
-            (538, "aaa"),
-            (804, 2),
-            (545, "c"),
-            (805, "cc"),
-            (545, "d"),
-            (805, "dd"),
-            (524, "b"),
-            (525, "bb"),
-            (538, "bbb"),
-            (804, 2),
-            (545, "e"),
-            (805, "ee"),
-            (545, "f"),
-            (805, "ff"),
-        ]
-
     def test_clear(self):
         g = Group((Tag.NoRoutingIDs, 1), (Tag.RoutingID, "a"), (Tag.RoutingType, "b"))
 
         assert len(g) == 3
 
         g.clear()
-        assert list(g.fields) == []
+        assert g.fields == [(215, 0)]
         assert g.size == 0
         assert g.value == 0
 

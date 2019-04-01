@@ -57,7 +57,7 @@ class Field(collections.abc.MutableSequence):
     UNKNOWN_TAG = "Unknown"
 
     # Use slots instead of __dict__ for storing instance attributes - more memory efficient.
-    __slots__ = ("_tag", "_value", "weakref",)
+    __slots__ = ("_tag", "_value", "__weakref__",)
 
     def __init__(self, tag: Union[numbers.Integral, str, bytes], value: Union[numbers.Integral, bool, str, bytes, None]):
         """
