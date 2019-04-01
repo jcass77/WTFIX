@@ -58,6 +58,11 @@ def test_encode_float():
     assert utils.encode(1.23) == b"1.23"
 
 
+def test_encode_bool():
+    assert utils.encode(True) == b"Y"
+    assert utils.encode(False) == b"N"
+
+
 def test_decode_bytes():
     assert utils.decode(b"abc") == "abc"
 

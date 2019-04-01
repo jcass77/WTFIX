@@ -481,6 +481,14 @@ class TestField:
         f = Field(35, "k")
         assert bytes(f) == b"35=k" + settings.SOH
 
+    def test_bytes_encodes_field_bool_true(self):
+        f = Field(1, True)
+        assert bytes(f) == b"1=Y" + settings.SOH
+
+    def test_bytes_encodes_field_bool_false(self):
+        f = Field(1, False)
+        assert bytes(f) == b"1=N" + settings.SOH
+
     def test_bytes_converts_none_to_null(self):
         f = Field(1, None)
         assert bytes(f) == b"1=" + utils.encode(utils.null) + settings.SOH

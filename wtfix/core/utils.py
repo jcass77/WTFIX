@@ -125,6 +125,12 @@ def _(ba):
     return encode(bytes(ba))
 
 
+@encode.register(bool)
+def _(truth):
+    """Convert boolean to Y/N"""
+    return encode("Y") if truth is True else encode("N")
+
+
 @singledispatch
 def decode(obj):
     """Decode a bytes-like object to string"""
