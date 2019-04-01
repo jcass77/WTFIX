@@ -125,24 +125,41 @@ def _(ba):
     return encode(bytes(ba))
 
 
+@encode.register(bool)
+def _(truth):
+    """Convert boolean to Y/N"""
+    return encode("Y") if truth is True else encode("N")
+
+
 @singledispatch
 def decode(obj):
     """Decode a bytes-like object to string"""
-    if obj is None:
-        return "None"
+    if obj is None or is_null(obj):
+        # Preserve None instead of converting it to the less useful 'None' string.
+        return None
 
     return obj.decode(settings.ENCODING, errors=settings.ENCODING_ERRORS)
 
 
 @decode.register(str)
 def _(string):
-    """Strings do not need to be decoded"""
+    """
+    Convert FIX 'null' values to the Python None type, which can be used more easily internally.
+    """
+    if is_null(string):
+        return None
+
     return string
 
 
 @decode.register(numbers.Integral)
 def _(n):
-    """Numbers do not need to be decoded"""
+    """
+    Convert FIX 'null' values to the Python None type, which can be used more easily internally.
+    """
+    if is_null(n):
+        return None
+
     return n
 
 
@@ -183,6 +200,7 @@ class GroupTemplateMixin:
     """
     Mixin for maintaining a dictionary of repeating group templates.
     """
+
     @property
     def group_templates(self):
         """

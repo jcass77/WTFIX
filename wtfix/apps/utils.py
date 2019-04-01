@@ -30,7 +30,7 @@ class OutboundLoggingApp(BaseApp):
     name = "outbound_logger"
 
     def on_send(self, message):
-        logger.info(f" --> {message}")
+        logger.info(f" --> {message:t}")
 
         return message
 
@@ -43,6 +43,6 @@ class InboundLoggingApp(BaseApp):
     name = "inbound_logger"
 
     def on_receive(self, message):
-        logger.info(f" <-- {message}")
+        logger.info(f" <-- {message:t}")
 
         return message

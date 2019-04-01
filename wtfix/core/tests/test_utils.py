@@ -58,6 +58,11 @@ def test_encode_float():
     assert utils.encode(1.23) == b"1.23"
 
 
+def test_encode_bool():
+    assert utils.encode(True) == b"Y"
+    assert utils.encode(False) == b"N"
+
+
 def test_decode_bytes():
     assert utils.decode(b"abc") == "abc"
 
@@ -70,12 +75,20 @@ def test_decode_str():
     assert utils.decode("abc") == "abc"
 
 
+def test_decode_str_null():
+    assert utils.decode(str(utils.null)) is None
+
+
 def test_decode_int():
     assert utils.decode(123) == 123
 
 
+def test_decode_int_null():
+    assert utils.decode(utils.null) is None
+
+
 def test_decode_none():
-    assert utils.decode(None) == "None"
+    assert utils.decode(None) is None
 
 
 def test_decode_float():
@@ -106,7 +119,10 @@ class TestGroupTemplateMixin:
         del settings.SESSIONS["another_session"]
 
     def test_group_templates_getter_initializes_with_defaults_if_safe(self):
-        assert GroupTemplateMixin().group_templates == settings.default_session.GROUP_TEMPLATES
+        assert (
+            GroupTemplateMixin().group_templates
+            == settings.default_session.GROUP_TEMPLATES
+        )
 
     def test_add_group_templates(self):
         gt = GroupTemplateMixin()

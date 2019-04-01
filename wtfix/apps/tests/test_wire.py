@@ -26,7 +26,7 @@ class TestEncoderApp:
 
     def test_encode_message_nested_group(self, encoder_app, nested_parties_group):
         m = generic_message_factory((35, "a"), (34, 1), (2, "bb"))
-        m.set_group(nested_parties_group)
+        m[nested_parties_group.tag] = nested_parties_group
 
         # Compare just the group-related bytes.
         assert encoder_app.encode_message(m)[82:-7] == (
@@ -94,10 +94,10 @@ class TestDecoderApp:
     ):
         m = generic_message_class(*sdr_message_fields)
         m = decoder_app.decode_message(encoder_app.encode_message(m))
-        assert m.BeginString == b"FIX.4.4"
-        assert m.BodyLength == b"113"
-        assert m.MsgType == b"c"
-        assert m.MsgSeqNum == b"1"
+        assert m.BeginString == "FIX.4.4"
+        assert int(m.BodyLength) == 113
+        assert m.MsgType == "c"
+        assert int(m.MsgSeqNum) == 1
         # Compare body, skipping timestamp and checksum
         assert m.encoded_body[:13] == b"49=SENDER\x0152="
         assert (

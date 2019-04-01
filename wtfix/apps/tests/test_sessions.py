@@ -28,7 +28,9 @@ from wtfix.tests.conftest import get_mock_async
 
 class TestClientSessionApp:
     @pytest.mark.asyncio
-    async def test_listen_reads_a_complete_message(self, unsync_event_loop, base_pipeline, encoder_app):
+    async def test_listen_reads_a_complete_message(
+        self, unsync_event_loop, base_pipeline, encoder_app
+    ):
         session_app = ClientSessionApp(base_pipeline)
         session_app.reader = asyncio.StreamReader()
 
@@ -47,7 +49,9 @@ class TestClientSessionApp:
 
         await asyncio.sleep(0.1)
 
-        session_app.writer.transport.is_closing.return_value = True  # Close listener after this message
+        session_app.writer.transport.is_closing.return_value = (
+            True
+        )  # Close listener after this message
         session_app.reader.feed_data(encoded_msg[-1:])  # Feed second part of message
 
         await asyncio.sleep(0.1)

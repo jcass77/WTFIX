@@ -2,6 +2,33 @@
 
 This changelog is used to track all major changes to WTFIX.
 
+## v0.6.0 (2019-04-01)
+
+**Enhancements**
+
+- Refactor `FieldSet` to better emulate the Python built-it container types.
+- Rename `FieldSet` to `FieldMap`, `ListFieldSet` to `FieldList`, and `OrderedDictFieldSet` to `FieldDict`. Deprecate
+and remove old classes.
+- Implement all of the [`MutableSequence`](https://docs.python.org/3/library/collections.abc.html#module-collections.abc)
+abstract base class methods for `Field`.  
+- Operations can now be performed directly between `Field.value` and Python's built-in literals (e.g.
+`Field(1, "abc") + "def"` will return `Field(1, "abcdef")`).
+- Replace `as_str`, `as_bool`, and `as_int` with Python special methods to allow more natural casting using `str()`,
+`bool()`, and `int()`. Add new `float()` method for casting `Field`s to float.
+- Deprecate and remove `FieldValue` class.
+- Field ordering is no longer significant when comparing `FieldMap`s with other `Sequence`s.
+- Replace `raw` property for converting `Field`s and `FieldMap`s to a byte sequence with `bytes()`. 
+- Add `frombytes()` and `fields_frombytes()` methods to `Field` for creating new `Field` instances from byte sequences.
+- Optimize memory usage of `Field`s by adding a `__slots__` attribute.
+- Make `Field` instances hashable by implementing `__hash__` and `__eq__`.
+- Add `__format__` implementation to `Field`, with a custom `t` option, for printing fields with their tag names.
+- Convert the FIX representation of 'null' (`"-2147483648"`) to `None` when constructing a `Field` for more natural
+usage in Python.
+- Now Encodes boolean Field values to "Y/N".
+- Remove `Message.get_group()` and `Message.set_group()` in favor of handling group fields like any other Field in the
+message.
+- Remove deprecated `InvalidGroup` exception.
+
 ## v0.5.0 (2019-03-15)
 
 **Enhancements**

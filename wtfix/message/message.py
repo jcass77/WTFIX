@@ -26,20 +26,14 @@ from wtfix.core.exceptions import (
     DuplicateTags,
 )
 from wtfix.protocol.common import Tag, MsgType
-from .fieldset import OrderedDictFieldSet, ListFieldSet
+from .collections import FieldDict, FieldList, FieldMap
 
 
-class FIXMessage(abc.ABC):
+class FIXMessage(FieldMap, abc.ABC):
     """
-    Mixin class that promotes FieldSets to FIX messages. Provides often-used shortcuts for common tag number
+    Mixin class that promotes FieldMaps to FIX messages. Provides often-used shortcuts for common tag number
     lookups.
     """
-
-    def __str__(self):
-        """
-        :return: name (type): ((tag_name_1, value_1), (tag_name_2, value_2))
-        """
-        return f"{self.name} ({self.type}): {super().__str__()}"
 
     @property
     def type(self):
@@ -48,7 +42,7 @@ class FIXMessage(abc.ABC):
         :return: Value of tag 35 or None if no message type has been defined.
         """
         try:
-            return self[Tag.MsgType].as_str
+            return str(self[Tag.MsgType])
         except TagNotFound:
             return None
 
@@ -69,7 +63,7 @@ class FIXMessage(abc.ABC):
         :return: Message sequence number
         """
         try:
-            return self[Tag.MsgSeqNum].as_int
+            return int(self[Tag.MsgSeqNum])
         except TagNotFound:
             return None
 
@@ -80,7 +74,7 @@ class FIXMessage(abc.ABC):
     @property
     def sender_id(self):
         try:
-            return self[Tag.SenderCompID].as_str
+            return str(self[Tag.SenderCompID])
         except TagNotFound:
             return None
 
@@ -91,7 +85,7 @@ class FIXMessage(abc.ABC):
     @property
     def target_id(self):
         try:
-            return self[Tag.TargetCompID].as_str
+            return str(self[Tag.TargetCompID])
         except TagNotFound:
             return None
 
@@ -99,11 +93,11 @@ class FIXMessage(abc.ABC):
     def target_id(self, value):
         self[Tag.TargetCompID] = value
 
-    def clear(self):
-        """
-        Clear the message of all Fields.
-        """
-        self._fields.clear()
+    @property
+    def fields(self):
+        # This is just an alias: message.fields makes more sense in the context of
+        # Message's compared to self.values() for FieldMaps.
+        return self.values()
 
     @abc.abstractmethod
     def copy(self):
@@ -125,8 +119,20 @@ class FIXMessage(abc.ABC):
 
         return self
 
+    def __format__(self, format_spec):
+        """
+        :return: name (type): ((tag_name_1, value_1), (tag_name_2, value_2))
+        """
+        return f"{self.name} ({self.type}): {super().__format__(format_spec)}"
 
-class RawMessage(FIXMessage, OrderedDictFieldSet):
+    def __str__(self):
+        """
+        :return: type: ((tag_1, value_1), (tag_2, value_2))
+        """
+        return f"{self.type}: {super().__str__()}"
+
+
+class RawMessage(FIXMessage, FieldDict):
     """
     A raw message with most of its content still in byte-encoded format.
 
@@ -168,13 +174,19 @@ class RawMessage(FIXMessage, OrderedDictFieldSet):
 
     def copy(self):
         return RawMessage(
-            begin_string=self.BeginString.value_ref.value,
-            body_length=self.BodyLength.value_ref.value,
-            message_type=self.MsgType.value_ref.value,
-            message_seq_num=self.MsgSeqNum.value_ref.value,
+            begin_string=self.BeginString.value,
+            body_length=self.BodyLength.value,
+            message_type=self.MsgType.value,
+            message_seq_num=self.MsgSeqNum.value,
             encoded_body=self.encoded_body,
-            checksum=self.CheckSum.value_ref.value,
+            checksum=self.CheckSum.value,
         )
+
+    def __format__(self, format_spec):
+        """
+        :return: name (type): ((tag_name_1, value_1), (tag_name_2, value_2))
+        """
+        return f"{super().__format__(format_spec)}, with byte-encoded content: {self.encoded_body}"
 
     def __str__(self):
         """
@@ -192,21 +204,21 @@ def generic_message_factory(*fields, **kwargs):
         return GenericMessage(*fields, **kwargs)  # Fall back to GenericMessage
 
 
-class GenericMessage(FIXMessage, ListFieldSet):
+class GenericMessage(FIXMessage, FieldList):
     """
-    The most basic type of FIX Message, consisting of one or more Fields in a FieldSet.
+    The most basic type of FIX Message, consisting of one or more Fields in a FieldMap.
 
     We think of FIX messages as lists of (tag, value) pairs, where tag is a number and value is a bytestring.
     """
 
     def copy(self):
         copy = GenericMessage()
-        copy._fields = self._fields.copy()
+        copy._data = self._data.copy()
 
         return copy
 
 
-class OptimizedGenericMessage(FIXMessage, OrderedDictFieldSet):
+class OptimizedGenericMessage(FIXMessage, FieldDict):
     """
     An optimized implementation based on storing fields in a dictionary instead of a list.
     """
@@ -219,6 +231,6 @@ class OptimizedGenericMessage(FIXMessage, OrderedDictFieldSet):
         copy = OptimizedGenericMessage()
         copy.group_templates = self.group_templates.copy()
 
-        copy._fields = self._fields.copy()
+        copy._data = self._data.copy()
 
         return copy

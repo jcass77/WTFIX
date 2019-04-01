@@ -35,7 +35,9 @@ class JSONMessageDecoder(JSONDecoder):
         :param group_instances: A list of lists of (tag, value) tuples that make up each group instance. 
         :return: The list of (tag, values) that form the entire repeating group.
         """
-        fields = [(int(group_identifier), len(group_instances))]  # Add identifier Field first
+        fields = [
+            (int(group_identifier), len(group_instances))
+        ]  # Add identifier Field first
 
         for instance in group_instances:
             group_fields = []
@@ -69,7 +71,4 @@ class JSONMessageDecoder(JSONDecoder):
                 else:
                     fields.append((int(k), v))
 
-            return OptimizedGenericMessage(
-                *fields,
-                group_templates=group_teplates
-            )
+            return OptimizedGenericMessage(*fields, group_templates=group_teplates)

@@ -5,7 +5,6 @@ from wtfix.message import admin
 
 
 class TestRESTfulServiceApp:
-
     def test_get_status(self, api_app, unsync_event_loop):
         response = api_app.flask_app.get("/")
 
@@ -29,4 +28,6 @@ class TestRESTfulServiceApp:
         assert result["message"] == "Successfully added message to pipeline!"
         assert result["data"]["message"] == encoded_msg
 
-        assert decoders.from_json(result["data"]["message"]) == msg  # Test idempotency while we're at it.
+        assert (
+            decoders.from_json(result["data"]["message"]) == msg
+        )  # Test idempotency while we're at it.

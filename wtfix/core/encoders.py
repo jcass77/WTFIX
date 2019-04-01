@@ -18,8 +18,7 @@
 import json
 from json import JSONEncoder
 
-from wtfix.message.field import FieldValue
-from wtfix.message.fieldset import ListFieldSet, OrderedDictFieldSet, Group
+from wtfix.message.collections import FieldList, FieldDict, Group
 
 
 def to_json(message):
@@ -39,35 +38,34 @@ class JSONMessageEncoder(JSONEncoder):
         for instance in group.instances:
             group_fields = {}
 
-            for field in instance._fields:
+            for field in instance.data:
                 if isinstance(field, Group):
-                    group_fields[field.identifier.tag] = self._encode_group(field)
+                    group_fields[field.tag] = self._encode_group(field)
                 else:
-                    group_fields[field.tag] = str(field.value_ref)
+                    group_fields[field.tag] = str(field)
 
             fields.append(group_fields)
 
         return fields
 
     def default(self, o):
-        if isinstance(o, ListFieldSet):
+        if isinstance(o, FieldList):
             fields = []
-            for field in o._fields:
-                fields.append([field.tag, str(field.value_ref)])
+            for field in o.data:
+                fields.append([field.tag, str(field)])
 
             return fields
 
-        if isinstance(o, OrderedDictFieldSet):
+        if isinstance(o, FieldDict):
             fields = {}
 
-            for k, v in o._fields.items():
+            for k, v in o.data.items():
                 if isinstance(v, Group):
-                    fields[v.identifier.tag] = self._encode_group(v)
+                    fields[v.tag] = self._encode_group(v)
                 else:
-                    fields[v.tag] = str(v.value_ref)
+                    fields[v.tag] = str(v)
 
             fields["group_templates"] = o.group_templates
             return fields
 
-        if isinstance(o, FieldValue):
-            return o.value
+        return o.value

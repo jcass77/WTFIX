@@ -45,6 +45,6 @@ SESSIONS = {
             "wtfix.apps.sessions.ClientSessionApp",
         ],
         # REPEATING GROUPS
-        "GROUP_TEMPLATES": {}
+        "GROUP_TEMPLATES": {},
     }
 }

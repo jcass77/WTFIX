@@ -24,6 +24,7 @@ def get_mock_async(return_value=None):
     """
     Create a Mock-able async class member
     """
+
     @unsync
     async def mock_async(*args, **kwargs):
         return return_value
@@ -35,6 +36,7 @@ def get_slow_mock_async(sleep_time):
     """
     Simulate an async method that is slow to respond - useful for testing timeouts.
     """
+
     @unsync
     async def mock_async(*args, **kwargs):
         await asyncio.sleep(sleep_time)
@@ -46,12 +48,12 @@ class Below(BaseApp):
     name = "below"
 
     def on_receive(self, message):
-        message.TestReqID = f"{message.TestReqID.as_str} r1"
+        message.TestReqID = f"{message.TestReqID} r1"
 
         return message
 
     def on_send(self, message):
-        message.TestReqID = f"{message.TestReqID.as_str} s1"
+        message.TestReqID = f"{message.TestReqID} s1"
 
         return message
 
@@ -60,12 +62,12 @@ class Middle(BaseApp):
     name = "middle"
 
     def on_receive(self, message):
-        message.TestReqID = f"{message.TestReqID.as_str} r2"
+        message.TestReqID = f"{message.TestReqID} r2"
 
         return message
 
     def on_send(self, message):
-        message.TestReqID = f"{message.TestReqID.as_str} s2"
+        message.TestReqID = f"{message.TestReqID} s2"
 
         return message
 
@@ -84,12 +86,12 @@ class Top(BaseApp):
     name = "top"
 
     def on_receive(self, message):
-        message.TestReqID = f"{message.TestReqID.as_str} r3"
+        message.TestReqID = f"{message.TestReqID} r3"
 
         return message
 
     def on_send(self, message):
-        message.TestReqID = f"{message.TestReqID.as_str} s3"
+        message.TestReqID = f"{message.TestReqID} s3"
 
         return message
 

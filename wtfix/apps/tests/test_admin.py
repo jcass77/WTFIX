@@ -33,7 +33,9 @@ class TestAuthenticationApp:
 
         assert auth_app.test_mode is False
 
-    def test_on_logon_raises_exception_on_wrong_test_indicator_response(self, base_pipeline):
+    def test_on_logon_raises_exception_on_wrong_test_indicator_response(
+        self, base_pipeline
+    ):
         with pytest.raises(SessionError):
             logon_msg = admin.LogonMessage("", "")
             logon_msg.ResetSeqNumFlag = True
@@ -42,7 +44,9 @@ class TestAuthenticationApp:
             auth_app = AuthenticationApp(base_pipeline)
             auth_app.on_logon(logon_msg)
 
-    def test_on_logon_raises_exception_on_wrong_reset_sequence_number_response(self, base_pipeline):
+    def test_on_logon_raises_exception_on_wrong_reset_sequence_number_response(
+        self, base_pipeline
+    ):
         with pytest.raises(SessionError):
             logon_msg = admin.LogonMessage("", "")
             logon_msg.ResetSeqNumFlag = False
@@ -101,7 +105,7 @@ class TestHeartbeatApp:
     @pytest.mark.asyncio
     async def test_send_test_request(self, unsync_event_loop, zero_heartbeat_app):
         def simulate_heartbeat_response(message):
-            zero_heartbeat_app.on_heartbeat(HeartbeatMessage(message.TestReqID.as_str))
+            zero_heartbeat_app.on_heartbeat(HeartbeatMessage(str(message.TestReqID)))
 
         zero_heartbeat_app.pipeline.send.side_effect = simulate_heartbeat_response
 
@@ -174,9 +178,9 @@ class TestSeqNumManagerApp:
             # Check sequence number
             assert message.seq_num == resend_begin_seq_num + idx
             # Check PossDup flag
-            assert message.PossDupFlag.as_bool is True
+            assert bool(message.PossDupFlag) is True
             # Check sending time
-            assert message.OrigSendingTime.value_ref == message.SendingTime.value_ref
+            assert message.OrigSendingTime == message.SendingTime
 
     def test_on_resend_request_handles_admin_messages_correctly(
         self, logon_message, messages
@@ -205,14 +209,16 @@ class TestSeqNumManagerApp:
         admin_messages_resend = pipeline_mock.send.mock_calls[0][1][0]
         # Check SequenceReset message is constructed correctly
         assert admin_messages_resend.seq_num == 1
-        assert admin_messages_resend.NewSeqNo.as_int == 3
-        assert admin_messages_resend.PossDupFlag.as_bool is True
+        assert int(admin_messages_resend.NewSeqNo) == 3
+        assert bool(admin_messages_resend.PossDupFlag) is True
 
         # Check first non-admin message starts with correct sequence number
         first_non_admin_message_resend = pipeline_mock.send.mock_calls[1][1][0]
         assert first_non_admin_message_resend.seq_num == 3
 
-    def test_on_receive_no_gaps_adds_messages_to_receive_log(self, messages, base_pipeline):
+    def test_on_receive_no_gaps_adds_messages_to_receive_log(
+        self, messages, base_pipeline
+    ):
         seq_num_app = SeqNumManagerApp(base_pipeline)
 
         for next_message in messages:
@@ -222,7 +228,7 @@ class TestSeqNumManagerApp:
         assert seq_num_app.expected_seq_num == 6
 
         assert all(
-            message.MsgSeqNum.as_int in seq_num_app._receive_log.keys()
+            int(message.MsgSeqNum) in seq_num_app._receive_log.keys()
             for message in messages
         )
 
@@ -258,7 +264,9 @@ class TestSeqNumManagerApp:
             # Expected - ignore
             pass
 
-    def test_check_poss_dup_raises_exception_for_unexpected_sequence_numbers(self, user_notification_message):
+    def test_check_poss_dup_raises_exception_for_unexpected_sequence_numbers(
+        self, user_notification_message
+    ):
         with pytest.raises(SessionError):
             pipeline_mock = MagicMock(BasePipeline)
             seq_num_app = SeqNumManagerApp(pipeline_mock)
