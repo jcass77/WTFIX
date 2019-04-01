@@ -26,26 +26,14 @@ from wtfix.core.exceptions import (
     DuplicateTags,
 )
 from wtfix.protocol.common import Tag, MsgType
-from .collections import FieldDict, FieldList
+from .collections import FieldDict, FieldList, FieldMap
 
 
-class FIXMessage(abc.ABC):
+class FIXMessage(FieldMap, abc.ABC):
     """
     Mixin class that promotes FieldMaps to FIX messages. Provides often-used shortcuts for common tag number
     lookups.
     """
-
-    def __format__(self, format_spec):
-        """
-        :return: name (type): ((tag_name_1, value_1), (tag_name_2, value_2))
-        """
-        return f"{self.name} ({self.type}): {super().__format__(format_spec)}"
-
-    def __str__(self):
-        """
-        :return: type: ((tag_1, value_1), (tag_2, value_2))
-        """
-        return f"{self.type}: {super().__str__()}"
 
     @property
     def type(self):
@@ -105,6 +93,10 @@ class FIXMessage(abc.ABC):
     def target_id(self, value):
         self[Tag.TargetCompID] = value
 
+    @property
+    def fields(self):
+        return self.values()
+
     @abc.abstractmethod
     def copy(self):
         """
@@ -124,6 +116,18 @@ class FIXMessage(abc.ABC):
             raise ValidationError(f"No 'MsgType (35)' specified for {self}.") from e
 
         return self
+
+    def __format__(self, format_spec):
+        """
+        :return: name (type): ((tag_name_1, value_1), (tag_name_2, value_2))
+        """
+        return f"{self.name} ({self.type}): {super().__format__(format_spec)}"
+
+    def __str__(self):
+        """
+        :return: type: ((tag_1, value_1), (tag_2, value_2))
+        """
+        return f"{self.type}: {super().__str__()}"
 
 
 class RawMessage(FIXMessage, FieldDict):

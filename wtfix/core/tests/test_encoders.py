@@ -14,7 +14,7 @@ class TestJSONMessageEncoder:
         fm = FieldDict(
             (1, "a"),
             (2, "b"),
-            *nested_parties_group.fields,
+            *nested_parties_group.values(),
             (3, "c"),
             group_templates={539: [524, 525, 538, 804], 804: [545, 805]},
         )
@@ -28,7 +28,7 @@ class TestJSONMessageEncoder:
             fm = FieldDict(
                 (1, "a"),
                 (2, "b"),
-                *nested_parties_group.fields,
+                *nested_parties_group.values(),
                 (3, "c"),
             )
 
@@ -40,7 +40,7 @@ class TestJSONMessageEncoder:
         fm = FieldList(
             (1, "a"),
             (2, "b"),
-            *nested_parties_group.fields,
+            *nested_parties_group.values(),
             (3, "c"),
         )
 
@@ -63,7 +63,7 @@ def test_serialization_is_idempotent(fieldmap_class, nested_parties_group):
     fields = [
         (1, "a"),
         (2, "b"),
-        *nested_parties_group.fields,
+        *nested_parties_group.values(),
         (3, "c"),
     ]
 

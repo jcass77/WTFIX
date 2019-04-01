@@ -56,21 +56,11 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
 
     @property
     @abc.abstractmethod
-    def data(self) -> Sequence:
+    def data(self):
         """
         Provide direct access to this FieldMap's container, similar to UserDict and UserList.
          
         :return: The underlying container that this FieldMap's Fields are stored in.
-        """
-
-    @property
-    @abc.abstractmethod
-    def fields(self) -> List[Field]:
-        """
-        Get all of the Fields that have been added to this FieldMap. Group instances should be unpacked into
-        their constituent Fields.
-
-        :return: a list of all Field values, including Fields of any nested groups.
         """
 
     @classmethod
@@ -79,17 +69,17 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
         :return: wrap other in tuple to create a Sequence, if required
         """
         try:
-            return other.fields
+            return other.values()
         except AttributeError:
             # Not a FieldMap
             try:
                 if len(other[0]) > 0:
-                    # Might be a sequence valid sequence - use as-is.
+                    # Might be a valid sequence - use as-is.
                     return other
             except TypeError:
                 # Convert to tuple
                 try:
-                    return other,
+                    return (other, )
                 except TypeError:
                     raise ParsingError(f"Cannot process '{other}': not a valid (tag, value) pair.")
 
@@ -101,7 +91,7 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
         :param other: Another FieldMap, Field, (tag, value) tuple, or Sequence of these.
         :return: A new FieldMap, which contains the concatenation of the FieldMap with other.
         """
-        return self.__class__(*itertools.chain(self.fields, self.as_sequence(other)))
+        return self.__class__(*itertools.chain(self.values(), self.as_sequence(other)))
 
     def _compare_fields(self, other_sequence):
 
@@ -111,7 +101,7 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
                 return False
 
             # Sort the sequences to be compared so that we can perform an unordered comparison
-            for other_field, self_field in itertools.zip_longest(sorted(other_sequence), sorted(self.fields)):
+            for other_field, self_field in itertools.zip_longest(sorted(other_sequence), sorted(list(self.values()))):
                 # Compare tags and string-converted values one by one.
                 if self_field.tag != other_field[0] or str(self_field.value) != str(other_field[1]):
                     return False
@@ -136,7 +126,7 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
         :return: True if other is equivalent to this FieldMap, False otherwise.
         """
         try:
-            other_sequence = other.fields
+            other_sequence = list(other.values())
         except AttributeError:
             # 'other' is not a FieldMap, continue.
             other_sequence = other
@@ -155,7 +145,7 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
         """
         :return: Number of fields in this FieldMap, including all fields in repeating groups.
         """
-        return len(self.fields)
+        return len(list(self.values()))
 
     @abc.abstractmethod
     def __setitem__(self, tag: int, value: any):
@@ -192,7 +182,7 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
         """
         Enable iteration over the Fields in a FieldMap
         """
-        yield from self.fields
+        yield from self.values()
 
     @abc.abstractmethod
     def __delitem__(self, tag: int):
@@ -207,7 +197,7 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
         """
         :return: True if the FieldMap contains a Field with the given tag number, False otherwise.
         """
-        for tag_ in self.tags():
+        for tag_ in self.keys():
             if tag_ == tag:
                 return True
 
@@ -250,7 +240,7 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
         :return: The number of occurrences.
         """
         try:
-            return collections.Counter(field.tag for field in self.fields)[tag]
+            return collections.Counter(field.tag for field in list(self.values()))[tag]
         except KeyError:
             return 0
 
@@ -259,7 +249,7 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
         :return: The FIX-compliant, raw binary sequence for this FieldMap.
         """
         buf = b""
-        for field in self.fields:
+        for field in self.values():
             buf += bytes(field)
 
         return buf
@@ -272,7 +262,7 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
         :return: A formatted string representation this Field.
         """
         fields_str = ""
-        for field in self.fields:
+        for field in self.values():
             fields_str += f"{{:{format_spec}}} | ".format(field)
 
         else:
@@ -280,7 +270,7 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
 
         return f"{fields_str}"
 
-    def tags(self) -> Generator[int, None, None]:
+    def keys(self) -> Generator[int, None, None]:
         """
         Get all of the unique tags for the Fields that have been added to this FieldMap.
 
@@ -289,19 +279,24 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
         :return: a generator of integers, representing the unique tag numbers.
         """
         unique_tags = set()
-        for field in self.fields:
+        for field in self.values():
             if field.tag not in unique_tags:
                 unique_tags.add(field.tag)
                 yield field.tag
 
-    def values(self) -> Generator[any, None, None]:
+    def values(self) -> Generator[Field, None, None]:
         """
-        Get the values of all of the Fields that have been added to this FieldMap
+        Get all of the Fields that have been added to this FieldMap. Group instances should be unpacked into
+        their constituent Fields.
 
         :return: a generator of all Field values.
         """
-        for field in self.fields:
-            yield field.value
+        for field in self.data:
+            try:
+                for nested_field in field.values():
+                    yield nested_field
+            except AttributeError:
+                yield field
 
     def get(self, tag: int, default: any = None):
         """
@@ -331,7 +326,7 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
         :return: :return: repr(Field) separated by |
         """
         fields_repr = ""
-        for field in self.fields:
+        for field in self.values():
             fields_repr += f"{repr(field)}, "
         else:
             fields_repr = fields_repr[:-2]
@@ -343,7 +338,7 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
         :return: 'tag_name_1:value_1 | tag_name_2:value_2'
         """
         fields_str = ""
-        for field in self.fields:
+        for field in self.values():
             fields_str += f"({field.tag}, {str(field)}) | "
         else:
             fields_str = fields_str[:-3]
@@ -370,12 +365,8 @@ class FieldList(FieldMap):
         self._data = self._parse_fields(fields)
 
     @property
-    def data(self) -> Sequence:
+    def data(self):
         return self._data
-
-    @property
-    def fields(self) -> List[Field]:
-        return Group.unpack_group_fields(self.data)
 
     @classmethod
     def _parse_fields(cls, fields, **kwargs):
@@ -409,7 +400,7 @@ class FieldList(FieldMap):
         if count > 1:
             raise DuplicateTags(
                 tag,
-                self.fields,
+                self.values(),
                 message=f"Cannot set value: FieldMap contains {count} occurrence(s) of '{tag}'."
             )
 
@@ -431,7 +422,7 @@ class FieldList(FieldMap):
 
         if len(items) == 0:
             # Might be a group instance field - fall back to searching all fields.
-            items = [field for field in self.fields if field.tag == tag]
+            items = [field for field in self.values() if field.tag == tag]
 
             if len(items) == 0:
                 raise TagNotFound(tag, self)
@@ -446,7 +437,7 @@ class FieldList(FieldMap):
         if count > 1:
             raise DuplicateTags(
                 tag,
-                self.fields,
+                self.values(),
                 message=f"Cannot delete tag: FieldMap contains {count} occurrences of '{tag}'."
             )
 
@@ -504,12 +495,8 @@ class FieldDict(FieldMap, GroupTemplateMixin):
         self._data = self._parse_fields(fields)
 
     @property
-    def data(self) -> Sequence:
+    def data(self):
         return self._data
-
-    @property
-    def fields(self) -> List[Field]:
-        return Group.unpack_group_fields(self.data.values())
 
     def _parse_fields(self, fields, **kwargs):
         """
@@ -609,7 +596,7 @@ class FieldDict(FieldMap, GroupTemplateMixin):
             return self._data[tag]  # Shortcut: lookup Field by tag
         except KeyError:
             # Might be a group instance field - fall back to searching all fields.
-            items = [field for field in self.fields if field.tag == tag]
+            items = [field for field in self.values() if field.tag == tag]
 
             if len(items) == 0:
                 raise TagNotFound(tag, self)
@@ -632,6 +619,14 @@ class FieldDict(FieldMap, GroupTemplateMixin):
 
         # Fallback, might be a group tag - search full field list
         return super().__contains__(tag)
+
+    def values(self) -> Generator[Field, None, None]:
+        for field in self.data.values():
+            try:
+                for nested_field in field.values():
+                    yield nested_field
+            except AttributeError:
+                yield field
 
     def clear(self):
         self._data.clear()
@@ -682,32 +677,8 @@ class Group(FieldMap):
             )
 
     @property
-    def data(self) -> Sequence:
+    def data(self):
         return self._instances
-
-    @property
-    def fields(self) -> List[Field]:
-        data = itertools.chain([self.identifier], itertools.chain.from_iterable(self.data))
-        return Group.unpack_group_fields(data)
-
-    @classmethod
-    def unpack_group_fields(cls, data: Iterable[Field]) -> Generator[Field, None, None]:
-        """
-        Parse data recursively, unpacking nested group fields as they are encountered.
-
-        :param data: A sequence of Fields, potentially also containing group fields.
-        :return: The sequence with nested groups unpacked into their constituent Fields.
-        """
-        all_fields = []
-        for field in data:
-            try:
-                # Extend with nested group fields (if any)
-                for nested_field in cls.unpack_group_fields(field.fields):
-                    all_fields.append(nested_field)
-            except AttributeError:
-                all_fields.append(field)
-
-        return all_fields
 
     def _parse_fields(self, identifier, fields, template=None):
         if not fields and int(identifier) == 0:
@@ -717,14 +688,13 @@ class Group(FieldMap):
         if template is None:
             template = self._get_template(identifier)
 
-        return self._parse_instance_fields(fields, template)
+        return self._parse_instance_fields(identifier.tag, fields, template)
 
-    def _parse_instance_fields(self, fields, template):
+    def _parse_instance_fields(self, identifier_tag, fields, template):
 
+        instances = []
         parsed_fields = []
         instance_tags_remaining = set(template)
-        instance_start = 0
-        instance_end = 0
 
         for field in fields:  # Loop over group instances
             if not isinstance(field, Field) and not isinstance(field, Group):
@@ -733,20 +703,16 @@ class Group(FieldMap):
                 except TypeError:
                     raise ParsingError(f"Invalid Field: '{field}' mut be a (tag, value) tuple.")
 
-            if field.tag == self.tag:
-                instance_start += 1
-                instance_end += 1
+            if field.tag == identifier_tag:
                 continue  # Skip over identifier tags
 
             if field.tag not in instance_tags_remaining:
                 if field.tag in template:
                     # Tag belongs to the next instance. Append the current instance to this group.
-                    parsed_fields.append(
-                        FieldList(*fields[instance_start:instance_end])
-                    )
+                    instances.append(FieldList(*parsed_fields))
 
-                    instance_start = instance_end
-                    instance_tags_remaining = set(template)
+                    instance_tags_remaining = set(template)  # Reset group filter
+                    parsed_fields.clear()  # Start parsing the next instance
 
                 else:
                     raise ParsingError(
@@ -754,13 +720,13 @@ class Group(FieldMap):
                     )
 
             instance_tags_remaining.remove(field.tag)
-            instance_end += 1
+            parsed_fields.append(field)
 
-        else:
-            # Add last instance
-            parsed_fields.append(FieldList(*fields[instance_start:instance_end]))
+        if parsed_fields:
+            # Append final instance that was parsed
+            instances.append(FieldList(*parsed_fields))
 
-        return parsed_fields
+        return instances
     
     @classmethod
     def _get_template(cls, group_identifier):
@@ -791,7 +757,7 @@ class Group(FieldMap):
 
         return self.__class__(
             (self.tag, self.size + len(instances)),
-             *itertools.chain(self.fields, itertools.chain.from_iterable(instances))
+             *itertools.chain(self.values(), itertools.chain.from_iterable(instances))
          )
 
     def __eq__(self, other: Union["Group", FieldMap, Sequence[Field], Sequence[tuple]]):
@@ -810,7 +776,7 @@ class Group(FieldMap):
         except AttributeError:
             # Not a Group, try FieldMap
             try:
-                other_sequence = other.fields
+                other_sequence = list(other.values())
             except AttributeError:
                 # Not a FieldMap, use sequence as-is
                 other_sequence = other
@@ -823,7 +789,7 @@ class Group(FieldMap):
                 # Not a tuple, cannot compare
                 return False
         else:
-            other_sequence = other.fields
+            other_sequence = list(other.values())
 
         try:
             if len(self) != len(other_sequence):
@@ -845,12 +811,12 @@ class Group(FieldMap):
 
     def __setitem__(self, index: int, value: Union[FieldMap, Sequence[Field], Sequence[tuple]]):
         try:
-            value_sequence = value.fields
+            value_sequence = list(value.values())
         except AttributeError:
             # Not a FieldMap, use as-is
             value_sequence = value
 
-        instance = self._parse_instance_fields(value_sequence, self.template)
+        instance = self._parse_instance_fields(self.tag, value_sequence, self.template)
         if len(instance) != 1:
             raise ParsingError(f"{value} does not adhere to Group template '{self.template}'.")
 
@@ -858,6 +824,16 @@ class Group(FieldMap):
 
     def __getitem__(self, index):
         return self.instances[index]
+
+    def values(self) -> Generator[Field, None, None]:
+        yield self.identifier  # Produce this group's identifier first
+
+        for field in self.data:
+            try:
+                for nested_field in field.values():
+                    yield nested_field
+            except AttributeError:
+                yield field
 
     def __format__(self, format_spec):
         # Allows groups to be rendered as part of FieldMaps.
