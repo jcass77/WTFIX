@@ -116,15 +116,17 @@ class Settings:
 
         # Look up the specified identifiers
         templates = {
-            identifier:
-            template
-            for identifier, template in session_templates.items() if identifier in identifiers
+            identifier: template
+            for identifier, template in session_templates.items()
+            if identifier in identifiers
         }
 
         if len(templates) != len(identifiers):
             missing_identifiers = identifiers - templates.keys()
             # Some templates could not be found!
-            raise ImproperlyConfigured(f"No group template defined for identifier(s): {missing_identifiers}.")
+            raise ImproperlyConfigured(
+                f"No group template defined for identifier(s): {missing_identifiers}."
+            )
 
         return templates
 
@@ -143,6 +145,7 @@ class SessionSettings:
     Used to promote the settings for a specific session so that it's properties can be accessed
     in the same way as 'Settings' above.
     """
+
     def __init__(self, session_name=None):
         if session_name is None:
             session_name = settings.default_session[0]

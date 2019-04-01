@@ -24,9 +24,7 @@ class JsonResultResponse(dict):
     contains a user-friendly message that can be displayed on-screen.
     """
 
-    def __init__(
-        self, success: bool, message: str, data: Optional[Any] = None
-    ):
+    def __init__(self, success: bool, message: str, data: Optional[Any] = None):
         """
         Given the input parameters, return a new JsonResponse.
 

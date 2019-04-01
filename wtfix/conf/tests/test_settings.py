@@ -45,17 +45,18 @@ class TestSettings:
         del settings.SESSIONS["another_session"]
 
     def test_get_group_templates_returns_default_if_safe(self):
-        assert settings.get_group_templates() == settings.SESSIONS["default"]["GROUP_TEMPLATES"]
+        assert (
+            settings.get_group_templates()
+            == settings.SESSIONS["default"]["GROUP_TEMPLATES"]
+        )
 
-    def test_get_group_templates_returns_templates_for_only_those_identifiers_specified(self):
+    def test_get_group_templates_returns_templates_for_only_those_identifiers_specified(
+        self
+    ):
         orig_templates = settings.SESSIONS["default"]["GROUP_TEMPLATES"]
         new_templates = {
             **orig_templates,
-            **{
-                1: [11, 12, 13],
-                2: [21, 22, 23],
-                3: [31, 32, 33]
-            }
+            **{1: [11, 12, 13], 2: [21, 22, 23], 3: [31, 32, 33]},
         }
 
         settings.SESSIONS["default"]["GROUP_TEMPLATES"] = new_templates

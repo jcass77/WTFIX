@@ -87,6 +87,6 @@ SESSIONS = {
         #         ]
         #   }
         #
-        "GROUP_TEMPLATES": {}
+        "GROUP_TEMPLATES": {},
     }
 }

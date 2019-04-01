@@ -193,7 +193,7 @@ class TestBasePipeline:
 
     @pytest.mark.asyncio
     async def test_stop_cancels_all_tasks_on_stop_timeout(
-            self, unsync_event_loop, three_level_app_chain
+        self, unsync_event_loop, three_level_app_chain
     ):
         with pytest.raises(futures.CancelledError):
             pipeline = BasePipeline(installed_apps=three_level_app_chain)
@@ -210,7 +210,7 @@ class TestBasePipeline:
 
     @pytest.mark.asyncio
     async def test_stop_allows_only_one_stop_process_to_run_concurrently(
-            self, unsync_event_loop, three_level_app_chain
+        self, unsync_event_loop, three_level_app_chain
     ):
         pipeline = BasePipeline(installed_apps=three_level_app_chain)
 
@@ -232,7 +232,7 @@ class TestBasePipeline:
 
     @pytest.mark.asyncio
     async def test_stop_no_op_if_already_stopped(
-            self, unsync_event_loop, three_level_app_chain
+        self, unsync_event_loop, three_level_app_chain
     ):
         pipeline = BasePipeline(installed_apps=three_level_app_chain)
 

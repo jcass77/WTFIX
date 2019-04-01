@@ -33,7 +33,9 @@ class TestAuthenticationApp:
 
         assert auth_app.test_mode is False
 
-    def test_on_logon_raises_exception_on_wrong_test_indicator_response(self, base_pipeline):
+    def test_on_logon_raises_exception_on_wrong_test_indicator_response(
+        self, base_pipeline
+    ):
         with pytest.raises(SessionError):
             logon_msg = admin.LogonMessage("", "")
             logon_msg.ResetSeqNumFlag = True
@@ -42,7 +44,9 @@ class TestAuthenticationApp:
             auth_app = AuthenticationApp(base_pipeline)
             auth_app.on_logon(logon_msg)
 
-    def test_on_logon_raises_exception_on_wrong_reset_sequence_number_response(self, base_pipeline):
+    def test_on_logon_raises_exception_on_wrong_reset_sequence_number_response(
+        self, base_pipeline
+    ):
         with pytest.raises(SessionError):
             logon_msg = admin.LogonMessage("", "")
             logon_msg.ResetSeqNumFlag = False
@@ -212,7 +216,9 @@ class TestSeqNumManagerApp:
         first_non_admin_message_resend = pipeline_mock.send.mock_calls[1][1][0]
         assert first_non_admin_message_resend.seq_num == 3
 
-    def test_on_receive_no_gaps_adds_messages_to_receive_log(self, messages, base_pipeline):
+    def test_on_receive_no_gaps_adds_messages_to_receive_log(
+        self, messages, base_pipeline
+    ):
         seq_num_app = SeqNumManagerApp(base_pipeline)
 
         for next_message in messages:
@@ -258,7 +264,9 @@ class TestSeqNumManagerApp:
             # Expected - ignore
             pass
 
-    def test_check_poss_dup_raises_exception_for_unexpected_sequence_numbers(self, user_notification_message):
+    def test_check_poss_dup_raises_exception_for_unexpected_sequence_numbers(
+        self, user_notification_message
+    ):
         with pytest.raises(SessionError):
             pipeline_mock = MagicMock(BasePipeline)
             seq_num_app = SeqNumManagerApp(pipeline_mock)

@@ -57,9 +57,13 @@ class Field(collections.abc.MutableSequence):
     UNKNOWN_TAG = "Unknown"
 
     # Use slots instead of __dict__ for storing instance attributes - more memory efficient.
-    __slots__ = ("_tag", "_value", "__weakref__",)
+    __slots__ = ("_tag", "_value", "__weakref__")
 
-    def __init__(self, tag: Union[numbers.Integral, str, bytes], value: Union[numbers.Integral, bool, str, bytes, None]):
+    def __init__(
+        self,
+        tag: Union[numbers.Integral, str, bytes],
+        value: Union[numbers.Integral, bool, str, bytes, None],
+    ):
         """
         Create new instance of Field(tag, value)
 
@@ -79,7 +83,9 @@ class Field(collections.abc.MutableSequence):
     def tag(self, value: int):
 
         tag_error_msg = f"Tag '{value}' must be an integer, not {type(value).__name__}."
-        if isinstance(value, numbers.Number) and not isinstance(value, numbers.Integral):
+        if isinstance(value, numbers.Number) and not isinstance(
+            value, numbers.Integral
+        ):
             # Don't implicitly convert floats or Decimals to tag numbers.
             raise exceptions.InvalidField(tag_error_msg)
         try:
@@ -124,7 +130,9 @@ class Field(collections.abc.MutableSequence):
         :raises: InvalidField if iterable is the wrong length or the (tag, value) pair does not pass validation.
         """
         if len(iterable) != 2:
-            raise exceptions.InvalidField(f"{cls.__name__} can only be constructed from iterables with length 2.")
+            raise exceptions.InvalidField(
+                f"{cls.__name__} can only be constructed from iterables with length 2."
+            )
 
         return cls(*iterable)
 
@@ -137,7 +145,9 @@ class Field(collections.abc.MutableSequence):
         :return: A generator of parsed Field objects.
         """
         if octets[-1] != settings.SOH_INT:
-            raise ParsingError(f"Could not parse {octets} into a new Field: No SOH found at end of byte sequence!")
+            raise ParsingError(
+                f"Could not parse {octets} into a new Field: No SOH found at end of byte sequence!"
+            )
 
         # Remove last SOH at end of byte stream and split into fields
         raw_pairs = octets.rstrip(settings.SOH).split(settings.SOH)
@@ -235,11 +245,19 @@ class Field(collections.abc.MutableSequence):
             return operand
 
         if operand_length == 2 and operand[0] != self.tag:
-            raise (TypeError(f"Cannot perform arithmetic operation on different tag numbers: "
-                             f"{self.tag} and {operand[0]}."))
+            raise (
+                TypeError(
+                    f"Cannot perform arithmetic operation on different tag numbers: "
+                    f"{self.tag} and {operand[0]}."
+                )
+            )
         if operand_length > 2:
-            raise(TypeError(f"Cannot perform arithmetic operation with {operand} - "
-                            f"sequence contains more than 2 elements."))
+            raise (
+                TypeError(
+                    f"Cannot perform arithmetic operation with {operand} - "
+                    f"sequence contains more than 2 elements."
+                )
+            )
 
         return operand[1]
 
@@ -262,11 +280,15 @@ class Field(collections.abc.MutableSequence):
                 return self.value
             raise IndexError(f"{cls.__name__} index out of range")
         else:
-            raise TypeError(f"{cls.__name__} indices must be integers or slices, not {type(item).__name__}.")
+            raise TypeError(
+                f"{cls.__name__} indices must be integers or slices, not {type(item).__name__}."
+            )
 
     def __setitem__(self, key, value):
         if isinstance(key, numbers.Number) and not isinstance(key, numbers.Integral):
-            raise TypeError(f"{type(self).__name__} indices must be integers, not {type(key).__name__}.")
+            raise TypeError(
+                f"{type(self).__name__} indices must be integers, not {type(key).__name__}."
+            )
 
         if isinstance(key, numbers.Integral):
             if key == 0:
@@ -276,7 +298,9 @@ class Field(collections.abc.MutableSequence):
             else:
                 raise IndexError(f"{type(self).__name__} index out of range")
         else:
-            raise TypeError(f"{type(self).__name__} indices must be integers, not {type(key).__name__}.")
+            raise TypeError(
+                f"{type(self).__name__} indices must be integers, not {type(key).__name__}."
+            )
 
     def __lt__(self, other):
         return self._perform_operation(operator.lt, other)
@@ -303,7 +327,9 @@ class Field(collections.abc.MutableSequence):
         return self._perform_operation(operator.add, self._validated_operand(other))
 
     def __floordiv__(self, other):
-        return self._perform_operation(operator.floordiv, self._validated_operand(other))
+        return self._perform_operation(
+            operator.floordiv, self._validated_operand(other)
+        )
 
     def __invert__(self):
         return self._perform_operation(operator.invert)
@@ -336,31 +362,58 @@ class Field(collections.abc.MutableSequence):
         return self._perform_operation(operator.truediv, self._validated_operand(other))
 
     def __iadd__(self, other):
-        return Field(self.tag, self._perform_operation(operator.add, self._validated_operand(other)))
+        return Field(
+            self.tag,
+            self._perform_operation(operator.add, self._validated_operand(other)),
+        )
 
     def __ifloordiv__(self, other):
-        return Field(self.tag, self._perform_operation(operator.floordiv, self._validated_operand(other)))
+        return Field(
+            self.tag,
+            self._perform_operation(operator.floordiv, self._validated_operand(other)),
+        )
 
     def __ilshift__(self, other):
-        return Field(self.tag, self._perform_operation(operator.lshift, self._validated_operand(other)))
+        return Field(
+            self.tag,
+            self._perform_operation(operator.lshift, self._validated_operand(other)),
+        )
 
     def __imod__(self, other):
-        return Field(self.tag, self._perform_operation(operator.mod, self._validated_operand(other)))
+        return Field(
+            self.tag,
+            self._perform_operation(operator.mod, self._validated_operand(other)),
+        )
 
     def __imul__(self, other):
-        return Field(self.tag, self._perform_operation(operator.mul, self._validated_operand(other)))
+        return Field(
+            self.tag,
+            self._perform_operation(operator.mul, self._validated_operand(other)),
+        )
 
     def __ipow__(self, other):
-        return Field(self.tag, self._perform_operation(operator.pow, self._validated_operand(other)))
+        return Field(
+            self.tag,
+            self._perform_operation(operator.pow, self._validated_operand(other)),
+        )
 
     def __irshift__(self, other):
-        return Field(self.tag, self._perform_operation(operator.rshift, self._validated_operand(other)))
+        return Field(
+            self.tag,
+            self._perform_operation(operator.rshift, self._validated_operand(other)),
+        )
 
     def __isub__(self, other):
-        return Field(self.tag, self._perform_operation(operator.sub, self._validated_operand(other)))
+        return Field(
+            self.tag,
+            self._perform_operation(operator.sub, self._validated_operand(other)),
+        )
 
     def __itruediv__(self, other):
-        return Field(self.tag, self._perform_operation(operator.truediv, self._validated_operand(other)))
+        return Field(
+            self.tag,
+            self._perform_operation(operator.truediv, self._validated_operand(other)),
+        )
 
     def __int__(self):
         """
@@ -408,7 +461,9 @@ class Field(collections.abc.MutableSequence):
         if "t" in format_spec:
             if self.name == self.UNKNOWN_TAG:
                 return f"{self.tag}: {self.value}"
-            return f"{self.name} ({self.tag}): {{:{format_spec.replace('t', '')}}}".format(self.value)
+            return f"{self.name} ({self.tag}): {{:{format_spec.replace('t', '')}}}".format(
+                self.value
+            )
         else:
             return self.value.__format__(format_spec)
 

@@ -40,6 +40,7 @@ class MessageProcessingError(Exception):
     pipeline to be stopped and the default implementation will just log the error before proceeding to the next
     message.
     """
+
     pass
 
 
@@ -50,6 +51,7 @@ class StopMessageProcessing(Exception):
     This should be used to interrupt message processing during normal operation (i.e. as part of an optimization
     or if the message is not relevant to other applications in the pipeline.
     """
+
     pass
 
 
@@ -62,6 +64,7 @@ class SessionError(Exception):
     Fatal session error from which no recovery is possible. A SessionError exception won't be handled by the
     pipeline and will cause an abnormal termination.
     """
+
     pass
 
 

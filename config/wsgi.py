@@ -48,9 +48,11 @@ def get_wsgi_application(session_name=None):
             f"'{RESTfulServiceApp.name}' was not found in the pipeline. It might be unnecessary to run "
             f"WTFIX with a Flask server (unless any of your custom apps also need to serve HTTP requests). "
             f"You should probably use 'run_client.py' instead if you want to use WTFIX as a standalone application."
-       )
+        )
 
-    atexit.register(app.fix_pipeline.stop)  # Stop the pipeline when the server is shut down
+    atexit.register(
+        app.fix_pipeline.stop
+    )  # Stop the pipeline when the server is shut down
     app.fix_pipeline.start()
 
     return app

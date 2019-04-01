@@ -99,8 +99,7 @@ class TestRawMessage:
         )
 
         assert (
-            str(rm)
-            == "a: {(8, FIX.4.4) | (9, 12) | (35, a) | "
+            str(rm) == "a: {(8, FIX.4.4) | (9, 12) | (35, a) | "
             "(34, 1) | (10, 15)}, with byte-encoded content: b'12345\\x0167890\\x01'"
         )
 
@@ -131,10 +130,7 @@ class TestGenericMessage:
         m = GenericMessage((35, "a"), (2, "bb"))
         m += Field(3, "ccc")
 
-        assert (
-            str(m)
-            == "a: [(35, a) | (2, bb) | (3, ccc)]"
-        )
+        assert str(m) == "a: [(35, a) | (2, bb) | (3, ccc)]"
 
 
 class TestOptimizedGenericMessage:

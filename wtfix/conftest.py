@@ -70,20 +70,10 @@ def nested_parties_group():
         template=[524, 525, 538, 804],
     )
     nested_sub_party_1 = Group(
-        (804, 2),
-        (545, "c"),
-        (805, "cc"),
-        (545, "d"),
-        (805, "dd"),
-        template=[545, 805],
+        (804, 2), (545, "c"), (805, "cc"), (545, "d"), (805, "dd"), template=[545, 805]
     )
     nested_sub_party_2 = Group(
-        (804, 2),
-        (545, "e"),
-        (805, "ee"),
-        (545, "f"),
-        (805, "ff"),
-        template=[545, 805],
+        (804, 2), (545, "e"), (805, "ee"), (545, "f"), (805, "ff"), template=[545, 805]
     )
 
     nested_party[0][nested_sub_party_1.tag] = nested_sub_party_1

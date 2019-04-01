@@ -10,7 +10,9 @@ from wtfix.core.exceptions import InvalidField, ParsingError
 
 
 class TestField:
-    def test_constructing_with_string_tag_that_cannot_be_converted_to_int_raises_exception(self):
+    def test_constructing_with_string_tag_that_cannot_be_converted_to_int_raises_exception(
+        self
+    ):
         with pytest.raises(InvalidField):
             Field("abc", "k")
 
@@ -101,7 +103,10 @@ class TestField:
         assert f2 == f1
         assert type(f2) is Field
 
-        assert next(Field.fields_frombytes(b"1234=abcdef" + settings.SOH)) == (1234, "abcdef")
+        assert next(Field.fields_frombytes(b"1234=abcdef" + settings.SOH)) == (
+            1234,
+            "abcdef",
+        )
 
     def test_fields_frombytes_complex(self):
         # Split a long byte string into fields

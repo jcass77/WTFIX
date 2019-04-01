@@ -26,7 +26,8 @@ from wtfix.core.exceptions import (
     UnknownTag,
     DuplicateTags,
     ParsingError,
-    ImproperlyConfigured)
+    ImproperlyConfigured,
+)
 from wtfix.core.utils import GroupTemplateMixin
 from wtfix.message.field import Field
 from wtfix.protocol import common
@@ -64,7 +65,9 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
         """
 
     @classmethod
-    def as_sequence(cls, other: Union["FieldMap", Field, tuple, Sequence[Field], Sequence[tuple]]) -> Union[Sequence, Generator[Field, None, None]]:
+    def as_sequence(
+        cls, other: Union["FieldMap", Field, tuple, Sequence[Field], Sequence[tuple]]
+    ) -> Union[Sequence, Generator[Field, None, None]]:
         """
         :return: wrap other in tuple to create a Sequence, if required
         """
@@ -79,11 +82,15 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
             except TypeError:
                 # Convert to tuple
                 try:
-                    return (other, )
+                    return (other,)
                 except TypeError:
-                    raise ParsingError(f"Cannot process '{other}': not a valid (tag, value) pair.")
+                    raise ParsingError(
+                        f"Cannot process '{other}': not a valid (tag, value) pair."
+                    )
 
-    def __add__(self, other: Union["FieldMap", Field, tuple, Sequence[Field], Sequence[tuple]]) -> "FieldMap":
+    def __add__(
+        self, other: Union["FieldMap", Field, tuple, Sequence[Field], Sequence[tuple]]
+    ) -> "FieldMap":
         """
         Add another FieldMap to this FieldMap, or add a Field or a (tag, value) tuple or Sequences of these
         to the FieldMap.
@@ -96,14 +103,20 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
     def _compare_fields(self, other_sequence):
 
         try:
-            if not all(len(field) == 2 and type(field[0]) is int for field in other_sequence):
+            if not all(
+                len(field) == 2 and type(field[0]) is int for field in other_sequence
+            ):
                 # Value being compared to must be a tuple of (tag, value) pairs.
                 return False
 
             # Sort the sequences to be compared so that we can perform an unordered comparison
-            for other_field, self_field in itertools.zip_longest(sorted(other_sequence), sorted(list(self.values()))):
+            for other_field, self_field in itertools.zip_longest(
+                sorted(other_sequence), sorted(list(self.values()))
+            ):
                 # Compare tags and string-converted values one by one.
-                if self_field.tag != other_field[0] or str(self_field.value) != str(other_field[1]):
+                if self_field.tag != other_field[0] or str(self_field.value) != str(
+                    other_field[1]
+                ):
                     return False
 
         except (TypeError, AttributeError):
@@ -112,7 +125,9 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
 
         return True
 
-    def __eq__(self, other: Union["FieldMap", Sequence[Field], Sequence[tuple]]) -> bool:
+    def __eq__(
+        self, other: Union["FieldMap", Sequence[Field], Sequence[tuple]]
+    ) -> bool:
         """
         Compare this FieldMap to other.
 
@@ -226,11 +241,7 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
             # Then, see if a Field with that tag number is available in this FieldMap.
             return self[tag]
         except KeyError as e:
-            raise TagNotFound(
-                tag,
-                self,
-                f"Tag {tag} not found in {self!r}.",
-            ) from e
+            raise TagNotFound(tag, self, f"Tag {tag} not found in {self!r}.") from e
 
     def count(self, tag: int) -> int:
         """
@@ -388,10 +399,14 @@ class FieldList(FieldMap):
             try:
                 # Add new field
                 parsed_fields.append(
-                    Field(*field)  # Make sure that this is an actual, well-formed Field.
+                    Field(
+                        *field
+                    )  # Make sure that this is an actual, well-formed Field.
                 )
             except TypeError:
-                raise ParsingError(f"Invalid Field: '{field}' mut be a (tag, value) tuple.")
+                raise ParsingError(
+                    f"Invalid Field: '{field}' mut be a (tag, value) tuple."
+                )
 
         return parsed_fields
 
@@ -401,7 +416,7 @@ class FieldList(FieldMap):
             raise DuplicateTags(
                 tag,
                 self.values(),
-                message=f"Cannot set value: FieldMap contains {count} occurrence(s) of '{tag}'."
+                message=f"Cannot set value: FieldMap contains {count} occurrence(s) of '{tag}'.",
             )
 
         if not (isinstance(value, Field) or isinstance(value, Group)):
@@ -410,9 +425,7 @@ class FieldList(FieldMap):
 
         if tag in self:
             # Update value, retaining the Field's position in the list
-            self._data = [
-                value if field.tag == tag else field for field in self.data
-            ]
+            self._data = [value if field.tag == tag else field for field in self.data]
         else:
             # Add a new Field
             self.data.append(value)
@@ -438,7 +451,7 @@ class FieldList(FieldMap):
             raise DuplicateTags(
                 tag,
                 self.values(),
-                message=f"Cannot delete tag: FieldMap contains {count} occurrences of '{tag}'."
+                message=f"Cannot delete tag: FieldMap contains {count} occurrences of '{tag}'.",
             )
 
         idx = 0
@@ -518,7 +531,9 @@ class FieldDict(FieldMap, GroupTemplateMixin):
                 try:
                     field = Field(*fields[idx])
                 except TypeError:
-                    raise ParsingError(f"Invalid Field: '{field}' mut be a (tag, value) tuple.")
+                    raise ParsingError(
+                        f"Invalid Field: '{field}' mut be a (tag, value) tuple."
+                    )
 
             if field.tag in tags_seen:
                 raise DuplicateTags(
@@ -560,7 +575,9 @@ class FieldDict(FieldMap, GroupTemplateMixin):
                 try:
                     field = Field(*fields[idx])
                 except TypeError:
-                    raise ParsingError(f"Invalid Field: '{field}' mut be a (tag, value) tuple.")
+                    raise ParsingError(
+                        f"Invalid Field: '{field}' mut be a (tag, value) tuple."
+                    )
 
             if field.tag not in instance_template:
                 # No more group fields to process - done.
@@ -578,7 +595,11 @@ class FieldDict(FieldMap, GroupTemplateMixin):
             parsed_fields.append(field)
             idx += 1
 
-        return Group(group_identifier, *parsed_fields, template=self.group_templates[group_identifier.tag])
+        return Group(
+            group_identifier,
+            *parsed_fields,
+            template=self.group_templates[group_identifier.tag],
+        )
 
     def __setitem__(self, tag: int, value: any):
         if isinstance(value, Group):
@@ -661,13 +682,17 @@ class Group(FieldMap):
         provided then tries to find a template corresponding to identifier.tag in the default GROUP_TEMPLATES setting.
         :raises: ImproperlyConfigured if no template is specified and no template could be found in settings.
         """
-        group_identifier = Field(*identifier)  # First, make sure the group identifier is a valid Field.
+        group_identifier = Field(
+            *identifier
+        )  # First, make sure the group identifier is a valid Field.
         if template is None:
             template = self._get_template(group_identifier)
 
         self.identifier = group_identifier
         self._instance_template = template
-        self._instances = self._parse_fields(group_identifier, fields, template=template)
+        self._instances = self._parse_fields(
+            group_identifier, fields, template=template
+        )
 
         if len(self._instances) != self.size:
             raise ParsingError(
@@ -684,7 +709,7 @@ class Group(FieldMap):
         if not fields and int(identifier) == 0:
             # Empty group
             return []
-        
+
         if template is None:
             template = self._get_template(identifier)
 
@@ -701,7 +726,9 @@ class Group(FieldMap):
                 try:
                     field = Field(*field)
                 except TypeError:
-                    raise ParsingError(f"Invalid Field: '{field}' mut be a (tag, value) tuple.")
+                    raise ParsingError(
+                        f"Invalid Field: '{field}' mut be a (tag, value) tuple."
+                    )
 
             if field.tag == identifier_tag:
                 continue  # Skip over identifier tags
@@ -727,19 +754,21 @@ class Group(FieldMap):
             instances.append(FieldList(*parsed_fields))
 
         return instances
-    
+
     @classmethod
     def _get_template(cls, group_identifier):
-            try:
-                return settings.default_session.GROUP_TEMPLATES[group_identifier.tag]
-            except KeyError:
-                raise (
-                    ImproperlyConfigured(
-                        f"No template available for repeating group identifier {group_identifier}."
-                    )
+        try:
+            return settings.default_session.GROUP_TEMPLATES[group_identifier.tag]
+        except KeyError:
+            raise (
+                ImproperlyConfigured(
+                    f"No template available for repeating group identifier {group_identifier}."
                 )
+            )
 
-    def __add__(self, other: Union["Group", FieldMap, Sequence[Field], Sequence[tuple]]) -> "Group":
+    def __add__(
+        self, other: Union["Group", FieldMap, Sequence[Field], Sequence[tuple]]
+    ) -> "Group":
         """
         Add group instance(s) to this group.
 
@@ -753,12 +782,14 @@ class Group(FieldMap):
         :return: A new Group, which includes the newly added instance fields.
         :return: A new Group, which includes the newly added instance fields.
         """
-        instances = self._parse_fields(self.identifier, self.as_sequence(other), template=self.template)
+        instances = self._parse_fields(
+            self.identifier, self.as_sequence(other), template=self.template
+        )
 
         return self.__class__(
             (self.tag, self.size + len(instances)),
-             *itertools.chain(self.values(), itertools.chain.from_iterable(instances))
-         )
+            *itertools.chain(self.values(), itertools.chain.from_iterable(instances)),
+        )
 
     def __eq__(self, other: Union["Group", FieldMap, Sequence[Field], Sequence[tuple]]):
         """
@@ -771,7 +802,9 @@ class Group(FieldMap):
         :return: True if other is equivalent to this Group, False otherwise.
         """
         try:
-            if self.identifier.tag != other.identifier.tag or str(self.identifier.value) != str(other.identifier.value):
+            if self.identifier.tag != other.identifier.tag or str(
+                self.identifier.value
+            ) != str(other.identifier.value):
                 return False
         except AttributeError:
             # Not a Group, try FieldMap
@@ -782,7 +815,9 @@ class Group(FieldMap):
                 other_sequence = other
 
             try:
-                if self.identifier.tag != other_sequence[0][0] or str(self.identifier.value) != str(other_sequence[0][1]):
+                if self.identifier.tag != other_sequence[0][0] or str(
+                    self.identifier.value
+                ) != str(other_sequence[0][1]):
                     return False
 
             except KeyError:
@@ -809,7 +844,9 @@ class Group(FieldMap):
 
         return length
 
-    def __setitem__(self, index: int, value: Union[FieldMap, Sequence[Field], Sequence[tuple]]):
+    def __setitem__(
+        self, index: int, value: Union[FieldMap, Sequence[Field], Sequence[tuple]]
+    ):
         try:
             value_sequence = list(value.values())
         except AttributeError:
@@ -818,7 +855,9 @@ class Group(FieldMap):
 
         instance = self._parse_instance_fields(self.tag, value_sequence, self.template)
         if len(instance) != 1:
-            raise ParsingError(f"{value} does not adhere to Group template '{self.template}'.")
+            raise ParsingError(
+                f"{value} does not adhere to Group template '{self.template}'."
+            )
 
         self._instances[index] = instance[0]
 
@@ -844,10 +883,14 @@ class Group(FieldMap):
                 group_instances_str += f"{{:{format_spec}}} | ".format(instance)
             else:
                 group_instances_str = group_instances_str[:-3]
-            return f"[{{:{format_spec}}}] | {group_instances_str}".format(self.identifier)
+            return f"[{{:{format_spec}}}] | {group_instances_str}".format(
+                self.identifier
+            )
 
         else:
-            raise ValueError(f"Unknown format code '{format_spec}' for object of type 'Group'.")
+            raise ValueError(
+                f"Unknown format code '{format_spec}' for object of type 'Group'."
+            )
 
     def __repr__(self):
         """
@@ -859,7 +902,9 @@ class Group(FieldMap):
         else:
             group_instances_repr = group_instances_repr[:-2]
 
-        group_instances_repr = group_instances_repr.replace("FieldList(", "").replace("))", ")")
+        group_instances_repr = group_instances_repr.replace("FieldList(", "").replace(
+            "))", ")"
+        )
 
         return f"{self.__class__.__name__}({repr(self.identifier)}, {group_instances_repr})"
 

@@ -34,24 +34,14 @@ class TestJSONMessageDecoder:
     def test_default_nested_fieldlist_encodes_as_expected(
         self, nested_parties_group, encoded_list_sample
     ):
-        fm = FieldList(
-            (1, "a"),
-            (2, "b"),
-            *nested_parties_group.values(),
-            (3, "c"),
-        )
+        fm = FieldList((1, "a"), (2, "b"), *nested_parties_group.values(), (3, "c"))
 
         assert decoders.from_json(encoded_list_sample) == fm
 
 
 def test_serialization_is_idempotent(fieldmap_class, nested_parties_group):
     kwargs = {}
-    fields = [
-        (1, "a"),
-        (2, "b"),
-        *nested_parties_group.values(),
-        (3, "c"),
-    ]
+    fields = [(1, "a"), (2, "b"), *nested_parties_group.values(), (3, "c")]
 
     if fieldmap_class.__name__ == FieldDict.__name__:
         kwargs["group_templates"] = {539: [524, 525, 538, 804], 804: [545, 805]}

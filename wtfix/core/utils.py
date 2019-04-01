@@ -194,6 +194,7 @@ class GroupTemplateMixin:
     """
     Mixin for maintaining a dictionary of repeating group templates.
     """
+
     @property
     def group_templates(self):
         """

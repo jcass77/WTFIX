@@ -14,7 +14,8 @@ from wtfix.core.exceptions import (
     TagNotFound,
     DuplicateTags,
     ImproperlyConfigured,
-    ParsingError)
+    ParsingError,
+)
 
 
 class TestFieldMap:
@@ -58,7 +59,7 @@ class TestFieldMap:
         assert fm[3] == "ccc"
 
     def test_add_sequence_of_fields(self, fieldmap_impl_abc_123):
-        fm = fieldmap_impl_abc_123 + (Field(3, "ccc"), Field(4, "dddd"),)
+        fm = fieldmap_impl_abc_123 + (Field(3, "ccc"), Field(4, "dddd"))
         assert len(fm) == 4
         assert fm[3] == "ccc"
         assert fm[4] == "dddd"
@@ -80,13 +81,19 @@ class TestFieldMap:
     def test_eq(self, fieldmap_class, fieldmap_impl_abc_123):
         assert fieldmap_impl_abc_123 == fieldmap_class((1, "abc"), (2, 123))
 
-    def test_eq_different_lengths_returns_false(self, fieldmap_class, fieldmap_impl_abc_123):
+    def test_eq_different_lengths_returns_false(
+        self, fieldmap_class, fieldmap_impl_abc_123
+    ):
         assert fieldmap_impl_abc_123 != fieldmap_class((1, "abc"))
 
-    def test_eq_different_types_converts_to_string(self, fieldmap_class, fieldmap_impl_abc_123):
+    def test_eq_different_types_converts_to_string(
+        self, fieldmap_class, fieldmap_impl_abc_123
+    ):
         assert fieldmap_impl_abc_123 == fieldmap_class((1, "abc"), (2, "123"))
 
-    def test_eq_ordering_is_not_significant(self, fieldmap_class, fieldmap_impl_abc_123):
+    def test_eq_ordering_is_not_significant(
+        self, fieldmap_class, fieldmap_impl_abc_123
+    ):
         assert fieldmap_impl_abc_123 == fieldmap_class((2, 123), (1, "abc"))
 
     def test_eq_list_of_tuples(self, fieldmap_class, fieldmap_impl_abc_123):
@@ -95,7 +102,9 @@ class TestFieldMap:
     def test_eq_list_of_fields(self, fieldmap_class, fieldmap_impl_abc_123):
         assert fieldmap_impl_abc_123 == [Field(1, "abc"), Field(2, 123)]
 
-    def test_eq_unequal_tuples_returns_false(self, fieldmap_class, fieldmap_impl_abc_123):
+    def test_eq_unequal_tuples_returns_false(
+        self, fieldmap_class, fieldmap_impl_abc_123
+    ):
         assert fieldmap_impl_abc_123 != [(1, "abc"), (2, 123, 456)]
 
     def test_eq_incompatible_type(self, fieldmap_class, fieldmap_impl_abc_123):
@@ -129,7 +138,9 @@ class TestFieldMap:
         fm[2] = "aa"
         assert fm[2] == "aa"
         assert len(fm) == 3
-        assert list(fm.values())[1].tag == 2  # Confirm position in FieldMap is maintained
+        assert (
+            list(fm.values())[1].tag == 2
+        )  # Confirm position in FieldMap is maintained
 
     def test_setitem_replace_by_tag_name(self, fieldmap_class):
         fm = fieldmap_class((1, "a"), (Tag.MsgType, "b"))
@@ -239,18 +250,26 @@ class TestFieldMap:
 
         fields = [field for field in fieldmap_impl_abc_123]
         assert fields == [
-            (1, 'abc'),
+            (1, "abc"),
             (2, 123),
             (539, 2),
-                (524, 'a'), (525, 'aa'), (538, 'aaa'),
-                (804, 2),
-                    (545, 'c'), (805, 'cc'),
-                    (545, 'd'), (805, 'dd'),
-                (524, 'b'), (525, 'bb'), (538, 'bbb'),
-                (804, 2),
-                    (545, 'e'), (805, 'ee'),
-                    (545, 'f'), (805, 'ff'),
-            (3, 'c')
+            (524, "a"),
+            (525, "aa"),
+            (538, "aaa"),
+            (804, 2),
+            (545, "c"),
+            (805, "cc"),
+            (545, "d"),
+            (805, "dd"),
+            (524, "b"),
+            (525, "bb"),
+            (538, "bbb"),
+            (804, 2),
+            (545, "e"),
+            (805, "ee"),
+            (545, "f"),
+            (805, "ff"),
+            (3, "c"),
         ]
 
     def test_delitem(self, fieldmap_impl_abc_123):
@@ -317,14 +336,22 @@ class TestFieldMap:
         assert fm.count(545) == 4
 
     def test_bytes(self, fieldmap_impl_abc_123):
-        assert bytes(fieldmap_impl_abc_123) == b"1=abc" + settings.SOH + b"2=123" + settings.SOH
+        assert (
+            bytes(fieldmap_impl_abc_123)
+            == b"1=abc" + settings.SOH + b"2=123" + settings.SOH
+        )
 
     def test_keys(self, fieldmap_impl_abc_123, nested_parties_group):
         fieldmap_impl_abc_123[nested_parties_group.tag] = nested_parties_group
-        assert all(tag in fieldmap_impl_abc_123.keys() for tag in [1, 2, 539, 524, 525, 538, 804, 545, 805])
+        assert all(
+            tag in fieldmap_impl_abc_123.keys()
+            for tag in [1, 2, 539, 524, 525, 538, 804, 545, 805]
+        )
 
     def test_values(self, fieldmap_impl_abc_123):
-        assert all(value in fieldmap_impl_abc_123.values() for value in [(1, "abc"), (2, 123)])
+        assert all(
+            value in fieldmap_impl_abc_123.values() for value in [(1, "abc"), (2, 123)]
+        )
 
     def test_get(self, fieldmap_class):
         fm = fieldmap_class((1, "abc"))
@@ -348,7 +375,6 @@ class TestFieldMap:
 
 
 class TestFieldList:
-
     def test_data_getter(self):
         fm = FieldList((1, "abc"), (2, 123))
         assert isinstance(fm.data, list)
@@ -394,7 +420,6 @@ class TestFieldList:
 
 
 class TestFieldDict:
-
     def test_parse_fields_duplicate_tags_raises_exception(self):
         with pytest.raises(DuplicateTags):
             FieldDict((1, "a"), (1, "b"))
@@ -405,7 +430,7 @@ class TestFieldDict:
             (2, "b"),
             *routing_id_group.values(),
             (3, "e"),
-            group_templates={Tag.NoRoutingIDs: [Tag.RoutingType, Tag.RoutingID]}
+            group_templates={Tag.NoRoutingIDs: [Tag.RoutingType, Tag.RoutingID]},
         )
 
         assert Tag.NoRoutingIDs in fm
@@ -595,9 +620,7 @@ class TestFieldDict:
         )
 
         mdr_message[Tag.NoMDEntryTypes] = Group(
-            (Tag.NoMDEntryTypes, 1),
-            (Tag.MDEntryType, "h"),
-            template=[Tag.MDEntryType],
+            (Tag.NoMDEntryTypes, 1), (Tag.MDEntryType, "h"), template=[Tag.MDEntryType]
         )
 
         mdr_message[9956] = 1
@@ -681,11 +704,7 @@ class TestGroup:
 
     def test_invalid_group(self):
         with pytest.raises(ParsingError):
-            Group(
-                (Tag.NoRoutingIDs, "2"),
-                (Tag.RoutingID, "b"),
-                (Tag.RoutingType, "c"),
-            )
+            Group((Tag.NoRoutingIDs, "2"), (Tag.RoutingID, "b"), (Tag.RoutingType, "c"))
 
     def test_empty_group(self):
         g = Group((Tag.NoMDEntries, 0), template=[Tag.MDEntryType])
@@ -713,50 +732,55 @@ class TestGroup:
 
         g = routing_id_group + other
         assert g.size == 4
-        assert repr(g) == "Group(Field(215, '4'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'e'), Field(217, 'f'), Field(216, 'g'), Field(217, 'h'))"
-
-    def test_add_fieldmap(self, fieldmap_class, routing_id_group):
-        other = fieldmap_class(
-            (Tag.RoutingType, "e"),
-            (Tag.RoutingID, "f"),
+        assert (
+            repr(g)
+            == "Group(Field(215, '4'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'e'), Field(217, 'f'), Field(216, 'g'), Field(217, 'h'))"
         )
 
+    def test_add_fieldmap(self, fieldmap_class, routing_id_group):
+        other = fieldmap_class((Tag.RoutingType, "e"), (Tag.RoutingID, "f"))
+
         g = routing_id_group + other
-        assert repr(g) == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'e'), Field(217, 'f'))"
+        assert (
+            repr(g)
+            == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'e'), Field(217, 'f'))"
+        )
 
     def test_add_field(self, routing_id_group):
         fm = routing_id_group + Field(216, "z")
-        assert repr(
-            fm) == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'z'))"
-
-    def test_add_sequence_of_fields(self, routing_id_group):
-        other = (
-            Field(Tag.RoutingType, "e"),
-            Field(Tag.RoutingID, "f"),
+        assert (
+            repr(fm)
+            == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'z'))"
         )
 
+    def test_add_sequence_of_fields(self, routing_id_group):
+        other = (Field(Tag.RoutingType, "e"), Field(Tag.RoutingID, "f"))
+
         g = routing_id_group + other
-        assert repr(
-            g) == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'e'), Field(217, 'f'))"
+        assert (
+            repr(g)
+            == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'e'), Field(217, 'f'))"
+        )
 
     def test_add_tuple(self, routing_id_group):
         fm = routing_id_group + (216, "z")
-        assert repr(
-            fm) == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'z'))"
-
-    def test_add_sequence_of_tuples(self, routing_id_group):
-        other = (
-            (Tag.RoutingType, "e"),
-            (Tag.RoutingID, "f"),
+        assert (
+            repr(fm)
+            == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'z'))"
         )
 
+    def test_add_sequence_of_tuples(self, routing_id_group):
+        other = ((Tag.RoutingType, "e"), (Tag.RoutingID, "f"))
+
         g = routing_id_group + other
-        assert repr(
-            g) == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'e'), Field(217, 'f'))"
+        assert (
+            repr(g)
+            == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'e'), Field(217, 'f'))"
+        )
 
     def test_add_not_compatible_with_template_raises_exception(self, routing_id_group):
         with pytest.raises(ParsingError):
-            g = routing_id_group + ((123456789, "def"),)
+            g = routing_id_group + ((123_456_789, "def"),)
 
     def test_eq_group(self, routing_id_group):
         assert routing_id_group == Group(
@@ -764,22 +788,21 @@ class TestGroup:
             Field(216, "a"),
             Field(217, "b"),
             Field(216, "c"),
-            Field(217, "d")
+            Field(217, "d"),
         )
 
     def test_eq_fieldmap(self, fieldmap_class):
         group = Group(
-            (Tag.NoRoutingIDs, 1),  # Can only contain one instance to be comparable to FieldDict
+            (
+                Tag.NoRoutingIDs,
+                1,
+            ),  # Can only contain one instance to be comparable to FieldDict
             (Tag.RoutingType, "a"),
             (Tag.RoutingID, "b"),
             template=[Tag.RoutingType, Tag.RoutingID],
         )
 
-        assert group == fieldmap_class(
-            (215, 1),
-            (216, "a"),
-            (217, "b"),
-        )
+        assert group == fieldmap_class((215, 1), (216, "a"), (217, "b"))
 
     def test_eq_sequence_of_fields(self, routing_id_group):
         assert routing_id_group == (
@@ -787,7 +810,7 @@ class TestGroup:
             Field(216, "a"),
             Field(217, "b"),
             Field(216, "c"),
-            Field(217, "d")
+            Field(217, "d"),
         )
 
     def test_eq_sequence_of_tuples(self, routing_id_group):
@@ -796,7 +819,7 @@ class TestGroup:
             (216, "a"),
             (217, "b"),
             (216, "c"),
-            (217, "d")
+            (217, "d"),
         )
 
     def test_eq_different_identifiers_returns_false(self, routing_id_group):
@@ -806,7 +829,7 @@ class TestGroup:
             Field(217, "b"),
             Field(216, "c"),
             Field(217, "d"),
-            template=[216, 217]
+            template=[216, 217],
         )
 
     def test_len(self, routing_id_group, nested_parties_group):
@@ -820,13 +843,15 @@ class TestGroup:
         assert len(nested_parties_group) == 17
 
     def test_setitem_fieldmap(self, fieldmap_class, routing_id_group):
-        routing_id_group[1] = fieldmap_class((Tag.RoutingType, "c"), (Tag.RoutingID, "d"))
+        routing_id_group[1] = fieldmap_class(
+            (Tag.RoutingType, "c"), (Tag.RoutingID, "d")
+        )
 
         assert routing_id_group.size == 2
         assert routing_id_group[1] == [(Tag.RoutingType, "c"), (Tag.RoutingID, "d")]
 
     def test_setitem_sequence_of_fields(self, routing_id_group):
-        routing_id_group[1] = (Field(Tag.RoutingType, "c"), Field(Tag.RoutingID, "d"),)
+        routing_id_group[1] = (Field(Tag.RoutingType, "c"), Field(Tag.RoutingID, "d"))
 
         assert routing_id_group.size == 2
         assert routing_id_group[1] == [(Tag.RoutingType, "c"), (Tag.RoutingID, "d")]
@@ -847,9 +872,11 @@ class TestGroup:
         with pytest.raises(IndexError):
             routing_id_group[2] = [(Tag.RoutingType, "c"), (Tag.RoutingID, "d")]
 
-    def test_setitem_not_compatible_with_template_raises_exception(self, routing_id_group):
+    def test_setitem_not_compatible_with_template_raises_exception(
+        self, routing_id_group
+    ):
         with pytest.raises(ParsingError):
-            routing_id_group[1] = [(123456789, "c")]
+            routing_id_group[1] = [(123_456_789, "c")]
 
     def test_get_item(self, routing_id_group):
         assert routing_id_group[0] == routing_id_group.instances[0]
@@ -906,9 +933,7 @@ class TestGroup:
         )
 
     def test_repr_eval(self, routing_id_group):
-        assert (
-            eval(repr(routing_id_group)) == routing_id_group
-        )
+        assert eval(repr(routing_id_group)) == routing_id_group
 
     def test_str(self, routing_id_group):
         assert (
@@ -981,4 +1006,6 @@ class TestGroup:
         )  # Get sub group using explicit call
 
     def test_bytes(self, routing_id_group):
-        assert bytes(routing_id_group) == b"215=2\x01216=a\x01217=b\x01216=c\x01217=d\x01"
+        assert (
+            bytes(routing_id_group) == b"215=2\x01216=a\x01217=b\x01216=c\x01217=d\x01"
+        )

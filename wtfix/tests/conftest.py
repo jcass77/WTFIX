@@ -24,6 +24,7 @@ def get_mock_async(return_value=None):
     """
     Create a Mock-able async class member
     """
+
     @unsync
     async def mock_async(*args, **kwargs):
         return return_value
@@ -35,6 +36,7 @@ def get_slow_mock_async(sleep_time):
     """
     Simulate an async method that is slow to respond - useful for testing timeouts.
     """
+
     @unsync
     async def mock_async(*args, **kwargs):
         await asyncio.sleep(sleep_time)
