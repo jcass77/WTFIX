@@ -193,6 +193,17 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
         else:
             super().__setattr__(key, value)
 
+    def __delattr__(self, item):
+        """
+        Delete a Field from the FieldMap
+
+        :param item: The Field's tag name
+        """
+        if item in Tag.__dict__.keys():
+            del self[Tag.__dict__[item]]
+        else:
+            super().__delattr__(item)
+
     def __iter__(self):
         """
         Enable iteration over the Fields in a FieldMap
@@ -434,14 +445,10 @@ class FieldList(FieldMap):
         items = [field for field in self.data if field.tag == tag]
 
         if len(items) == 0:
-            # Might be a group instance field - fall back to searching all fields.
-            items = [field for field in self.values() if field.tag == tag]
-
-            if len(items) == 0:
-                raise TagNotFound(tag, self)
+            raise TagNotFound(tag, self)
 
         if len(items) == 1:
-            return items[0]
+            return items[0]  # Return Field instead of a list of one.
 
         return items
 
@@ -451,7 +458,9 @@ class FieldList(FieldMap):
             raise DuplicateTags(
                 tag,
                 self.values(),
-                message=f"Cannot delete tag: FieldMap contains {count} occurrences of '{tag}'.",
+                message=f"Cannot delete Field by tag reference: "
+                        f"FieldMap contains {count} occurrences of '{tag}'. "
+                        f"Delete the Field(s) manually from 'data' instead."
             )
 
         idx = 0
@@ -616,16 +625,7 @@ class FieldDict(FieldMap, GroupTemplateMixin):
         try:
             return self._data[tag]  # Shortcut: lookup Field by tag
         except KeyError:
-            # Might be a group instance field - fall back to searching all fields.
-            items = [field for field in self.values() if field.tag == tag]
-
-            if len(items) == 0:
-                raise TagNotFound(tag, self)
-
-            if len(items) == 1:
-                return items[0]
-
-            return items
+            raise TagNotFound(tag, self)
 
     def __delitem__(self, tag: int):
         try:

@@ -183,13 +183,6 @@ class TestFieldMap:
         with pytest.raises(TagNotFound):
             fieldmap_impl_abc_123["3"]
 
-    def test_get_item_multiple(self, fieldmap_class, nested_parties_group):
-        fm = fieldmap_class((1, "abc"), (2, "def"))
-        fm[nested_parties_group.tag] = nested_parties_group
-
-        assert fm[524] == [(524, "a"), (524, "b")]
-        assert fm[545] == [(545, "c"), (545, "d"), (545, "e"), (545, "f")]
-
     def test_getitem_group(self, fieldmap_class, routing_id_group):
         fm = fieldmap_class((1, "a"), (2, "bb"))
         fm[routing_id_group.tag] = routing_id_group
@@ -233,6 +226,15 @@ class TestFieldMap:
         fm.MsgType = MsgType.Logon
 
         assert fm.MsgType == MsgType.Logon
+
+    def test_delattr(self, fieldmap_class):
+        fm = fieldmap_class()
+        fm.MsgType = MsgType.Logon
+
+        assert list(fm.values()) == [(Tag.MsgType, MsgType.Logon)]
+
+        del fm.MsgType
+        assert len(list(fm.values())) == 0
 
     def test_iter(self, fieldmap_impl_abc_123):
         fields = [field for field in fieldmap_impl_abc_123]
@@ -312,11 +314,11 @@ class TestFieldMap:
             fm = fieldmap_class((2, "a"))
             fm.Account
 
-    def test_get_attr_group_tag(self, fieldmap_class, routing_id_group):
+    def test_getattr_group_tag(self, fieldmap_class, routing_id_group):
         fm = fieldmap_class((1, "a"), (2, "bb"))
         fm[routing_id_group.tag] = routing_id_group
 
-        assert fm.RoutingType == [(216, "a"), (216, "c")]
+        assert fm.NoRoutingIDs[0].RoutingType == (216, "a")
 
     def test_clear(self, fieldmap_impl_abc_123):
         assert len(fieldmap_impl_abc_123) == 2
@@ -384,10 +386,19 @@ class TestFieldList:
             fm = FieldList(nested_parties_group)
             fm[524] = "abc"
 
+    def test_getitem_multiple(self, nested_parties_group):
+        fm = FieldList((1, "abc"), (2, "def"), (2, 123), (3, "ghi"))
+        assert fm[2] == [(2, "def"), (2, 123)]
+
+    def test_delattr_duplicate_raises_exception(self, nested_parties_group):
+        with pytest.raises(DuplicateTags):
+            fm = FieldList(*nested_parties_group.values())
+            del fm.NestedPartyID
+
     def test_delitem_duplicate_raises_exception(self, nested_parties_group):
         with pytest.raises(DuplicateTags):
             fm = FieldList(*nested_parties_group.values())
-            del fm[524]
+            del fm[Tag.NestedPartyID]
 
     def test_repr_list_output(self):
         fm = FieldList()
