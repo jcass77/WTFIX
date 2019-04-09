@@ -370,6 +370,12 @@ class TestFieldMap:
             fm = fieldmap_class()
             fm.get(1)
 
+    def test_pop(self, fieldmap_class):
+        fm = fieldmap_class((1, "abc"), (2, 123), (3, "def"))
+        fm.pop(2)
+
+        assert list(fm.values()) == [(1, "abc"), (3, "def")]
+
     def test_copy(self, fieldmap_impl_abc_123):
         test = copy.copy(fieldmap_impl_abc_123)
         assert id(test) != id(fieldmap_impl_abc_123)
@@ -386,9 +392,16 @@ class TestFieldList:
             fm = FieldList(nested_parties_group)
             fm[524] = "abc"
 
-    def test_getitem_multiple(self, nested_parties_group):
+    def test_getitem_duplicate_raises_exception(self, nested_parties_group):
         fm = FieldList((1, "abc"), (2, "def"), (2, 123), (3, "ghi"))
         assert fm[2] == [(2, "def"), (2, 123)]
+
+    def test_pop_duplicate(self):
+        with pytest.raises(DuplicateTags):
+            fm = FieldList((1, "abc"), (2, 123), (1, "def"))
+            fm.pop(1)
+
+            assert list(fm.values()) == [(2, 123)]
 
     def test_delattr_duplicate_raises_exception(self, nested_parties_group):
         with pytest.raises(DuplicateTags):
