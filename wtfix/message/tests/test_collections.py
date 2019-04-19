@@ -758,7 +758,7 @@ class TestGroup:
         assert g.size == 4
         assert (
             repr(g)
-            == "Group(Field(215, '4'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'e'), Field(217, 'f'), Field(216, 'g'), Field(217, 'h'))"
+            == "Group(Field(215, '4'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'e'), Field(217, 'f'), Field(216, 'g'), Field(217, 'h'))"  # noqa
         )
 
     def test_add_fieldmap(self, fieldmap_class, routing_id_group):
@@ -767,14 +767,14 @@ class TestGroup:
         g = routing_id_group + other
         assert (
             repr(g)
-            == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'e'), Field(217, 'f'))"
+            == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'e'), Field(217, 'f'))"  # noqa
         )
 
     def test_add_field(self, routing_id_group):
         fm = routing_id_group + Field(216, "z")
         assert (
             repr(fm)
-            == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'z'))"
+            == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'z'))"  # noqa
         )
 
     def test_add_sequence_of_fields(self, routing_id_group):
@@ -783,14 +783,14 @@ class TestGroup:
         g = routing_id_group + other
         assert (
             repr(g)
-            == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'e'), Field(217, 'f'))"
+            == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'e'), Field(217, 'f'))"  # noqa
         )
 
     def test_add_tuple(self, routing_id_group):
         fm = routing_id_group + (216, "z")
         assert (
             repr(fm)
-            == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'z'))"
+            == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'z'))"  # noqa
         )
 
     def test_add_sequence_of_tuples(self, routing_id_group):
@@ -799,12 +799,12 @@ class TestGroup:
         g = routing_id_group + other
         assert (
             repr(g)
-            == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'e'), Field(217, 'f'))"
+            == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'e'), Field(217, 'f'))"  # noqa
         )
 
     def test_add_not_compatible_with_template_raises_exception(self, routing_id_group):
         with pytest.raises(ParsingError):
-            g = routing_id_group + ((123_456_789, "def"),)
+            routing_id_group + ((123_456_789, "def"),)
 
     def test_eq_group(self, routing_id_group):
         assert routing_id_group == Group(

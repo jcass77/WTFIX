@@ -60,7 +60,7 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
     def data(self):
         """
         Provide direct access to this FieldMap's container, similar to UserDict and UserList.
-         
+
         :return: The underlying container that this FieldMap's Fields are stored in.
         """
 
@@ -894,7 +894,8 @@ class Group(FieldMap):
 
     def __repr__(self):
         """
-        :return: Group(identifier tag, num instances), (tag_1, value_1), (tag_2, value_2), (tag_1, value_1), (tag_2, value_2))
+        :return: Group(identifier tag, num instances), (tag_1, value_1), (tag_2, value_2),
+                (tag_1, value_1), (tag_2, value_2))
         """
         group_instances_repr = ""
         for instance in self.instances:
@@ -910,7 +911,8 @@ class Group(FieldMap):
 
     def __str__(self):
         """
-        :return: [identifier_tag_name:num_instances] | tag_1_name:value_1 | tag_2_name:value_2 | tag_1_name:value_1) | tag_2_name:value_2
+        :return: [identifier_tag_name:num_instances] | tag_1_name:value_1 | tag_2_name:value_2 |
+                 tag_1_name:value_1) | tag_2_name:value_2
         """
         group_instances_str = ""
         for instance in self.instances:

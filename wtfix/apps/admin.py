@@ -277,7 +277,8 @@ class AuthenticationApp(MessageTypeHandlerApp):
         heartbeat_time = int(message.HeartBtInt)
         if heartbeat_time != self.heartbeat_int:
             raise SessionError(
-                f"{self.name}: Heartbeat confirmation '{heartbeat_time}' does not match logon value {self.heartbeat_int}."
+                f"{self.name}: Heartbeat confirmation '{heartbeat_time}' does not match logon "
+                f"value {self.heartbeat_int}."
             )
 
         try:
@@ -293,7 +294,8 @@ class AuthenticationApp(MessageTypeHandlerApp):
         reset_seq_nums = bool(message.ResetSeqNumFlag)
         if reset_seq_nums != self.reset_seq_nums:
             raise SessionError(
-                f"{self.name}: Reset sequence number confirmation '{reset_seq_nums}' does not match logon value {self.reset_seq_nums}."
+                f"{self.name}: Reset sequence number confirmation '{reset_seq_nums}' does not match "
+                f"logon value {self.reset_seq_nums}."
             )
 
         self.logged_in_event.set()  # Login completed.
@@ -404,8 +406,9 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
                     raise StopMessageProcessing(
                         f"Ignoring duplicate message {message}."
                     )
-            # According to the FIX specification, receiving a lower than expected sequence number, that is not a duplicate,
-            # is a fatal error that requires manual intervention. Throw an unhandled exception to force-stop the pipeline.
+            # According to the FIX specification, receiving a lower than expected sequence number, that is
+            # not a duplicate, is a fatal error that requires manual intervention. Throw an unhandled exception to
+            # force-stop the pipeline.
             except TagNotFound:
                 raise SessionError(error_msg)
 

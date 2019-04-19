@@ -19,9 +19,8 @@ import argparse
 import logging
 from asyncio import futures
 
-from unsync import (
-    unsync,
-)  # Import unsync to set event loop and start ambient unsync thread
+# Import unsync to set event loop and start ambient unsync thread
+from unsync import (unsync,)  # noqa
 
 from wtfix.conf import settings
 from wtfix.core.exceptions import ImproperlyConfigured

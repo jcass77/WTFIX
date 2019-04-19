@@ -28,11 +28,10 @@ def from_json(json_):
 
 class JSONMessageDecoder(JSONDecoder):
     def _decode_group(self, group_identifier, group_instances):
-        """
-        Recursively decode a repeating group.
-        
+        """ Recursively decode a repeating group.
+
         :param group_identifier: The Group identifier tag.
-        :param group_instances: A list of lists of (tag, value) tuples that make up each group instance. 
+        :param group_instances: A list of lists of (tag, value) tuples that make up each group instance.
         :return: The list of (tag, values) that form the entire repeating group.
         """
         fields = [

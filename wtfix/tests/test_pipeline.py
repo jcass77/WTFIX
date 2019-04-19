@@ -114,7 +114,7 @@ class TestBasePipeline:
 
         call_order = [
             call[0].rstrip(".start")
-            for call in mock_parent.method_calls[-len(pipeline.apps) :]
+            for call in mock_parent.method_calls[-len(pipeline.apps):]
         ]
         assert call_order == list(reversed(pipeline.apps.keys()))
 
@@ -187,7 +187,7 @@ class TestBasePipeline:
 
         call_order = [
             call[0].rstrip("stop").rstrip(".")
-            for call in mock_parent.method_calls[-len(pipeline.apps) :]
+            for call in mock_parent.method_calls[-len(pipeline.apps):]
         ]
         assert call_order == list(pipeline.apps.keys())
 
