@@ -240,7 +240,7 @@ class Field(collections.abc.MutableSequence):
         try:
             # Check if we are performing the operation on a sequence.
             operand_length = len(operand)
-        except TypeError as e:
+        except TypeError:
             # Cannot be a sequence. Use as-is.
             return operand
 

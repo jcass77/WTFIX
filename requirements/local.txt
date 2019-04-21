@@ -11,5 +11,8 @@ faker~=1.0  # https://github.com/joke2k/faker
 
 # Code quality
 # ------------------------------------------------------------------------------
+flake8~=3.7  # https://github.com/PyCQA/flake8
 coverage~=4.5  # https://github.com/nedbat/coveragepy
-black~=18.9b  # https://github.com/ambv/black
+black~=19.3b  # https://github.com/ambv/black
+pre-commit~=1.15  # https://pre-commit.com
+pyupgrade~=1.16  # https://github.com/asottile/pyupgrade

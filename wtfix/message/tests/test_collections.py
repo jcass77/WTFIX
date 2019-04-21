@@ -183,13 +183,6 @@ class TestFieldMap:
         with pytest.raises(TagNotFound):
             fieldmap_impl_abc_123["3"]
 
-    def test_get_item_multiple(self, fieldmap_class, nested_parties_group):
-        fm = fieldmap_class((1, "abc"), (2, "def"))
-        fm[nested_parties_group.tag] = nested_parties_group
-
-        assert fm[524] == [(524, "a"), (524, "b")]
-        assert fm[545] == [(545, "c"), (545, "d"), (545, "e"), (545, "f")]
-
     def test_getitem_group(self, fieldmap_class, routing_id_group):
         fm = fieldmap_class((1, "a"), (2, "bb"))
         fm[routing_id_group.tag] = routing_id_group
@@ -233,6 +226,15 @@ class TestFieldMap:
         fm.MsgType = MsgType.Logon
 
         assert fm.MsgType == MsgType.Logon
+
+    def test_delattr(self, fieldmap_class):
+        fm = fieldmap_class()
+        fm.MsgType = MsgType.Logon
+
+        assert list(fm.values()) == [(Tag.MsgType, MsgType.Logon)]
+
+        del fm.MsgType
+        assert len(list(fm.values())) == 0
 
     def test_iter(self, fieldmap_impl_abc_123):
         fields = [field for field in fieldmap_impl_abc_123]
@@ -312,11 +314,11 @@ class TestFieldMap:
             fm = fieldmap_class((2, "a"))
             fm.Account
 
-    def test_get_attr_group_tag(self, fieldmap_class, routing_id_group):
+    def test_getattr_group_tag(self, fieldmap_class, routing_id_group):
         fm = fieldmap_class((1, "a"), (2, "bb"))
         fm[routing_id_group.tag] = routing_id_group
 
-        assert fm.RoutingType == [(216, "a"), (216, "c")]
+        assert fm.NoRoutingIDs[0].RoutingType == (216, "a")
 
     def test_clear(self, fieldmap_impl_abc_123):
         assert len(fieldmap_impl_abc_123) == 2
@@ -368,6 +370,12 @@ class TestFieldMap:
             fm = fieldmap_class()
             fm.get(1)
 
+    def test_pop(self, fieldmap_class):
+        fm = fieldmap_class((1, "abc"), (2, 123), (3, "def"))
+        fm.pop(2)
+
+        assert list(fm.values()) == [(1, "abc"), (3, "def")]
+
     def test_copy(self, fieldmap_impl_abc_123):
         test = copy.copy(fieldmap_impl_abc_123)
         assert id(test) != id(fieldmap_impl_abc_123)
@@ -384,10 +392,26 @@ class TestFieldList:
             fm = FieldList(nested_parties_group)
             fm[524] = "abc"
 
+    def test_getitem_duplicate_raises_exception(self, nested_parties_group):
+        fm = FieldList((1, "abc"), (2, "def"), (2, 123), (3, "ghi"))
+        assert fm[2] == [(2, "def"), (2, 123)]
+
+    def test_pop_duplicate(self):
+        with pytest.raises(DuplicateTags):
+            fm = FieldList((1, "abc"), (2, 123), (1, "def"))
+            fm.pop(1)
+
+            assert list(fm.values()) == [(2, 123)]
+
+    def test_delattr_duplicate_raises_exception(self, nested_parties_group):
+        with pytest.raises(DuplicateTags):
+            fm = FieldList(*nested_parties_group.values())
+            del fm.NestedPartyID
+
     def test_delitem_duplicate_raises_exception(self, nested_parties_group):
         with pytest.raises(DuplicateTags):
             fm = FieldList(*nested_parties_group.values())
-            del fm[524]
+            del fm[Tag.NestedPartyID]
 
     def test_repr_list_output(self):
         fm = FieldList()
@@ -734,7 +758,7 @@ class TestGroup:
         assert g.size == 4
         assert (
             repr(g)
-            == "Group(Field(215, '4'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'e'), Field(217, 'f'), Field(216, 'g'), Field(217, 'h'))"
+            == "Group(Field(215, '4'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'e'), Field(217, 'f'), Field(216, 'g'), Field(217, 'h'))"  # noqa
         )
 
     def test_add_fieldmap(self, fieldmap_class, routing_id_group):
@@ -743,14 +767,14 @@ class TestGroup:
         g = routing_id_group + other
         assert (
             repr(g)
-            == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'e'), Field(217, 'f'))"
+            == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'e'), Field(217, 'f'))"  # noqa
         )
 
     def test_add_field(self, routing_id_group):
         fm = routing_id_group + Field(216, "z")
         assert (
             repr(fm)
-            == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'z'))"
+            == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'z'))"  # noqa
         )
 
     def test_add_sequence_of_fields(self, routing_id_group):
@@ -759,14 +783,14 @@ class TestGroup:
         g = routing_id_group + other
         assert (
             repr(g)
-            == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'e'), Field(217, 'f'))"
+            == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'e'), Field(217, 'f'))"  # noqa
         )
 
     def test_add_tuple(self, routing_id_group):
         fm = routing_id_group + (216, "z")
         assert (
             repr(fm)
-            == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'z'))"
+            == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'z'))"  # noqa
         )
 
     def test_add_sequence_of_tuples(self, routing_id_group):
@@ -775,12 +799,12 @@ class TestGroup:
         g = routing_id_group + other
         assert (
             repr(g)
-            == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'e'), Field(217, 'f'))"
+            == "Group(Field(215, '3'), Field(216, 'a'), Field(217, 'b'), Field(216, 'c'), Field(217, 'd'), Field(216, 'e'), Field(217, 'f'))"  # noqa
         )
 
     def test_add_not_compatible_with_template_raises_exception(self, routing_id_group):
         with pytest.raises(ParsingError):
-            g = routing_id_group + ((123_456_789, "def"),)
+            routing_id_group + ((123_456_789, "def"),)
 
     def test_eq_group(self, routing_id_group):
         assert routing_id_group == Group(

@@ -121,7 +121,7 @@ messages mean that you never need to deal with byte sequences directly.
     >>> username.value
     "my_username"
   
-    # Fields behave just like Python's built-in types, and can most operations can be performed direclty
+    # Fields behave just like Python's built-in types, and most operations can be performed directly
     # on a field's 'value' attribute.
     >>> username += "_123"
     >>> username
@@ -157,7 +157,7 @@ messages mean that you never need to deal with byte sequences directly.
     OrderedDict([(35, Field(35, '8')), (136, Group(Field(136, '2'), Field(137, '10.0'), Field(139, '2'), Field(137, '20.0'), Field(139, 'A')))])
   
     # Get 'NoMiscFees' group
-    >>> group = msg[Tag.NoMiscFees]
+    >>> group = msg.NoMiscFees
     >>> f"{group:t}"
     '[NoMiscFees (136): 2] | [MiscFeeAmt (137): 10.0 | MiscFeeType (139): 2] | [MiscFeeAmt (137): 20.0 | MiscFeeType (139): A]'
    
