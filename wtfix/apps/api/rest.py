@@ -118,20 +118,19 @@ class RESTfulServiceApp(BaseApp):
     def flask_app(self):
         if self._flask_app is None:
 
-            # TODO: Configure gunicorn WSGI for RESTfulServiceApp on staging / production
-            # if settings.DEBUG is True:
-            # We need to start our own Flask application
-            logger.info(
-                f"{self.name}: Starting Flask development server at http://127.0.0.1:5000"
-            )
+            if settings.DEBUG is True:
+                # We need to start our own Flask application
+                logger.info(
+                    f"{self.name}: Starting Flask development server at http://127.0.0.1:5000"
+                )
 
-            self._flask_app = Flask(__name__)
-            self._run_flask_dev_server(self._flask_app)
-            # else:
-            #     # Must be running as a WSGI application
-            #     from config.wsgi import app
-            #
-            #     self._flask_app = app
+                self._flask_app = Flask(__name__)
+                self._run_flask_dev_server(self._flask_app)
+            else:
+                # Must be running as a WSGI application
+                from config.wsgi import app
+
+                self._flask_app = app
 
         return self._flask_app
 

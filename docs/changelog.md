@@ -2,11 +2,14 @@
 
 This changelog is used to track all major changes to WTFIX.
 
-## v0.7.0 (UNRELEASED)
+## v0.7.0 (2019-04-21)
 
 **Enhancements**
 
 - Add support for deleting a Field from a FieldMap by its tag name. E.g. `del message.PossDupFlag`.
+- Add pre-commit hooks for checking code style and quality.
+- Fix PEP8 code style violations reported by flake8.
+- Update code quality dependencies (flake, black, etc.). 
 
 ## v0.6.0 (2019-04-01)
 
