@@ -31,7 +31,7 @@ from wtfix.pipeline import BasePipeline
 app = Flask(__name__)
 
 
-def get_wsgi_application(session_name=None):
+def get_wsgi_application(*args, session_name=None):
     gunicorn_logger = logging.getLogger("gunicorn.error")
     app.logger.handlers = gunicorn_logger.handlers
     app.logger.setLevel(gunicorn_logger.level)
