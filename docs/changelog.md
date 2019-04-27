@@ -2,6 +2,12 @@
 
 This changelog is used to track all major changes to WTFIX.
 
+## v0.8.0 (UNRELEASED)
+
+**Enhancements**
+
+- Set exit codes on pipeline termination so that caller can take appropriate action.
+
 ## v0.7.0 (2019-04-21)
 
 **Enhancements**

@@ -17,6 +17,8 @@
 
 import argparse
 import logging
+import os
+import sys
 from asyncio import futures
 
 # Import unsync to set event loop and start ambient unsync thread
@@ -56,15 +58,19 @@ if __name__ == "__main__":
 
     except futures.TimeoutError as e:
         logger.error(e)
+        sys.exit(os.EX_UNAVAILABLE)
 
     except KeyboardInterrupt:
         logger.info("Received keyboard interrupt! Initiating shutdown...")
+        sys.exit(os.EX_OK)
 
-    except futures.CancelledError:
-        logger.error("Cancelled: session terminated abnormally!")
+    except futures.CancelledError as e:
+        logger.error(f"Cancelled: session terminated abnormally! ({e})")
+        sys.exit(os.EX_UNAVAILABLE)
 
     finally:
         try:
             fix_pipeline.stop().result()
-        except futures.CancelledError:
-            logger.error("Cancelled: session terminated abnormally!")
+        except futures.CancelledError as e:
+            logger.error(f"Cancelled: session terminated abnormally! ({e})")
+            sys.exit(os.EX_UNAVAILABLE)
