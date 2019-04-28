@@ -17,12 +17,12 @@
 
 import asyncio
 import uuid
-from collections import OrderedDict
 from datetime import datetime
 
 from unsync import unsync
 
 from wtfix.apps.base import MessageTypeHandlerApp, on
+from wtfix.apps.store import MessageStoreApp
 from wtfix.conf import settings
 from wtfix.core.exceptions import TagNotFound, StopMessageProcessing, SessionError
 from wtfix.message import admin
@@ -194,7 +194,8 @@ class HeartbeatApp(MessageTypeHandlerApp):
 
         return message
 
-    def on_receive(self, message):
+    @unsync
+    async def on_receive(self, message):
         """
         Update the timestamp whenever any message is received.
         :param message:
@@ -357,10 +358,6 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
         self._send_seq_num = 0
         self._receive_seq_num = 0
 
-        # TODO: make implementation of send and receive logs plug-able to reduce memory consumption (redis support)
-        self._send_log = OrderedDict()
-        self._receive_log = OrderedDict()
-
         super().__init__(pipeline, *args, **kwargs)
 
     @property
@@ -414,8 +411,9 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
             raise SessionError(error_msg)
 
+    @unsync
     @on(MsgType.ResendRequest)
-    def on_resend_request(self, message):
+    async def on_resend_request(self, message):
         begin_seq_no = int(message.BeginSeqNo)
         end_seq_no = int(message.EndSeqNo)
 
@@ -428,8 +426,9 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
         last_admin_seq_num = None
         next_seq_num = begin_seq_no
 
+        message_store = self.pipeline.apps[MessageStoreApp.name]
         for seq_num in range(begin_seq_no, end_seq_no + 1):
-            resend_msg = self._send_log[seq_num]
+            resend_msg = await message_store.get_sent(seq_num)
 
             if resend_msg.MsgType in self.ADMIN_MESSAGES:
                 # Admin message - see if there are more sequential ones in the send log
@@ -457,7 +456,8 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
         return message
 
-    def on_receive(self, message):
+    @unsync
+    async def on_receive(self, message):
         """
         Check the sequence number for every message received
         """
@@ -466,7 +466,6 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
         self._receive_seq_num = message.seq_num
 
-        self._receive_log[message.seq_num] = message
         return super().on_receive(message)
 
     def on_send(self, message):
@@ -482,7 +481,5 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             # Set sequence number and add to send log
             self._send_seq_num += 1
             message.seq_num = self.send_seq_num
-
-            self._send_log[message.seq_num] = message
 
         return super().on_send(message)

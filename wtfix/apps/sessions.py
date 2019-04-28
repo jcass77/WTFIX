@@ -16,6 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import asyncio
+import uuid
 from asyncio import IncompleteReadError, LimitOverrunError
 
 from unsync import unsync
@@ -44,6 +45,18 @@ class SessionApp(BaseApp):
 
         self.sender = sender
         self.next_in_seq_num = 1
+        self._session_id = uuid.uuid4().hex
+
+    @property
+    def session_id(self):
+        return self._session_id
+
+    @unsync
+    async def initialize(self, *args, **kwargs):
+        await super().initialize(*args, **kwargs)
+        logger.info(
+            f"{self.name}: Starting a new session with ID: {self.session_id}."
+        )
 
 
 class ClientSessionApp(SessionApp):

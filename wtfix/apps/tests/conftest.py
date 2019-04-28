@@ -17,11 +17,21 @@ from wtfix.protocol.common import Tag, MsgType
 
 @pytest.fixture
 def base_pipeline():
+    """
+    Basic mock pipeline that can be used to instantiate new apps in tests.
+
+    :return: A pipeline mock with a client session initialized.
+    """
     pipeline = MagicMock(BasePipeline)
     pipeline.settings = settings.default_session
 
-    pipeline.apps[ClientSessionApp.name].sender = settings.default_session.SENDER
-    pipeline.apps[ClientSessionApp.name].target = settings.default_session.TARGET
+    client_session = ClientSessionApp(pipeline)
+    client_session.sender = settings.default_session.SENDER
+    client_session.target = settings.default_session.TARGET
+
+    pipeline.apps = {
+        ClientSessionApp.name: client_session
+    }
 
     return pipeline
 

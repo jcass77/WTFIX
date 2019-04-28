@@ -17,6 +17,7 @@
 
 import asyncio
 import importlib
+import operator
 from asyncio import futures
 from collections import OrderedDict
 
@@ -161,7 +162,7 @@ class BasePipeline:
                 for task in asyncio.Task.all_tasks():
                     task.cancel()
 
-    def _prep_processing_pipeline(self, direction):
+    def _setup_message_handling(self, direction):
         if direction is self.INBOUND_PROCESSING:
             return "on_receive", reversed(self.apps.values())
 
@@ -183,12 +184,13 @@ class BasePipeline:
         :return: The processed message.
         """
 
-        process_func, app_chain = self._prep_processing_pipeline(direction)
+        method_name, app_chain = self._setup_message_handling(direction)
+        message_handler = operator.methodcaller(method_name, message)
 
         try:
             for app in app_chain:
                 # Call the relevant 'on_send' or 'on_receive' method for each application
-                message = getattr(app, process_func)(message)
+                message = message_handler(app)
 
         except MessageProcessingError as e:
             logger.exception(
@@ -199,7 +201,7 @@ class BasePipeline:
         except Exception as e:
             # Log exception in case it is not handled properly in the Future object.
             logger.exception(
-                f"Unhandled exception while doing {process_func} for message {message}."
+                f"Unhandled exception while doing {method_name} for message {message}."
             )
             raise e
 

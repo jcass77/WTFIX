@@ -21,6 +21,14 @@ LOGGING_LEVEL = logging.INFO
 TIME_ZONE = "Africa/Johannesburg"
 USE_TZ = True
 
+# REDIS
+# ------------------------------------------------------------------------------
+REDIS_URI = os.getenv("REDIS_URI", "redis://localhost:6379/0")
+
+# MESSAGE STORE
+# ------------------------------------------------------------------------------
+MESSAGE_STORE = "wtfix.apps.store.MemoryStore"
+
 # SESSIONS
 # ------------------------------------------------------------------------------
 SESSIONS = {
@@ -38,6 +46,7 @@ SESSIONS = {
             "wtfix.apps.admin.HeartbeatApp",
             "wtfix.apps.admin.AuthenticationApp",
             "wtfix.apps.admin.SeqNumManagerApp",
+            "wtfix.apps.store.MessageStoreApp",
             "wtfix.apps.utils.InboundLoggingApp",
             "wtfix.apps.parsers.RawMessageParserApp",
             "wtfix.apps.utils.OutboundLoggingApp",
