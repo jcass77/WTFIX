@@ -17,25 +17,28 @@ from wtfix.protocol.common import MsgType, Tag
 
 
 class TestAuthenticationApp:
-    def test_on_logon_raises_exception_on_wrong_heartbeat_response(self, base_pipeline):
+    @pytest.mark.asyncio
+    async def test_on_logon_raises_exception_on_wrong_heartbeat_response(self, unsync_event_loop, base_pipeline):
         with pytest.raises(SessionError):
             logon_msg = admin.LogonMessage("", "", heartbeat_int=60)
             logon_msg.ResetSeqNumFlag = True
 
             auth_app = AuthenticationApp(base_pipeline)
-            auth_app.on_logon(logon_msg)
+            await auth_app.on_logon(logon_msg)
 
-    def test_on_logon_sets_default_test_message_indicator_to_false(self, base_pipeline):
+    @pytest.mark.asyncio
+    async def test_on_logon_sets_default_test_message_indicator_to_false(self, unsync_event_loop, base_pipeline):
         logon_msg = admin.LogonMessage("", "")
         logon_msg.ResetSeqNumFlag = True
 
         auth_app = AuthenticationApp(base_pipeline)
-        auth_app.on_logon(logon_msg)
+        await auth_app.on_logon(logon_msg)
 
         assert auth_app.test_mode is False
 
-    def test_on_logon_raises_exception_on_wrong_test_indicator_response(
-        self, base_pipeline
+    @pytest.mark.asyncio
+    async def test_on_logon_raises_exception_on_wrong_test_indicator_response(
+        self, unsync_event_loop, base_pipeline
     ):
         with pytest.raises(SessionError):
             logon_msg = admin.LogonMessage("", "")
@@ -43,17 +46,18 @@ class TestAuthenticationApp:
             logon_msg.TestMessageIndicator = True
 
             auth_app = AuthenticationApp(base_pipeline)
-            auth_app.on_logon(logon_msg)
+            await auth_app.on_logon(logon_msg)
 
-    def test_on_logon_raises_exception_on_wrong_reset_sequence_number_response(
-        self, base_pipeline
+    @pytest.mark.asyncio
+    async def test_on_logon_raises_exception_on_wrong_reset_sequence_number_response(
+        self, unsync_event_loop, base_pipeline
     ):
         with pytest.raises(SessionError):
             logon_msg = admin.LogonMessage("", "")
             logon_msg.ResetSeqNumFlag = False
 
             auth_app = AuthenticationApp(base_pipeline)
-            auth_app.on_logon(logon_msg)
+            await auth_app.on_logon(logon_msg)
 
 
 class TestHeartbeatApp:
@@ -124,34 +128,38 @@ class TestHeartbeatApp:
         await zero_heartbeat_app.send_test_request()
         assert zero_heartbeat_app._server_not_responding.is_set()
 
-    def test_logon_sets_heartbeat_increment(self, logon_message, base_pipeline):
+    @pytest.mark.asyncio
+    async def test_logon_sets_heartbeat_increment(self, unsync_event_loop, logon_message, base_pipeline):
         heartbeat_app = HeartbeatApp(base_pipeline)
 
         logon_message.HeartBtInt = 45
-        heartbeat_app.on_logon(logon_message)
+        await heartbeat_app.on_logon(logon_message)
 
         assert heartbeat_app.heartbeat == 45
 
-    def test_sends_heartbeat_on_test_request(self, zero_heartbeat_app):
+    @pytest.mark.asyncio
+    async def test_sends_heartbeat_on_test_request(self, unsync_event_loop, zero_heartbeat_app):
         request_message = TestRequestMessage("test123")
-        zero_heartbeat_app.on_test_request(request_message)
+        await zero_heartbeat_app.on_test_request(request_message)
 
         zero_heartbeat_app.pipeline.send.assert_called_with(
             admin.HeartbeatMessage("test123")
         )
 
-    def test_resets_request_id_when_heartbeat_received(self, zero_heartbeat_app):
+    @pytest.mark.asyncio
+    async def test_resets_request_id_when_heartbeat_received(self, unsync_event_loop, zero_heartbeat_app):
         heartbeat_message = HeartbeatMessage("test123")
         zero_heartbeat_app._test_request_id = "test123"
 
-        zero_heartbeat_app.on_heartbeat(heartbeat_message)
+        await zero_heartbeat_app.on_heartbeat(heartbeat_message)
 
         assert zero_heartbeat_app._test_request_id is None
 
-    def test_on_heartbeat_handles_empty_request_id(self, zero_heartbeat_app):
+    @pytest.mark.asyncio
+    async def test_on_heartbeat_handles_empty_request_id(self, unsync_event_loop, zero_heartbeat_app):
         test_request = OptimizedGenericMessage((Tag.MsgType, MsgType.TestRequest))
 
-        assert zero_heartbeat_app.on_heartbeat(test_request) == test_request
+        assert await zero_heartbeat_app.on_heartbeat(test_request) == test_request
 
     @pytest.mark.asyncio
     async def test_on_receive_updated_timestamp(self, unsync_event_loop, zero_heartbeat_app):

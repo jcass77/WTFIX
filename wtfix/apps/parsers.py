@@ -14,11 +14,12 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from unsync import unsync
 
 from wtfix.apps.base import BaseApp
 from wtfix.core.utils import GroupTemplateMixin
 from wtfix.message.field import Field
-from wtfix.message.message import RawMessage, generic_message_factory
+from wtfix.message.message import RawMessage, generic_message_factory, FIXMessage
 
 
 class RawMessageParserApp(BaseApp, GroupTemplateMixin):
@@ -33,7 +34,8 @@ class RawMessageParserApp(BaseApp, GroupTemplateMixin):
 
         self.group_templates = self.pipeline.settings.GROUP_TEMPLATES
 
-    def on_receive(self, message: RawMessage):
+    @unsync
+    async def on_receive(self, message: RawMessage) -> FIXMessage:
         fields = (
             message.BeginString,
             message.BodyLength,

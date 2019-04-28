@@ -81,7 +81,8 @@ class BaseApp:
         """
         pass
 
-    def on_receive(self, message: FIXMessage) -> FIXMessage:
+    @unsync
+    async def on_receive(self, message: FIXMessage) -> FIXMessage:
         """
         Override this method in order to define what to do when a message is received.
 
@@ -104,7 +105,8 @@ class BaseApp:
         """
         return message
 
-    def on_send(self, message: FIXMessage) -> FIXMessage:
+    @unsync
+    async def on_send(self, message: FIXMessage) -> FIXMessage:
         """
         Override this method in order to define what to do with a message needs to be transmitted.
 
@@ -193,7 +195,7 @@ class MessageTypeHandlerApp(BaseApp):
                 f"{self.__module__}.{self.__class__.__name__}.{handler.__name__}?"
             )
 
-        return message
+        return await super().on_receive(message)
 
     @unsync
     async def on_unhandled(self, message: FIXMessage) -> FIXMessage:

@@ -27,7 +27,7 @@ REDIS_URI = os.getenv("REDIS_URI", "redis://localhost:6379/0")
 
 # MESSAGE STORE
 # ------------------------------------------------------------------------------
-MESSAGE_STORE = "wtfix.apps.store.MemoryStore"
+MESSAGE_STORE = os.getenv("MESSAGE_STORE", "wtfix.apps.store.MemoryStore")
 
 # SESSIONS
 # ------------------------------------------------------------------------------

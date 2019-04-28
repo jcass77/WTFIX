@@ -193,10 +193,11 @@ class MessageStoreApp(BaseApp):
         session_app = self.pipeline.apps[ClientSessionApp.name]
         await self.store.set(message, session_app.target, session_app.session_id)
 
-        return message
+        return await super().on_receive(message)
 
-    def on_send(self, message: FIXMessage) -> FIXMessage:
+    @unsync
+    async def on_send(self, message: FIXMessage) -> FIXMessage:
         session_app = self.pipeline.apps[ClientSessionApp.name]
-        self.store.set(message, session_app.sender, session_app.session_id)
+        await self.store.set(message, session_app.sender, session_app.session_id)
 
-        return message
+        return await super().on_send(message)

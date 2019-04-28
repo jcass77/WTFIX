@@ -17,11 +17,13 @@
 
 from datetime import datetime
 
+from unsync import unsync
+
 from wtfix.apps.base import BaseApp
 from wtfix.apps.sessions import ClientSessionApp
 from wtfix.conf import settings
 from wtfix.core.exceptions import ParsingError, MessageProcessingError, TagNotFound
-from wtfix.message.message import RawMessage
+from wtfix.message.message import RawMessage, FIXMessage
 from wtfix.core import utils
 from wtfix.protocol.common import Tag
 
@@ -46,18 +48,21 @@ class EncoderApp(BaseApp):
         Tag.DeliverToCompID,
     }
 
-    def on_send(self, message):
-        message = self.encode_message(message)
-        return message
+    @unsync
+    async def on_send(self, message: FIXMessage) -> FIXMessage:
+        message = await self.encode_message(message)
+        return await super().on_send(message)
 
     # TODO: Add support for encoding RawMessage instances in addition to GenericMessage instances?
-    def encode_message(self, message):
+    @unsync
+    async def encode_message(self, message: FIXMessage) -> bytes:
         """
         :param message: The message to encode.
 
         :return: The FIX-compliant, raw binary string representation for this message with freshly
         generated header tags.
         """
+        message = message.result()
         message.validate()  # Make sure the message is valid before attempting to encode.
 
         if message.sender_id is None:
@@ -116,9 +121,10 @@ class DecoderApp(BaseApp):
 
     name = "decoder_app"
 
-    def on_receive(self, data: bytes):
+    @unsync
+    async def on_receive(self, data: bytes) -> FIXMessage:
         try:
-            return self.decode_message(data)
+            return await self.decode_message(data)
         except Exception as e:
             raise MessageProcessingError() from e
 
@@ -228,7 +234,8 @@ class DecoderApp(BaseApp):
         return checksum, checksum_end
 
     @classmethod
-    def decode_message(cls, data):
+    @unsync
+    async def decode_message(cls, data: bytes) -> FIXMessage:
         """
         Constructs a GenericMessage from the provided data. Also uses the BeginString (8), BodyLength (9),
         and Checksum (10) tags to verify the message before decoding.

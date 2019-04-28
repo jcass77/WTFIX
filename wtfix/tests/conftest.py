@@ -7,6 +7,7 @@ from unsync import unsync
 from wtfix.apps.base import BaseApp
 from wtfix.core.exceptions import StopMessageProcessing
 from wtfix.core import utils
+from wtfix.message.message import FIXMessage
 
 
 @pytest.fixture(scope="session")
@@ -47,53 +48,61 @@ def get_slow_mock_async(sleep_time):
 class Below(BaseApp):
     name = "below"
 
-    def on_receive(self, message):
+    @unsync
+    async def on_receive(self, message: FIXMessage) -> FIXMessage:
         message.TestReqID = f"{message.TestReqID} r1"
 
-        return message
+        return await super().on_receive(message)
 
-    def on_send(self, message):
+    @unsync
+    async def on_send(self, message: FIXMessage) -> FIXMessage:
         message.TestReqID = f"{message.TestReqID} s1"
 
-        return message
+        return await super().on_send(message)
 
 
 class Middle(BaseApp):
     name = "middle"
 
-    def on_receive(self, message):
+    @unsync
+    async def on_receive(self, message: FIXMessage) -> FIXMessage:
         message.TestReqID = f"{message.TestReqID} r2"
 
-        return message
+        return await super().on_receive(message)
 
-    def on_send(self, message):
+    @unsync
+    async def on_send(self, message: FIXMessage) -> FIXMessage:
         message.TestReqID = f"{message.TestReqID} s2"
 
-        return message
+        return await super().on_send(message)
 
 
 class MiddleStop(BaseApp):
     name = "middle_stop"
 
-    def on_receive(self, message):
+    @unsync
+    async def on_receive(self, message: FIXMessage) -> FIXMessage:
         raise StopMessageProcessing()
 
-    def on_send(self, message):
+    @unsync
+    async def on_send(self, message: FIXMessage) -> FIXMessage:
         raise StopMessageProcessing()
 
 
 class Top(BaseApp):
     name = "top"
 
-    def on_receive(self, message):
+    @unsync
+    async def on_receive(self, message: FIXMessage) -> FIXMessage:
         message.TestReqID = f"{message.TestReqID} r3"
 
-        return message
+        return await super().on_receive(message)
 
-    def on_send(self, message):
+    @unsync
+    async def on_send(self, message: FIXMessage) -> FIXMessage:
         message.TestReqID = f"{message.TestReqID} s3"
 
-        return message
+        return await super().on_send(message)
 
 
 @pytest.fixture(scope="session")

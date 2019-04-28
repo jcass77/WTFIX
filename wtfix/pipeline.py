@@ -17,7 +17,6 @@
 
 import asyncio
 import importlib
-import operator
 from asyncio import futures
 from collections import OrderedDict
 
@@ -51,8 +50,8 @@ class BasePipeline:
         self._installed_apps = self._load_apps(installed_apps=installed_apps)
         logger.info(f"Created new FIX application pipeline: {list(self.apps.keys())}.")
 
-        self.stop_lock = asyncio.Lock()
-        self.stopped_event = asyncio.Event()
+        self.stop_lock = asyncio.Lock(loop=unsync.loop)
+        self.stopped_event = asyncio.Event(loop=unsync.loop)
 
     @property
     def apps(self):
@@ -185,12 +184,11 @@ class BasePipeline:
         """
 
         method_name, app_chain = self._setup_message_handling(direction)
-        message_handler = operator.methodcaller(method_name, message)
 
         try:
             for app in app_chain:
                 # Call the relevant 'on_send' or 'on_receive' method for each application
-                message = message_handler(app)
+                message = await getattr(app, method_name)(message)
 
         except MessageProcessingError as e:
             logger.exception(
