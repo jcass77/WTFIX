@@ -1,5 +1,8 @@
 dist: xenial
 
+services:
+  - redis
+
 language: python
 python:
   - "3.6"
