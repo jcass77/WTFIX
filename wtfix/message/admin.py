@@ -34,7 +34,6 @@ class LogonMessage(OptimizedGenericMessage):
             (Tag.HeartBtInt, heartbeat_int),
             (Tag.Username, username),
             (Tag.Password, password),
-            # (10222, 345)
         )
 
 
