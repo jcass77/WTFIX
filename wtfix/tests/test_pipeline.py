@@ -27,12 +27,12 @@ class TestBasePipeline:
 
     def test_load_apps_raises_exception_if_no_apps_installed(self):
         with pytest.raises(ImproperlyConfigured):
-            orig_apps = settings.default_session.PIPELINE_APPS
+            orig_apps = settings.default_connection.PIPELINE_APPS
 
-            settings.SESSIONS["default"]["PIPELINE_APPS"] = []
+            settings.CONNECTIONS["default"]["PIPELINE_APPS"] = []
             BasePipeline()
 
-            settings.default_session.PIPELINE_APPS = orig_apps
+            settings.default_connection.PIPELINE_APPS = orig_apps
 
     def test_prep_processing_pipeline_inbound_order(self, three_level_app_chain):
         pipeline = BasePipeline(installed_apps=three_level_app_chain)

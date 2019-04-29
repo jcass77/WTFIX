@@ -26,7 +26,7 @@ class LogonMessage(OptimizedGenericMessage):
     def __init__(self, username, password, encryption_method=0, heartbeat_int=None):
 
         if heartbeat_int is None:
-            heartbeat_int = settings.default_session.HEARTBEAT_INT
+            heartbeat_int = settings.default_connection.HEARTBEAT_INT
 
         super().__init__(
             (Tag.MsgType, MsgType.Logon),

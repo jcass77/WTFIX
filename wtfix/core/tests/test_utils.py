@@ -113,15 +113,15 @@ def test_is_null_bytearray():
 
 class TestGroupTemplateMixin:
     def test_group_templates_getter_initializes_with_empty_template_group(self):
-        settings.SESSIONS["another_session"] = {}
+        settings.CONNECTIONS["another_session"] = {}
         assert GroupTemplateMixin().group_templates == {}
 
-        del settings.SESSIONS["another_session"]
+        del settings.CONNECTIONS["another_session"]
 
     def test_group_templates_getter_initializes_with_defaults_if_safe(self):
         assert (
             GroupTemplateMixin().group_templates
-            == settings.default_session.GROUP_TEMPLATES
+            == settings.default_connection.GROUP_TEMPLATES
         )
 
     def test_add_group_templates(self):

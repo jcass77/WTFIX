@@ -6,6 +6,11 @@ This changelog is used to track all major changes to WTFIX.
 
 **Enhancements**
 
+- FIX sessions are now resumed between different connections by default. Pass parameter `-new_session` when calling
+the pipeline in order to reset sequence numbers and initialize a new session.
+- Rename 'sessions' to 'connections' to align with FIX protocol terminology.
+- Gap fill processing is now more reliable, and will queue messages that are received out of order until the gaps have
+been filled.
 - Set exit codes on pipeline termination so that caller can take appropriate action.
 - Add `MessageStoreApp`, with default implementations for in-memory and redis-based stores for caching and / or
 persisting messages to database.

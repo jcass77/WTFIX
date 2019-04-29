@@ -16,12 +16,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import asyncio
+import collections
 import uuid
 from datetime import datetime
 
 from unsync import unsync
 
 from wtfix.apps.base import MessageTypeHandlerApp, on
+from wtfix.apps.sessions import ClientSessionApp
 from wtfix.apps.store import MessageStoreApp
 from wtfix.conf import settings
 from wtfix.core.exceptions import TagNotFound, StopMessageProcessing, SessionError
@@ -232,7 +234,7 @@ class AuthenticationApp(MessageTypeHandlerApp):
         super().__init__(pipeline, *args, **kwargs)
 
         if heartbeat_int is None:
-            heartbeat_int = settings.default_session.HEARTBEAT_INT
+            heartbeat_int = settings.default_connection.HEARTBEAT_INT
 
         self.heartbeat_int = heartbeat_int
 
@@ -297,7 +299,11 @@ class AuthenticationApp(MessageTypeHandlerApp):
                 f"{self.name}: Test mode confirmation '{test_mode}' does not match logon value {self.test_mode}."
             )
 
-        reset_seq_nums = bool(message.ResetSeqNumFlag)
+        try:
+            reset_seq_nums = bool(message.ResetSeqNumFlag)
+        except TagNotFound:
+            reset_seq_nums = False
+
         if reset_seq_nums != self.reset_seq_nums:
             raise SessionError(
                 f"{self.name}: Reset sequence number confirmation '{reset_seq_nums}' does not match "
@@ -326,6 +332,7 @@ class AuthenticationApp(MessageTypeHandlerApp):
             self.username, self.password, heartbeat_int=self.heartbeat_int
         )
 
+        self.reset_seq_nums = not self.pipeline.apps[ClientSessionApp.name].is_resumed
         if self.reset_seq_nums:
             logon_msg.ResetSeqNumFlag = "Y"
 
@@ -364,6 +371,8 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
         self._send_seq_num = 0
         self._receive_seq_num = 0
 
+        self.gapfill_deque = collections.deque()
+
         super().__init__(pipeline, *args, **kwargs)
 
     @property
@@ -382,19 +391,39 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
         if message.seq_num > self.expected_seq_num:
             # We've missed some incoming messages
 
-            missing_seq_numbers = [
-                seq_num for seq_num in range(self.receive_seq_num + 1, message.seq_num)
-            ]
+            if len(self.gapfill_deque) == 0:
+                # Start a new gap fill operation
+                missing_seq_nums = [seq_num for seq_num in range(self.receive_seq_num + 1, message.seq_num)]
 
-            logger.error(
-                f"{self.name}: Client missed {len(missing_seq_numbers)} messages. Sequence numbers: "
-                f"{missing_seq_numbers}."
-            )
+                logger.error(
+                    f"{self.name}: Client missed {len(missing_seq_nums)} messages. Sequence numbers: "
+                    f"{missing_seq_nums}."
+                )
 
-            self._handle_seq_num_gaps(missing_seq_numbers)
+                self.gapfill_deque.append(message)
+                self._handle_seq_num_gaps(missing_seq_nums)
+            else:
+                # Busy processing gap fill, add to queue
+                self.gapfill_deque.append(message)
+                raise StopMessageProcessing(
+                    f"Queueing message # {message.seq_num} while gap fill is in progress "
+                    f"(waiting for # {self.expected_seq_num})..."
+                )
+        else:
+            # Message received in expected order
+            try:
+                if self.gapfill_deque[0].seq_num == message.seq_num + 1:
+                    # Also process and clear gapfill queue
+                    for message in self.gapfill_deque:
+                        self.pipeline.receive(bytes(message))
+
+                    self.gapfill_deque.clear()
+            except IndexError:
+                # Gap fill not in progress - continue
+                pass
 
     def _handle_seq_num_gaps(self, missing_seq_numbers):
-        self.send(admin.ResendRequestMessage(missing_seq_numbers[0]))
+        self.send(admin.ResendRequestMessage(missing_seq_numbers[0], missing_seq_numbers[-1]))
 
         raise StopMessageProcessing(
             f"Detected message sequence gap: {missing_seq_numbers}. Discarding message."
@@ -416,6 +445,28 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
                 raise SessionError(error_msg)
 
             raise SessionError(error_msg)
+
+    @unsync
+    async def start(self, *args, **kwargs):
+        await super().start(*args, **kwargs)
+
+        client_session = self.pipeline.apps[ClientSessionApp.name]
+        if client_session.is_resumed:
+            message_store = self.pipeline.apps[MessageStoreApp.name].store
+
+            sent_seq_nums = await message_store.filter(
+                session_id=client_session.session_id, originator=client_session.sender
+            )
+
+            received_seq_nums = await message_store.filter(
+                session_id=client_session.session_id, originator=client_session.target
+            )
+
+            self._send_seq_num = sent_seq_nums[-1]
+            self._receive_seq_num = received_seq_nums[-1]
+        else:
+            self._send_seq_num = 0
+            self._receive_seq_num = 0
 
     @unsync
     @on(MsgType.ResendRequest)
@@ -467,9 +518,8 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
         """
         Check the sequence number for every message received
         """
-        self._check_seq_num_gap(message)
         self._check_poss_dup(message)
-
+        self._check_seq_num_gap(message)
         self._receive_seq_num = message.seq_num
 
         return await super().on_receive(message)

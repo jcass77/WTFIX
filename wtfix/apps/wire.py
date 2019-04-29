@@ -50,19 +50,22 @@ class EncoderApp(BaseApp):
 
     @unsync
     async def on_send(self, message: FIXMessage) -> FIXMessage:
-        message = await self.encode_message(message)
+        message = self.encode_message(message)
         return await super().on_send(message)
 
     # TODO: Add support for encoding RawMessage instances in addition to GenericMessage instances?
-    @unsync
-    async def encode_message(self, message: FIXMessage) -> bytes:
+    def encode_message(self, message: FIXMessage) -> bytes:
         """
         :param message: The message to encode.
 
         :return: The FIX-compliant, raw binary string representation for this message with freshly
         generated header tags.
         """
-        message = message.result()
+        try:
+            message = message.result()
+        except AttributeError:
+            # Not an Unfuture - use as-is
+            pass
         message.validate()  # Make sure the message is valid before attempting to encode.
 
         if message.sender_id is None:
@@ -124,7 +127,7 @@ class DecoderApp(BaseApp):
     @unsync
     async def on_receive(self, data: bytes) -> FIXMessage:
         try:
-            return await self.decode_message(data)
+            return self.decode_message(data)
         except Exception as e:
             raise MessageProcessingError() from e
 
@@ -234,8 +237,7 @@ class DecoderApp(BaseApp):
         return checksum, checksum_end
 
     @classmethod
-    @unsync
-    async def decode_message(cls, data: bytes) -> FIXMessage:
+    def decode_message(cls, data: bytes) -> FIXMessage:
         """
         Constructs a GenericMessage from the provided data. Also uses the BeginString (8), BodyLength (9),
         and Checksum (10) tags to verify the message before decoding.

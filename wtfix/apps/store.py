@@ -16,8 +16,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import importlib
+import numbers
 from collections import OrderedDict
-from typing import Union
+from typing import Union, List
 
 import aioredis
 import abc
@@ -26,7 +27,7 @@ from unsync import unsync
 from wtfix.apps.base import BaseApp
 from wtfix.apps.sessions import ClientSessionApp
 from wtfix.conf import settings
-from wtfix.core import encoders, decoders
+from wtfix.core import encoders, decoders, utils
 from wtfix.message.message import FIXMessage
 
 logger = settings.logger
@@ -42,37 +43,45 @@ class BaseStore(abc.ABC):
 
     @unsync
     @abc.abstractmethod
-    async def set(self, message: FIXMessage, originator: str, session_id: str = None):
+    async def set(self, session_id: str, originator: str, message: FIXMessage):
         """
         Sets a message in this store.
 
-        :param message: The message to store.
-        :param originator: The originator of the message
         :param session_id: The current session ID
+        :param originator: The originator of the message
+        :param message: The message to store.
         """
 
     @unsync
     @abc.abstractmethod
     async def get(
-        self, seq_num: Union[str, int], originator: str, session_id: str = None
+        self, session_id: str, originator: str, seq_num: Union[str, int]
     ) -> Union[FIXMessage, None]:
         """
         Retrieves a message from the store.
 
-        :param seq_num: The sequence number of the message to retrieve.
-        :param originator: The originator of the message
         :param session_id: The current session ID
+        :param originator: The originator of the message
+        :param seq_num: The sequence number of the message to retrieve.
         :return: a FIXMessage object
         """
 
-    @classmethod
-    def get_key(
-        cls, seq_num: Union[str, int], originator: str, session_id: str = None
-    ) -> str:
-        if session_id is None:
-            return f"{originator}_{seq_num}"
+    @unsync
+    @abc.abstractmethod
+    async def filter(
+        self, *, session_id: str = None, originator: str = None
+    ) -> List[numbers.Integral]:
+        """
+        Retrieves all of the sequence numbers for the given session ID and originator.
 
-        return f"{session_id}_{originator}_{seq_num}"
+        :param session_id: The session ID to retrieve the sequence numbers for.
+        :param originator: The originator to retrieve the sequence numbers for.
+        :return: a list of sequence numbers
+        """
+
+    @classmethod
+    def get_key(cls, session_id: str, originator: str, seq_num: Union[str, int]) -> str:
+        return f"{session_id}:{originator}:{seq_num}"
 
 
 class MemoryStore(BaseStore):
@@ -83,23 +92,39 @@ class MemoryStore(BaseStore):
     def __init__(self):
         self._store = OrderedDict()
 
+    @unsync
     async def initialize(self, *args, **kwargs):
         pass  # Nothing to do
 
     @unsync
-    async def set(self, message: FIXMessage, originator: str, session_id: str = None):
-        self._store[
-            self.get_key(message.seq_num, originator, session_id=session_id)
-        ] = message
+    async def set(self, session_id: str, originator: str, message: FIXMessage):
+        self._store[self.get_key(session_id, originator, message.seq_num)] = message
 
     @unsync
     async def get(
-        self, seq_num: Union[str, int], originator: str, session_id: str = None
+        self, session_id: str, originator: str, seq_num: Union[str, int]
     ) -> Union[FIXMessage, None]:
         try:
-            return self._store[self.get_key(seq_num, originator, session_id=session_id)]
+            return self._store[self.get_key(session_id, originator, seq_num)]
         except KeyError:
             return None
+
+    @unsync
+    async def filter(
+        self, *, session_id: str = None, originator: str = None
+    ) -> List[numbers.Integral]:
+
+        matches = list()
+
+        for key in self._store.keys():
+
+            store_id, store_origin, seq_num = key.split(":")
+            if session_id is None or session_id == store_id:
+
+                if originator is None or originator == store_origin:
+                    matches.append(int(seq_num))
+
+        return sorted(matches)
 
 
 class RedisStore(BaseStore):
@@ -110,6 +135,7 @@ class RedisStore(BaseStore):
     def __init__(self):
         self.redis_pool = None
 
+    @unsync
     async def initialize(self, *args, **kwargs):
         await super().initialize(*args, **kwargs)
 
@@ -118,25 +144,44 @@ class RedisStore(BaseStore):
         )
 
     @unsync
-    async def set(self, message: FIXMessage, originator: str, session_id: str = None):
+    async def set(self, session_id: str, originator: str, message: FIXMessage):
         with await self.redis_pool as conn:
             return await conn.execute(
                 "set",
-                self.get_key(message.seq_num, originator, session_id=session_id),
+                self.get_key(session_id, originator, message.seq_num),
                 encoders.to_json(message),
             )
 
     @unsync
     async def get(
-        self, seq_num: Union[str, int], originator: str, session_id: str = None
+        self, session_id: str, originator: str, seq_num: Union[str, int]
     ) -> Union[FIXMessage, None]:
 
         with await self.redis_pool as conn:
-            json_message = await conn.execute("get", self.get_key(seq_num, originator, session_id=session_id))
+            json_message = await conn.execute(
+                "get", self.get_key(session_id, originator, seq_num)
+            )
 
             if json_message is not None:
                 return decoders.from_json(json_message)
             return json_message
+
+    @unsync
+    async def filter(
+        self, *, session_id: str = "*", originator: str = "*"
+    ) -> List[numbers.Integral]:
+
+        matches = list()
+
+        with await self.redis_pool as conn:
+            cur = b'0'  # set initial cursor to 0
+            while cur:
+                cur, keys = await conn.scan(cur, match=f"{session_id}:{originator}:*")
+                for key in keys:
+                    store_id, store_origin, seq_num = utils.decode(key).split(":")
+                    matches.append(int(seq_num))
+
+        return sorted(matches)
 
 
 class MessageStoreApp(BaseApp):
@@ -160,44 +205,44 @@ class MessageStoreApp(BaseApp):
 
         self._store = store
 
-    @unsync
-    async def initialize(self, *args, **kwargs):
-        await self.store.initialize(*args, **kwargs)
-
     @property
     def store(self):
         return self._store
 
     @unsync
+    async def initialize(self, *args, **kwargs):
+        await self.store.initialize(*args, **kwargs)
+
+    @unsync
     async def get_sent(self, seq_num: Union[str, int]) -> Union[FIXMessage, None]:
         session_app = self.pipeline.apps[ClientSessionApp.name]
-        return await self.store.get(seq_num, session_app.sender, session_app.session_id)
+        return await self.store.get(session_app.session_id, session_app.sender, seq_num)
 
     @unsync
     async def set_sent(self, message: FIXMessage):
         session_app = self.pipeline.apps[ClientSessionApp.name]
-        return await self.store.set(message, session_app.sender, session_app.session_id)
+        return await self.store.set(session_app.session_id, session_app.sender, message)
 
     @unsync
     async def get_received(self, seq_num: Union[str, int]) -> Union[FIXMessage, None]:
         session_app = self.pipeline.apps[ClientSessionApp.name]
-        return await self.store.get(seq_num, session_app.target, session_app.session_id)
+        return await self.store.get(session_app.session_id, session_app.target, seq_num)
 
     @unsync
     async def set_received(self, message: FIXMessage):
         session_app = self.pipeline.apps[ClientSessionApp.name]
-        return await self.store.set(message, session_app.target, session_app.session_id)
+        return await self.store.set(session_app.session_id, session_app.target, message)
 
     @unsync
     async def on_receive(self, message: FIXMessage) -> FIXMessage:
         session_app = self.pipeline.apps[ClientSessionApp.name]
-        await self.store.set(message, session_app.target, session_app.session_id)
+        await self.store.set(session_app.session_id, session_app.target, message)
 
         return await super().on_receive(message)
 
     @unsync
     async def on_send(self, message: FIXMessage) -> FIXMessage:
         session_app = self.pipeline.apps[ClientSessionApp.name]
-        await self.store.set(message, session_app.sender, session_app.session_id)
+        await self.store.set(session_app.session_id, session_app.sender, message)
 
         return await super().on_send(message)

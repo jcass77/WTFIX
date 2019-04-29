@@ -42,12 +42,12 @@ class BasePipeline:
     INBOUND_PROCESSING = 0
     OUTBOUND_PROCESSING = 1
 
-    def __init__(self, session_name=None, installed_apps=None):
-        if session_name is None:
-            session_name = settings.default_session_name
+    def __init__(self, connection_name=None, installed_apps=None, **kwargs):
+        if connection_name is None:
+            connection_name = settings.default_connection_name
 
-        self.settings = SessionSettings(session_name)
-        self._installed_apps = self._load_apps(installed_apps=installed_apps)
+        self.settings = SessionSettings(connection_name)
+        self._installed_apps = self._load_apps(installed_apps=installed_apps, **kwargs)
         logger.info(f"Created new FIX application pipeline: {list(self.apps.keys())}.")
 
         self.stop_lock = asyncio.Lock(loop=unsync.loop)
@@ -57,7 +57,7 @@ class BasePipeline:
     def apps(self):
         return self._installed_apps
 
-    def _load_apps(self, installed_apps=None):
+    def _load_apps(self, installed_apps=None, **kwargs):
         """
         Loads the list of apps to be used for processing messages.
 
@@ -74,7 +74,8 @@ class BasePipeline:
             )
 
         settings_kwargs = {
-            key.lower(): value for key, value in self.settings.__dict__.items()
+            **kwargs,
+            **{key.lower(): value for key, value in self.settings.__dict__.items()},
         }
 
         for app in installed_apps:
@@ -192,10 +193,10 @@ class BasePipeline:
 
         except MessageProcessingError as e:
             logger.exception(
-                f"Error processing message {message}. Processing stopped at '{app.name}': {e}."
+                f"Message processing error at '{app.name}': {e} ({message})."
             )
-        except StopMessageProcessing:
-            logger.info(f"Processing of message {message} interrupted at '{app.name}'.")
+        except StopMessageProcessing as e:
+            logger.info(f"Processing of message interrupted at '{app.name}': {e} ({message}).")
         except Exception as e:
             # Log exception in case it is not handled properly in the Future object.
             logger.exception(

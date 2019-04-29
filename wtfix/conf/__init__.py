@@ -78,12 +78,12 @@ class Settings:
 
     @property
     def has_safe_defaults(self):
-        return len(self.SESSIONS) == 1
+        return len(self.CONNECTIONS) == 1
 
     @property
-    def default_session_name(self):
+    def default_connection_name(self):
         if self.has_safe_defaults:
-            return next(iter(self.SESSIONS))
+            return next(iter(self.CONNECTIONS))
 
         raise ImproperlyConfigured(
             f"Cannot fall back to using session defaults as more than one session has been configured "
@@ -91,8 +91,8 @@ class Settings:
         )
 
     @property
-    def default_session(self):
-        return SessionSettings(self.default_session_name)
+    def default_connection(self):
+        return SessionSettings(self.default_connection_name)
 
     @property
     def logger(self):
@@ -105,11 +105,11 @@ class Settings:
     def logger(self, value):
         self._logger = value
 
-    def get_group_templates(self, session_name=None, identifiers=None):
-        if session_name is None:
-            session_name = self.default_session_name
+    def get_group_templates(self, connection_name=None, identifiers=None):
+        if connection_name is None:
+            connection_name = self.default_connection_name
 
-        session_templates = self.SESSIONS[session_name]["GROUP_TEMPLATES"]
+        session_templates = self.CONNECTIONS[connection_name]["GROUP_TEMPLATES"]
         if identifiers is None:
             # Return all templates that have been defined.
             return session_templates
@@ -146,9 +146,9 @@ class SessionSettings:
     in the same way as 'Settings' above.
     """
 
-    def __init__(self, session_name=None):
-        if session_name is None:
-            session_name = settings.default_session[0]
+    def __init__(self, connection_name=None):
+        if connection_name is None:
+            connection_name = settings.default_connection[0]
 
-        for setting, setting_value in settings.SESSIONS[session_name].items():
+        for setting, setting_value in settings.CONNECTIONS[connection_name].items():
             setattr(self, setting, setting_value)

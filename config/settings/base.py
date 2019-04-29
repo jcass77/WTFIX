@@ -4,10 +4,15 @@ Base settings to build other settings files upon.
 import logging
 import os
 from distutils.util import strtobool
+from pathlib import Path
 
 from dotenv import load_dotenv
 
 load_dotenv()
+
+ROOT_DIR = Path(__file__).parents[
+    2
+]  # (wtfix/config/settings/base.py - 2 = wtfix/)
 
 # GENERAL
 # ------------------------------------------------------------------------------
@@ -29,9 +34,9 @@ REDIS_URI = os.getenv("REDIS_URI", "redis://localhost:6379/0")
 # ------------------------------------------------------------------------------
 MESSAGE_STORE = os.getenv("MESSAGE_STORE", "wtfix.apps.store.MemoryStore")
 
-# SESSIONS
+# CONNECTIONS
 # ------------------------------------------------------------------------------
-SESSIONS = {
+CONNECTIONS = {
     "default": {
         "HEARTBEAT_INT": 30,
         "HOST": os.getenv("HOST"),

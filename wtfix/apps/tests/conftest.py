@@ -23,11 +23,11 @@ def base_pipeline():
     :return: A pipeline mock with a client session initialized.
     """
     pipeline = MagicMock(BasePipeline)
-    pipeline.settings = settings.default_session
+    pipeline.settings = settings.default_connection
 
     client_session = ClientSessionApp(pipeline)
-    client_session.sender = settings.default_session.SENDER
-    client_session.target = settings.default_session.TARGET
+    client_session.sender = settings.default_connection.SENDER
+    client_session.target = settings.default_connection.TARGET
 
     pipeline.apps = {
         ClientSessionApp.name: client_session
@@ -99,9 +99,9 @@ def user_notification_message():
     return generic_message_factory(
         (Tag.MsgType, MsgType.UserNotification),
         (Tag.MsgSeqNum, 1),
-        (Tag.SenderCompID, "SENDER"),
+        (Tag.SenderCompID, settings.default_connection.SENDER),
         (Tag.SendingTime, "20181206-10:24:27.018"),
-        (Tag.TargetCompID, "TARGET"),
+        (Tag.TargetCompID, settings.default_connection.TARGET),
         (Tag.NoLinesOfText, 1),
         (Tag.Text, "abc"),
         (Tag.EmailType, 0),
@@ -112,23 +112,11 @@ def user_notification_message():
 
 @pytest.fixture
 def messages(user_notification_message):
-    faker = Faker()
     messages = []
 
     for idx in range(1, 6):
-        next_message = generic_message_factory(
-            (Tag.MsgType, MsgType.UserNotification),
-            (Tag.MsgSeqNum, idx),
-            (Tag.SenderCompID, "SENDER"),
-            (Tag.SendingTime, "20181206-10:24:27.018"),
-            (Tag.TargetCompID, "TARGET"),
-            (Tag.NoLinesOfText, 1),
-            (Tag.Text, "abc"),
-            (Tag.EmailType, 0),
-            (Tag.Subject, "Test message"),
-            (Tag.EmailThreadID, faker.pyint()),
-        )
-
+        next_message = user_notification_message.copy()
+        next_message.seq_num = idx
         messages.append(next_message)
 
     return messages
