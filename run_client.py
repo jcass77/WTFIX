@@ -17,6 +17,8 @@
 
 import argparse
 import logging
+import os
+import sys
 from asyncio import futures
 
 # Import unsync to set event loop and start ambient unsync thread
@@ -28,17 +30,23 @@ from wtfix.pipeline import BasePipeline
 
 logger = settings.logger
 
-parser = argparse.ArgumentParser(description="Start a FIX session")
+parser = argparse.ArgumentParser(description="Start a FIX connection")
 
 try:
-    default_session = settings.default_session_name
+    default_connection = settings.default_connection_name
 except ImproperlyConfigured:
-    default_session = None
+    default_connection = None
 
 parser.add_argument(
-    "--session",
-    default=default_session,
-    help=f"the session to connect to (default: '{default_session}')",
+    "--connection",
+    default=default_connection,
+    help=f"the configuration settings to use for the connection (default: '{default_connection}')",
+)
+
+parser.add_argument(
+    "-new_session",
+    action="store_true",
+    help=f"reset sequence numbers and start a new session",
 )
 
 
@@ -49,22 +57,29 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    fix_pipeline = BasePipeline(session_name=args.session)
+    fix_pipeline = BasePipeline(connection_name=args.connection, new_session=args.new_session)
 
     try:
         fix_pipeline.start().result()
 
     except futures.TimeoutError as e:
         logger.error(e)
+        sys.exit(os.EX_UNAVAILABLE)
 
     except KeyboardInterrupt:
         logger.info("Received keyboard interrupt! Initiating shutdown...")
+        sys.exit(os.EX_OK)
 
-    except futures.CancelledError:
-        logger.error("Cancelled: session terminated abnormally!")
+    except futures.CancelledError as e:
+        logger.error(f"Cancelled: connection terminated abnormally! ({e})")
+        sys.exit(os.EX_UNAVAILABLE)
+
+    except Exception as e:
+        logger.exception(e)
 
     finally:
         try:
             fix_pipeline.stop().result()
-        except futures.CancelledError:
-            logger.error("Cancelled: session terminated abnormally!")
+        except futures.CancelledError as e:
+            logger.error(f"Cancelled: connection terminated abnormally! ({e})")
+            sys.exit(os.EX_UNAVAILABLE)

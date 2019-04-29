@@ -30,6 +30,7 @@ code.
         "wtfix.apps.admin.HeartbeatApp",           # Heartbeat monitoring and maintenance
         "wtfix.apps.admin.AuthenticationApp",      # Login / logout handling
         "wtfix.apps.admin.SeqNumManagerApp",       # Message gap detection and filling
+        "wtfix.apps.store.MessageStoreApp",        # Store messages (caching or persistence)
         "wtfix.apps.utils.InboundLoggingApp",      # Log inbound messages
         "wtfix.apps.parsers.RawMessageParserApp",  # Message parsing: Logon (A): {BeginString (8): FIX.4.4 | BodyLength (9): 99 | MsgType (35): A | MsgSeqNum (34): 1 | SenderCompID (49): SENDER | SendingTime (52): 20190305-08:45:45.979 | TargetCompID (56): TARGET | EncryptMethod (98): 0 | HeartBtInt (108): 30 | Username (553): USERNAME | Password (554): PASSWORD | ResetSeqNumFlag (141): Y | CheckSum (10): 94}
         "wtfix.apps.utils.OutboundLoggingApp",     # Log outbound messages

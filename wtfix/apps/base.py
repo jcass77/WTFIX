@@ -20,6 +20,7 @@ from functools import wraps
 from unsync import unsync
 
 from wtfix.core.exceptions import ValidationError, MessageProcessingError
+from wtfix.message.message import FIXMessage
 
 
 class BaseApp:
@@ -80,7 +81,8 @@ class BaseApp:
         """
         pass
 
-    def on_receive(self, message):
+    @unsync
+    async def on_receive(self, message: FIXMessage) -> FIXMessage:
         """
         Override this method in order to define what to do when a message is received.
 
@@ -91,7 +93,7 @@ class BaseApp:
         """
         return message
 
-    def on_resend(self, message):
+    def on_resend(self, message: FIXMessage) -> FIXMessage:
         """
         Override this message in order to define what to do when a message was not received successfully
         by the counter party.
@@ -103,7 +105,8 @@ class BaseApp:
         """
         return message
 
-    def on_send(self, message):
+    @unsync
+    async def on_send(self, message: FIXMessage) -> FIXMessage:
         """
         Override this method in order to define what to do with a message needs to be transmitted.
 
@@ -113,7 +116,7 @@ class BaseApp:
         """
         return message
 
-    def send(self, message):
+    def send(self, message: FIXMessage):
         """
         Send a message.
         :param message: The message to be sent.
@@ -172,7 +175,8 @@ class MessageTypeHandlerApp(BaseApp):
                 # Method is not a message type pipeline, ignore
                 pass
 
-    def on_receive(self, message):
+    @unsync
+    async def on_receive(self, message: FIXMessage) -> FIXMessage:
         """
         Calls the relevant on_<message_type> handler for this type of message, or 'on_unhandled' if no
         handler has been defined.
@@ -182,7 +186,7 @@ class MessageTypeHandlerApp(BaseApp):
         :raises: MessageProcessingError if the handler does not return a valid FIX message.
         """
         handler = self.type_handlers.get(message.type, self.on_unhandled)
-        message = handler(message)
+        message = await handler(message)
 
         if message is None:
             raise MessageProcessingError(
@@ -191,9 +195,10 @@ class MessageTypeHandlerApp(BaseApp):
                 f"{self.__module__}.{self.__class__.__name__}.{handler.__name__}?"
             )
 
-        return message
+        return await super().on_receive(message)
 
-    def on_unhandled(self, message):
+    @unsync
+    async def on_unhandled(self, message: FIXMessage) -> FIXMessage:
         """
         Default message handler. Will process any messages that are not handled by a type-specific
         on_<message_type> method.

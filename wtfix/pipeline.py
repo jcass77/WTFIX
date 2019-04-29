@@ -42,22 +42,22 @@ class BasePipeline:
     INBOUND_PROCESSING = 0
     OUTBOUND_PROCESSING = 1
 
-    def __init__(self, session_name=None, installed_apps=None):
-        if session_name is None:
-            session_name = settings.default_session_name
+    def __init__(self, connection_name=None, installed_apps=None, **kwargs):
+        if connection_name is None:
+            connection_name = settings.default_connection_name
 
-        self.settings = SessionSettings(session_name)
-        self._installed_apps = self._load_apps(installed_apps=installed_apps)
+        self.settings = SessionSettings(connection_name)
+        self._installed_apps = self._load_apps(installed_apps=installed_apps, **kwargs)
         logger.info(f"Created new FIX application pipeline: {list(self.apps.keys())}.")
 
-        self.stop_lock = asyncio.Lock()
-        self.stopped_event = asyncio.Event()
+        self.stop_lock = asyncio.Lock(loop=unsync.loop)
+        self.stopped_event = asyncio.Event(loop=unsync.loop)
 
     @property
     def apps(self):
         return self._installed_apps
 
-    def _load_apps(self, installed_apps=None):
+    def _load_apps(self, installed_apps=None, **kwargs):
         """
         Loads the list of apps to be used for processing messages.
 
@@ -74,7 +74,8 @@ class BasePipeline:
             )
 
         settings_kwargs = {
-            key.lower(): value for key, value in self.settings.__dict__.items()
+            **kwargs,
+            **{key.lower(): value for key, value in self.settings.__dict__.items()},
         }
 
         for app in installed_apps:
@@ -161,7 +162,7 @@ class BasePipeline:
                 for task in asyncio.Task.all_tasks():
                     task.cancel()
 
-    def _prep_processing_pipeline(self, direction):
+    def _setup_message_handling(self, direction):
         if direction is self.INBOUND_PROCESSING:
             return "on_receive", reversed(self.apps.values())
 
@@ -183,23 +184,23 @@ class BasePipeline:
         :return: The processed message.
         """
 
-        process_func, app_chain = self._prep_processing_pipeline(direction)
+        method_name, app_chain = self._setup_message_handling(direction)
 
         try:
             for app in app_chain:
                 # Call the relevant 'on_send' or 'on_receive' method for each application
-                message = getattr(app, process_func)(message)
+                message = await getattr(app, method_name)(message)
 
         except MessageProcessingError as e:
             logger.exception(
-                f"Error processing message {message}. Processing stopped at '{app.name}': {e}."
+                f"Message processing error at '{app.name}': {e} ({message})."
             )
-        except StopMessageProcessing:
-            logger.info(f"Processing of message {message} interrupted at '{app.name}'.")
+        except StopMessageProcessing as e:
+            logger.info(f"Processing of message interrupted at '{app.name}': {e} ({message}).")
         except Exception as e:
             # Log exception in case it is not handled properly in the Future object.
             logger.exception(
-                f"Unhandled exception while doing {process_func} for message {message}."
+                f"Unhandled exception while doing {method_name} for message {message}."
             )
             raise e
 

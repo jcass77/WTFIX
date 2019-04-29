@@ -16,17 +16,20 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import asyncio
+import collections
 import uuid
-from collections import OrderedDict
 from datetime import datetime
 
 from unsync import unsync
 
 from wtfix.apps.base import MessageTypeHandlerApp, on
+from wtfix.apps.sessions import ClientSessionApp
+from wtfix.apps.store import MessageStoreApp
 from wtfix.conf import settings
 from wtfix.core.exceptions import TagNotFound, StopMessageProcessing, SessionError
 from wtfix.message import admin
 from wtfix.core import utils
+from wtfix.message.message import FIXMessage
 from wtfix.protocol.common import MsgType
 
 
@@ -48,7 +51,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
         )  # A waiting TestRequest message for which no response has been received.
 
         self._heartbeat_monitor_unfuture = None
-        self._server_not_responding = asyncio.Event()
+        self._server_not_responding = asyncio.Event(loop=unsync.loop)
 
         super().__init__(pipeline, *args, **kwargs)
 
@@ -151,8 +154,9 @@ class HeartbeatApp(MessageTypeHandlerApp):
         if self.is_waiting():
             self._server_not_responding.set()
 
+    @unsync
     @on(MsgType.Logon)
-    def on_logon(self, message):
+    async def on_logon(self, message):
         """
         Start the heartbeat monitor as soon as a logon response is received from the server.
 
@@ -163,8 +167,9 @@ class HeartbeatApp(MessageTypeHandlerApp):
 
         return message
 
+    @unsync
     @on(MsgType.TestRequest)
-    def on_test_request(self, message):
+    async def on_test_request(self, message):
         """
         Send a HeartBeat message in response to a TestRequest received from the server.
 
@@ -177,8 +182,9 @@ class HeartbeatApp(MessageTypeHandlerApp):
 
         return message
 
+    @unsync
     @on(MsgType.Heartbeat)
-    def on_heartbeat(self, message):
+    async def on_heartbeat(self, message):
         """
         Handle a TestRequest response from the server.
         :param message: The Heartbeat message that was received in response to our TestRequest. The
@@ -194,7 +200,8 @@ class HeartbeatApp(MessageTypeHandlerApp):
 
         return message
 
-    def on_receive(self, message):
+    @unsync
+    async def on_receive(self, message: FIXMessage) -> FIXMessage:
         """
         Update the timestamp whenever any message is received.
         :param message:
@@ -203,7 +210,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
             datetime.utcnow()
         )  # Update timestamp on every message received
 
-        return super().on_receive(message)
+        return await super().on_receive(message)
 
 
 class AuthenticationApp(MessageTypeHandlerApp):
@@ -227,7 +234,7 @@ class AuthenticationApp(MessageTypeHandlerApp):
         super().__init__(pipeline, *args, **kwargs)
 
         if heartbeat_int is None:
-            heartbeat_int = settings.default_session.HEARTBEAT_INT
+            heartbeat_int = settings.default_connection.HEARTBEAT_INT
 
         self.heartbeat_int = heartbeat_int
 
@@ -243,8 +250,8 @@ class AuthenticationApp(MessageTypeHandlerApp):
         self.reset_seq_nums = reset_seq_nums
         self.test_mode = test_mode
 
-        self.logged_in_event = asyncio.Event()
-        self.logged_out_event = asyncio.Event()
+        self.logged_in_event = asyncio.Event(loop=unsync.loop)
+        self.logged_out_event = asyncio.Event(loop=unsync.loop)
 
     @unsync
     async def start(self, *args, **kwargs):
@@ -266,8 +273,9 @@ class AuthenticationApp(MessageTypeHandlerApp):
 
         logger.info(f"Logout completed!")
 
+    @unsync
     @on(MsgType.Logon)
-    def on_logon(self, message):
+    async def on_logon(self, message):
         """
         Confirms all of the session parameters that we sent when logging on.
 
@@ -291,7 +299,11 @@ class AuthenticationApp(MessageTypeHandlerApp):
                 f"{self.name}: Test mode confirmation '{test_mode}' does not match logon value {self.test_mode}."
             )
 
-        reset_seq_nums = bool(message.ResetSeqNumFlag)
+        try:
+            reset_seq_nums = bool(message.ResetSeqNumFlag)
+        except TagNotFound:
+            reset_seq_nums = False
+
         if reset_seq_nums != self.reset_seq_nums:
             raise SessionError(
                 f"{self.name}: Reset sequence number confirmation '{reset_seq_nums}' does not match "
@@ -302,11 +314,12 @@ class AuthenticationApp(MessageTypeHandlerApp):
 
         return message
 
+    @unsync
     @on(MsgType.Logout)
-    def on_logout(self, message):
+    async def on_logout(self, message):
         self.logged_out_event.set()  # FIX server has logged us out.
 
-        self.pipeline.stop()  # Stop the pipeline, in case this is not already underway.
+        await self.pipeline.stop()  # Stop the pipeline, in case this is not already underway.
 
         return message
 
@@ -319,6 +332,7 @@ class AuthenticationApp(MessageTypeHandlerApp):
             self.username, self.password, heartbeat_int=self.heartbeat_int
         )
 
+        self.reset_seq_nums = not self.pipeline.apps[ClientSessionApp.name].is_resumed
         if self.reset_seq_nums:
             logon_msg.ResetSeqNumFlag = "Y"
 
@@ -357,9 +371,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
         self._send_seq_num = 0
         self._receive_seq_num = 0
 
-        # TODO: make implementation of send and receive logs plug-able to reduce memory consumption (redis support)
-        self._send_log = OrderedDict()
-        self._receive_log = OrderedDict()
+        self.gapfill_deque = collections.deque()
 
         super().__init__(pipeline, *args, **kwargs)
 
@@ -379,19 +391,39 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
         if message.seq_num > self.expected_seq_num:
             # We've missed some incoming messages
 
-            missing_seq_numbers = [
-                seq_num for seq_num in range(self.receive_seq_num + 1, message.seq_num)
-            ]
+            if len(self.gapfill_deque) == 0:
+                # Start a new gap fill operation
+                missing_seq_nums = [seq_num for seq_num in range(self.receive_seq_num + 1, message.seq_num)]
 
-            logger.error(
-                f"{self.name}: Client missed {len(missing_seq_numbers)} messages. Sequence numbers: "
-                f"{missing_seq_numbers}."
-            )
+                logger.error(
+                    f"{self.name}: Client missed {len(missing_seq_nums)} messages. Sequence numbers: "
+                    f"{missing_seq_nums}."
+                )
 
-            self._handle_seq_num_gaps(missing_seq_numbers)
+                self.gapfill_deque.append(message)
+                self._handle_seq_num_gaps(missing_seq_nums)
+            else:
+                # Busy processing gap fill, add to queue
+                self.gapfill_deque.append(message)
+                raise StopMessageProcessing(
+                    f"Queueing message # {message.seq_num} while gap fill is in progress "
+                    f"(waiting for # {self.expected_seq_num})..."
+                )
+        else:
+            # Message received in expected order
+            try:
+                if self.gapfill_deque[0].seq_num == message.seq_num + 1:
+                    # Also process and clear gapfill queue
+                    for message in self.gapfill_deque:
+                        self.pipeline.receive(bytes(message))
+
+                    self.gapfill_deque.clear()
+            except IndexError:
+                # Gap fill not in progress - continue
+                pass
 
     def _handle_seq_num_gaps(self, missing_seq_numbers):
-        self.send(admin.ResendRequestMessage(missing_seq_numbers[0]))
+        self.send(admin.ResendRequestMessage(missing_seq_numbers[0], missing_seq_numbers[-1]))
 
         raise StopMessageProcessing(
             f"Detected message sequence gap: {missing_seq_numbers}. Discarding message."
@@ -414,8 +446,31 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
             raise SessionError(error_msg)
 
+    @unsync
+    async def start(self, *args, **kwargs):
+        await super().start(*args, **kwargs)
+
+        client_session = self.pipeline.apps[ClientSessionApp.name]
+        if client_session.is_resumed:
+            message_store = self.pipeline.apps[MessageStoreApp.name].store
+
+            sent_seq_nums = await message_store.filter(
+                session_id=client_session.session_id, originator=client_session.sender
+            )
+
+            received_seq_nums = await message_store.filter(
+                session_id=client_session.session_id, originator=client_session.target
+            )
+
+            self._send_seq_num = sent_seq_nums[-1]
+            self._receive_seq_num = received_seq_nums[-1]
+        else:
+            self._send_seq_num = 0
+            self._receive_seq_num = 0
+
+    @unsync
     @on(MsgType.ResendRequest)
-    def on_resend_request(self, message):
+    async def on_resend_request(self, message):
         begin_seq_no = int(message.BeginSeqNo)
         end_seq_no = int(message.EndSeqNo)
 
@@ -428,8 +483,9 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
         last_admin_seq_num = None
         next_seq_num = begin_seq_no
 
+        message_store = self.pipeline.apps[MessageStoreApp.name]
         for seq_num in range(begin_seq_no, end_seq_no + 1):
-            resend_msg = self._send_log[seq_num]
+            resend_msg = await message_store.get_sent(seq_num)
 
             if resend_msg.MsgType in self.ADMIN_MESSAGES:
                 # Admin message - see if there are more sequential ones in the send log
@@ -457,19 +513,19 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
         return message
 
-    def on_receive(self, message):
+    @unsync
+    async def on_receive(self, message: FIXMessage) -> FIXMessage:
         """
         Check the sequence number for every message received
         """
-        self._check_seq_num_gap(message)
         self._check_poss_dup(message)
-
+        self._check_seq_num_gap(message)
         self._receive_seq_num = message.seq_num
 
-        self._receive_log[message.seq_num] = message
-        return super().on_receive(message)
+        return await super().on_receive(message)
 
-    def on_send(self, message):
+    @unsync
+    async def on_send(self, message: FIXMessage) -> FIXMessage:
         """
         Inject MsgSeqNum for every message to be sent, except duplicates.
         """
@@ -483,6 +539,4 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             self._send_seq_num += 1
             message.seq_num = self.send_seq_num
 
-            self._send_log[message.seq_num] = message
-
-        return super().on_send(message)
+        return await super().on_send(message)

@@ -1,32 +1,59 @@
-# This file is a part of WTFIX.
-#
-# Copyright (C) 2018,2019 John Cass <john.cass77@gmail.com>
-#
-# WTFIX is free software; you can redistribute it and/or modify it
-# under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or (at
-# your option) any later version.
-#
-# WTFIX is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-# FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public
-# License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+import uuid
 from unittest import mock
 
 import asyncio
 
 import pytest
 
-from wtfix.apps.sessions import ClientSessionApp
+from wtfix.apps.sessions import ClientSessionApp, SessionApp
 from wtfix.message import admin
 from wtfix.tests.conftest import get_mock_async
 
 
+class TestSessionApp:
+
+    def test_get_session_new_session_creates_file_if_not_exists(self, base_pipeline, tmp_path):
+        sid_path = tmp_path / ".sid"
+
+        with pytest.raises(FileNotFoundError):
+            open(sid_path, "r")
+
+        session_app = SessionApp(base_pipeline)
+        session_app._get_session(new_session=True, sid_file=sid_path)
+
+        open(sid_path, "r")
+
+    def test_get_session_new_session_sets_attributes_correctly(self, base_pipeline, tmp_path):
+        sid_path = tmp_path / ".sid"
+
+        session_app = SessionApp(base_pipeline)
+        uuid_, is_resumed = session_app._get_session(new_session=True, sid_file=sid_path)
+
+        assert uuid_ is not None
+        assert is_resumed is False
+
+    def test_get_session_resumed_session_sets_attributes_correctly(self, base_pipeline, tmp_path):
+        sid_path = tmp_path / ".sid"
+        uuid_ = uuid.uuid4().hex
+
+        with open(sid_path, "w") as file:
+            file.write(uuid_)
+
+        session_app = SessionApp(base_pipeline)
+        read_uuid, is_resumed = session_app._get_session(sid_file=sid_path)
+
+        assert read_uuid == uuid_
+        assert is_resumed is True
+
+    @pytest.mark.asyncio
+    async def test_stop_file_does_not_exist_handled_gracefully(self, unsync_event_loop, base_pipeline):
+        session_app = SessionApp(base_pipeline)
+
+        await session_app.stop()
+
+
 class TestClientSessionApp:
+
     @pytest.mark.asyncio
     async def test_listen_reads_a_complete_message(
         self, unsync_event_loop, base_pipeline, encoder_app
@@ -42,6 +69,7 @@ class TestClientSessionApp:
         session_app.pipeline.receive = get_mock_async()
 
         msg = admin.TestRequestMessage("Test123")
+
         encoded_msg = encoder_app.encode_message(msg)
 
         session_app.listen()

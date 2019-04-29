@@ -6,6 +6,8 @@ import pytest
 from unsync import Unfuture
 
 from wtfix.apps.admin import HeartbeatApp, SeqNumManagerApp, AuthenticationApp
+from wtfix.apps.sessions import ClientSessionApp
+from wtfix.apps.store import MessageStoreApp, MemoryStore
 from wtfix.conf import settings
 from wtfix.core.exceptions import StopMessageProcessing, SessionError
 from wtfix.message import admin
@@ -16,25 +18,28 @@ from wtfix.protocol.common import MsgType, Tag
 
 
 class TestAuthenticationApp:
-    def test_on_logon_raises_exception_on_wrong_heartbeat_response(self, base_pipeline):
+    @pytest.mark.asyncio
+    async def test_on_logon_raises_exception_on_wrong_heartbeat_response(self, unsync_event_loop, base_pipeline):
         with pytest.raises(SessionError):
             logon_msg = admin.LogonMessage("", "", heartbeat_int=60)
             logon_msg.ResetSeqNumFlag = True
 
             auth_app = AuthenticationApp(base_pipeline)
-            auth_app.on_logon(logon_msg)
+            await auth_app.on_logon(logon_msg)
 
-    def test_on_logon_sets_default_test_message_indicator_to_false(self, base_pipeline):
+    @pytest.mark.asyncio
+    async def test_on_logon_sets_default_test_message_indicator_to_false(self, unsync_event_loop, base_pipeline):
         logon_msg = admin.LogonMessage("", "")
         logon_msg.ResetSeqNumFlag = True
 
         auth_app = AuthenticationApp(base_pipeline)
-        auth_app.on_logon(logon_msg)
+        await auth_app.on_logon(logon_msg)
 
         assert auth_app.test_mode is False
 
-    def test_on_logon_raises_exception_on_wrong_test_indicator_response(
-        self, base_pipeline
+    @pytest.mark.asyncio
+    async def test_on_logon_raises_exception_on_wrong_test_indicator_response(
+        self, unsync_event_loop, base_pipeline
     ):
         with pytest.raises(SessionError):
             logon_msg = admin.LogonMessage("", "")
@@ -42,23 +47,24 @@ class TestAuthenticationApp:
             logon_msg.TestMessageIndicator = True
 
             auth_app = AuthenticationApp(base_pipeline)
-            auth_app.on_logon(logon_msg)
+            await auth_app.on_logon(logon_msg)
 
-    def test_on_logon_raises_exception_on_wrong_reset_sequence_number_response(
-        self, base_pipeline
+    @pytest.mark.asyncio
+    async def test_on_logon_raises_exception_on_wrong_reset_sequence_number_response(
+        self, unsync_event_loop, base_pipeline
     ):
         with pytest.raises(SessionError):
             logon_msg = admin.LogonMessage("", "")
             logon_msg.ResetSeqNumFlag = False
 
             auth_app = AuthenticationApp(base_pipeline)
-            auth_app.on_logon(logon_msg)
+            await auth_app.on_logon(logon_msg)
 
 
 class TestHeartbeatApp:
     def test_heartbeat_getter_defaults_to_global_settings(self, base_pipeline):
         heartbeat_app = HeartbeatApp(base_pipeline)
-        assert heartbeat_app.heartbeat == settings.default_session.HEARTBEAT_INT
+        assert heartbeat_app.heartbeat == settings.default_connection.HEARTBEAT_INT
 
     @pytest.mark.asyncio
     async def test_server_stops_responding_after_three_test_requests(
@@ -123,58 +129,109 @@ class TestHeartbeatApp:
         await zero_heartbeat_app.send_test_request()
         assert zero_heartbeat_app._server_not_responding.is_set()
 
-    def test_logon_sets_heartbeat_increment(self, logon_message, base_pipeline):
+    @pytest.mark.asyncio
+    async def test_logon_sets_heartbeat_increment(self, unsync_event_loop, logon_message, base_pipeline):
         heartbeat_app = HeartbeatApp(base_pipeline)
 
         logon_message.HeartBtInt = 45
-        heartbeat_app.on_logon(logon_message)
+        await heartbeat_app.on_logon(logon_message)
 
         assert heartbeat_app.heartbeat == 45
 
-    def test_sends_heartbeat_on_test_request(self, zero_heartbeat_app):
+    @pytest.mark.asyncio
+    async def test_sends_heartbeat_on_test_request(self, unsync_event_loop, zero_heartbeat_app):
         request_message = TestRequestMessage("test123")
-        zero_heartbeat_app.on_test_request(request_message)
+        await zero_heartbeat_app.on_test_request(request_message)
 
         zero_heartbeat_app.pipeline.send.assert_called_with(
             admin.HeartbeatMessage("test123")
         )
 
-    def test_resets_request_id_when_heartbeat_received(self, zero_heartbeat_app):
+    @pytest.mark.asyncio
+    async def test_resets_request_id_when_heartbeat_received(self, unsync_event_loop, zero_heartbeat_app):
         heartbeat_message = HeartbeatMessage("test123")
         zero_heartbeat_app._test_request_id = "test123"
 
-        zero_heartbeat_app.on_heartbeat(heartbeat_message)
+        await zero_heartbeat_app.on_heartbeat(heartbeat_message)
 
         assert zero_heartbeat_app._test_request_id is None
 
-    def test_on_heartbeat_handles_empty_request_id(self, zero_heartbeat_app):
+    @pytest.mark.asyncio
+    async def test_on_heartbeat_handles_empty_request_id(self, unsync_event_loop, zero_heartbeat_app):
         test_request = OptimizedGenericMessage((Tag.MsgType, MsgType.TestRequest))
 
-        assert zero_heartbeat_app.on_heartbeat(test_request) == test_request
+        assert await zero_heartbeat_app.on_heartbeat(test_request) == test_request
 
-    def test_on_receive_updated_timestamp(self, zero_heartbeat_app):
+    @pytest.mark.asyncio
+    async def test_on_receive_updated_timestamp(self, unsync_event_loop, zero_heartbeat_app):
         prev_timestamp = zero_heartbeat_app._last_receive
 
-        zero_heartbeat_app.on_receive(TestRequestMessage("test123"))
+        await zero_heartbeat_app.on_receive(TestRequestMessage("test123"))
         assert zero_heartbeat_app._last_receive != prev_timestamp
 
 
 class TestSeqNumManagerApp:
-    def test_on_resend_request_sends_resend_request(self, messages):
-        pipeline_mock = MagicMock(BasePipeline)
-        seq_num_app = SeqNumManagerApp(pipeline_mock)
 
-        seq_num_app._send_log = {message.seq_num: message for message in messages}
-        seq_num_app._send_seq_num = max(seq_num_app._send_log.keys())
+    @pytest.fixture
+    @pytest.mark.asyncio
+    async def pipeline_with_messages(self, unsync_event_loop, base_pipeline, messages):
+        message_store_app = MessageStoreApp(base_pipeline, store=MemoryStore())
+        base_pipeline.apps[MessageStoreApp.name] = message_store_app
+
+        for message in messages:  # Sent messages
+            await message_store_app.set_sent(message)
+
+        for message in messages[0:3]:  # Received messages
+            tmp = message.SenderCompID
+            message.SenderCompID = message.TargetCompID
+            message.TargetCompID = tmp
+            await message_store_app.set_received(message)
+
+        return base_pipeline
+
+    @pytest.mark.asyncio
+    async def test_start_resumes_sequence_numbers(self, unsync_event_loop, pipeline_with_messages):
+
+        seq_num_app = SeqNumManagerApp(pipeline_with_messages)
+        await seq_num_app.start()
+
+        assert seq_num_app.send_seq_num == 5
+        assert seq_num_app.receive_seq_num == 3
+
+    @pytest.mark.asyncio
+    async def test_start_resets_sequence_numbers_for_new_session(self, unsync_event_loop, pipeline_with_messages):
+
+        pipeline_with_messages.apps[ClientSessionApp.name]._is_resumed = False
+        seq_num_app = SeqNumManagerApp(pipeline_with_messages)
+        await seq_num_app.start()
+
+        assert seq_num_app.send_seq_num == 0
+        assert seq_num_app.receive_seq_num == 0
+
+    @pytest.mark.asyncio
+    async def test_on_resend_request_sends_resend_request(
+        self, unsync_event_loop, pipeline_with_messages
+    ):
+        seq_num_app = SeqNumManagerApp(pipeline_with_messages)
+        seq_num_app._send_seq_num = max(
+            message.seq_num
+            for message in pipeline_with_messages.apps[
+                MessageStoreApp.name
+            ].store._store.values()
+        )
 
         resend_begin_seq_num = 2
 
-        seq_num_app.on_resend_request(admin.ResendRequestMessage(resend_begin_seq_num))
+        await seq_num_app.on_resend_request(
+            admin.ResendRequestMessage(resend_begin_seq_num)
+        )
 
-        assert pipeline_mock.send.call_count == 4
+        await asyncio.sleep(0.1)  # Nothing to await. Sleep to give processes time to complete.
 
-        for idx in range(pipeline_mock.send.call_count):
-            message = pipeline_mock.send.mock_calls[idx][1][0]
+        assert pipeline_with_messages.send.call_count == 4
+
+        for idx in range(pipeline_with_messages.send.call_count):
+            message = pipeline_with_messages.send.mock_calls[idx][1][0]
             # Check sequence number
             assert message.seq_num == resend_begin_seq_num + idx
             # Check PossDup flag
@@ -182,11 +239,11 @@ class TestSeqNumManagerApp:
             # Check sending time
             assert message.OrigSendingTime == message.SendingTime
 
-    def test_on_resend_request_handles_admin_messages_correctly(
-        self, logon_message, messages
+    @pytest.mark.asyncio
+    async def test_on_resend_request_handles_admin_messages_correctly(
+        self, unsync_event_loop, logon_message, pipeline_with_messages, messages
     ):
-        pipeline_mock = MagicMock(BasePipeline)
-        seq_num_app = SeqNumManagerApp(pipeline_mock)
+        seq_num_app = SeqNumManagerApp(pipeline_with_messages)
 
         admin_messages = [logon_message, HeartbeatMessage("test123")]
 
@@ -197,49 +254,48 @@ class TestSeqNumManagerApp:
         for idx, message in enumerate(messages):
             message.MsgSeqNum = idx + 1
 
-        seq_num_app._send_log = {message.seq_num: message for message in messages}
-        seq_num_app._send_seq_num = max(seq_num_app._send_log.keys())
+        message_store_app = pipeline_with_messages.apps[MessageStoreApp.name]
+        message_store_app.store._store.clear()
+
+        for message in messages:
+            await message_store_app.set_sent(message)
+
+        seq_num_app._send_seq_num = max(
+            message.seq_num
+            for message in pipeline_with_messages.apps[
+                MessageStoreApp.name
+            ].store._store.values()
+        )
 
         resend_begin_seq_num = 1
 
-        seq_num_app.on_resend_request(admin.ResendRequestMessage(resend_begin_seq_num))
+        await seq_num_app.on_resend_request(
+            admin.ResendRequestMessage(resend_begin_seq_num)
+        )
 
-        assert pipeline_mock.send.call_count == 6
+        assert pipeline_with_messages.send.call_count == 6
 
-        admin_messages_resend = pipeline_mock.send.mock_calls[0][1][0]
+        admin_messages_resend = pipeline_with_messages.send.mock_calls[0][1][0]
         # Check SequenceReset message is constructed correctly
         assert admin_messages_resend.seq_num == 1
         assert int(admin_messages_resend.NewSeqNo) == 3
         assert bool(admin_messages_resend.PossDupFlag) is True
 
         # Check first non-admin message starts with correct sequence number
-        first_non_admin_message_resend = pipeline_mock.send.mock_calls[1][1][0]
+        first_non_admin_message_resend = pipeline_with_messages.send.mock_calls[1][
+            1
+        ][0]
         assert first_non_admin_message_resend.seq_num == 3
 
-    def test_on_receive_no_gaps_adds_messages_to_receive_log(
-        self, messages, base_pipeline
-    ):
-        seq_num_app = SeqNumManagerApp(base_pipeline)
-
-        for next_message in messages:
-            seq_num_app.on_receive(next_message)
-
-        assert seq_num_app.receive_seq_num == 5
-        assert seq_num_app.expected_seq_num == 6
-
-        assert all(
-            int(message.MsgSeqNum) in seq_num_app._receive_log.keys()
-            for message in messages
-        )
-
-    def test_on_receive_with_gaps_sends_resend_request(self, messages):
+    @pytest.mark.asyncio
+    async def test_on_receive_with_gaps_sends_resend_request(self, unsync_event_loop, messages):
         pipeline_mock = MagicMock(BasePipeline)
         seq_num_app = SeqNumManagerApp(pipeline_mock)
 
-        seq_num_app.on_receive(messages[0])
+        await seq_num_app.on_receive(messages[0])
 
         try:
-            seq_num_app.on_receive(messages[-1])
+            await seq_num_app.on_receive(messages[-1])
             assert False  # Should not reach here
         except StopMessageProcessing:
             # Expected - ignore
@@ -247,22 +303,46 @@ class TestSeqNumManagerApp:
 
         assert pipeline_mock.send.call_count == 1
 
-    def test_on_receive_ignores_poss_dups(self, messages):
-        pipeline_mock = MagicMock(BasePipeline)
-        seq_num_app = SeqNumManagerApp(pipeline_mock)
+    @pytest.mark.asyncio
+    async def test_on_receive_handles_gapfill(self, unsync_event_loop, pipeline_with_messages, user_notification_message):
+        seq_num_app = SeqNumManagerApp(pipeline_with_messages)
 
-        for next_message in messages:
-            seq_num_app.on_receive(next_message)
+        seq_num_app._receive_seq_num = 3
+        user_notification_message.seq_num = 6  # Simulate missing messages 4 and 5
 
         try:
-            dup_message = messages[-1]
-            dup_message.PossDupFlag = "Y"
-            seq_num_app.on_receive(dup_message)
-
-            assert False  # Should not reach here
+            await seq_num_app.on_receive(user_notification_message)
+            assert pipeline_with_messages.send.call_count == 1  # Resend request sent
         except StopMessageProcessing:
-            # Expected - ignore
+            # Expected
             pass
+
+        # Simulate resend of 4 and 5
+        for seq_num in [4, 5]:
+            message = user_notification_message.copy()
+            message.seq_num = seq_num
+            message.PossDupFlag = True
+            await seq_num_app.on_receive(message)
+
+        assert pipeline_with_messages.receive.call_count == 1  # Queued messages processed
+
+    # @pytest.mark.asyncio
+    # async def test_on_receive_ignores_poss_dups(self, unsync_event_loop, messages):
+    #     pipeline_mock = MagicMock(BasePipeline)
+    #     seq_num_app = SeqNumManagerApp(pipeline_mock)
+    #
+    #     for next_message in messages:
+    #         await seq_num_app.on_receive(next_message)
+    #
+    #     try:
+    #         dup_message = messages[-1]
+    #         dup_message.PossDupFlag = "Y"
+    #         await seq_num_app.on_receive(dup_message)
+    #
+    #         assert False  # Should not reach here
+    #     except StopMessageProcessing:
+    #         # Expected - ignore
+    #         pass
 
     def test_check_poss_dup_raises_exception_for_unexpected_sequence_numbers(
         self, user_notification_message

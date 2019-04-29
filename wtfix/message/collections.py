@@ -758,7 +758,7 @@ class Group(FieldMap):
     @classmethod
     def _get_template(cls, group_identifier):
         try:
-            return settings.default_session.GROUP_TEMPLATES[group_identifier.tag]
+            return settings.default_connection.GROUP_TEMPLATES[group_identifier.tag]
         except KeyError:
             raise (
                 ImproperlyConfigured(

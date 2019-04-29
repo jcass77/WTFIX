@@ -16,7 +16,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import asyncio
+import os
+import uuid
 from asyncio import IncompleteReadError, LimitOverrunError
+from pathlib import Path
 
 from unsync import unsync
 
@@ -34,7 +37,9 @@ class SessionApp(BaseApp):
     Base class for apps that manage client / server connections.
     """
 
-    def __init__(self, pipeline, sender=None, *args, **kwargs):
+    name = "session"
+
+    def __init__(self, pipeline, new_session=False, sender=None, *args, **kwargs):
         super().__init__(pipeline, *args, **kwargs)
         self.reader = None
         self.writer = None
@@ -45,6 +50,67 @@ class SessionApp(BaseApp):
         self.sender = sender
         self.next_in_seq_num = 1
 
+        self._new_session = new_session
+        self._session_id = None
+        self._is_resumed = None
+
+    @property
+    def session_id(self):
+        if self._session_id is None:
+            self._session_id, self._is_resumed = self._get_session()
+
+        return self._session_id
+
+    @property
+    def default_sid_file(self):
+        return Path(settings.ROOT_DIR) / ".sid"
+
+    @property
+    def is_resumed(self):
+        if self._is_resumed is None:
+            self._session_id, self._is_resumed = self._get_session()
+
+        return self._is_resumed
+
+    def _get_session(self, *, new_session=None, sid_file=None):
+        if new_session is None:
+            new_session = self._new_session
+
+        if sid_file is None:
+            sid_file = self.default_sid_file
+
+        if new_session is True:
+            uuid_ = self._reset_session(sid_file)
+            return uuid_, False
+
+        with open(sid_file, "r") as read_file:
+            uuid_ = read_file.read()
+            logger.info(
+                f"{self.name}: Resuming session with ID: {uuid_}."
+            )
+            return uuid_, True
+
+    def _reset_session(self, sid_file):
+        try:
+            os.remove(sid_file)
+        except FileNotFoundError:
+            # File does not exist - skip deletion
+            pass
+
+        with open(sid_file, "w") as write_file:
+            uuid_ = uuid.uuid4().hex
+
+            write_file.write(uuid_)
+            logger.info(
+                f"{self.name}: Starting a new session with ID: {uuid_}."
+            )
+            return uuid_
+
+    @unsync
+    async def initialize(self, *args, **kwargs):
+        await super().initialize(*args, **kwargs)
+        self._get_session()
+
 
 class ClientSessionApp(SessionApp):
     """
@@ -53,8 +119,8 @@ class ClientSessionApp(SessionApp):
 
     name = "client_session"
 
-    def __init__(self, pipeline, sender=None, target=None, *args, **kwargs):
-        super().__init__(pipeline, sender=sender, *args, **kwargs)
+    def __init__(self, pipeline, new_session=False, sender=None, target=None, *args, **kwargs):
+        super().__init__(pipeline, new_session=new_session, sender=sender, *args, **kwargs)
 
         if target is None:
             target = self.pipeline.settings.TARGET

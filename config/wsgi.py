@@ -41,7 +41,7 @@ def get_wsgi_application(*args, session_name=None):
     if session_name is None:
         session_name = settings.default_session_name
 
-    app.fix_pipeline = BasePipeline(session_name=session_name)
+    app.fix_pipeline = BasePipeline(connection_name=session_name)
 
     if RESTfulServiceApp.name not in app.fix_pipeline.apps.keys():
         app.logger.warning(

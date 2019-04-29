@@ -27,17 +27,17 @@ class TestBasePipeline:
 
     def test_load_apps_raises_exception_if_no_apps_installed(self):
         with pytest.raises(ImproperlyConfigured):
-            orig_apps = settings.default_session.PIPELINE_APPS
+            orig_apps = settings.default_connection.PIPELINE_APPS
 
-            settings.SESSIONS["default"]["PIPELINE_APPS"] = []
+            settings.CONNECTIONS["default"]["PIPELINE_APPS"] = []
             BasePipeline()
 
-            settings.default_session.PIPELINE_APPS = orig_apps
+            settings.default_connection.PIPELINE_APPS = orig_apps
 
     def test_prep_processing_pipeline_inbound_order(self, three_level_app_chain):
         pipeline = BasePipeline(installed_apps=three_level_app_chain)
 
-        func, app_chain = pipeline._prep_processing_pipeline(
+        func, app_chain = pipeline._setup_message_handling(
             pipeline.INBOUND_PROCESSING
         )
         assert func == "on_receive"
@@ -47,7 +47,7 @@ class TestBasePipeline:
 
     def test_pre_processing_pipeline_outbound_order(self, three_level_app_chain):
         pipeline = BasePipeline(installed_apps=three_level_app_chain)
-        func, app_chain = pipeline._prep_processing_pipeline(
+        func, app_chain = pipeline._setup_message_handling(
             pipeline.OUTBOUND_PROCESSING
         )
 
@@ -61,7 +61,7 @@ class TestBasePipeline:
     ):
         with pytest.raises(ValidationError):
             pipeline = BasePipeline(installed_apps=three_level_app_chain)
-            pipeline._prep_processing_pipeline("inbound")
+            pipeline._setup_message_handling("inbound")
 
     @pytest.mark.asyncio
     async def test_initialize_initializes_each_app_exactly_once(
