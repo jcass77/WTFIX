@@ -109,9 +109,7 @@ class SessionApp(BaseApp):
     @unsync
     async def initialize(self, *args, **kwargs):
         await super().initialize(*args, **kwargs)
-
-        new_session = kwargs.get("new_session", False)
-        self._get_session(new_session=new_session)
+        self._get_session()
 
 
 class ClientSessionApp(SessionApp):
