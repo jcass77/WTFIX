@@ -1,3 +1,4 @@
+import os
 from unittest import mock
 from unittest.mock import MagicMock
 
@@ -25,7 +26,7 @@ def base_pipeline():
     pipeline = MagicMock(BasePipeline)
     pipeline.settings = settings.default_connection
 
-    client_session = ClientSessionApp(pipeline)
+    client_session = ClientSessionApp(pipeline, new_session=True)
     client_session.sender = settings.default_connection.SENDER
     client_session.target = settings.default_connection.TARGET
 
@@ -33,7 +34,13 @@ def base_pipeline():
         ClientSessionApp.name: client_session
     }
 
-    return pipeline
+    yield pipeline
+
+    try:
+        os.remove(client_session.default_sid_file)
+    except FileNotFoundError:
+        # File does not exist - skip deletion
+        pass
 
 
 @pytest.fixture
