@@ -192,6 +192,7 @@ class TestSeqNumManagerApp:
     @pytest.mark.asyncio
     async def test_start_resumes_sequence_numbers(self, unsync_event_loop, pipeline_with_messages):
 
+        pipeline_with_messages.apps[ClientSessionApp.name]._is_resumed = True
         seq_num_app = SeqNumManagerApp(pipeline_with_messages)
         await seq_num_app.start()
 
