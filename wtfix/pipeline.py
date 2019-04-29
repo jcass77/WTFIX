@@ -197,6 +197,11 @@ class BasePipeline:
             )
         except StopMessageProcessing as e:
             logger.info(f"Processing of message interrupted at '{app.name}': {e} ({message}).")
+
+        except ImproperlyConfigured as e:
+            # Raise configuration errors up to 'run_client'.
+            raise e
+
         except Exception as e:
             # Log exception in case it is not handled properly in the Future object.
             logger.exception(

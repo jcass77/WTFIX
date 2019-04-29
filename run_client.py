@@ -74,6 +74,10 @@ if __name__ == "__main__":
         logger.error(f"Cancelled: connection terminated abnormally! ({e})")
         sys.exit(os.EX_UNAVAILABLE)
 
+    except ImproperlyConfigured as e:
+        logger.error(e)
+        sys.exit(os.EX_OK)
+
     except Exception as e:
         logger.exception(e)
 

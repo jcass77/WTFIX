@@ -26,6 +26,7 @@ from unsync import unsync
 from wtfix.apps.base import BaseApp
 from wtfix.conf import settings
 from wtfix.core import utils
+from wtfix.core.exceptions import ImproperlyConfigured
 from wtfix.protocol.common import MsgType, Tag
 
 
@@ -63,7 +64,7 @@ class SessionApp(BaseApp):
 
     @property
     def default_sid_file(self):
-        return Path(settings.ROOT_DIR) / ".sid"
+        return Path(settings.ROOT_DIR) / f"{self.pipeline.settings.TARGET}.sid"
 
     @property
     def is_resumed(self):
@@ -83,12 +84,18 @@ class SessionApp(BaseApp):
             uuid_ = self._reset_session(sid_file)
             return uuid_, False
 
-        with open(sid_file, "r") as read_file:
-            uuid_ = read_file.read()
-            logger.info(
-                f"{self.name}: Resuming session with ID: {uuid_}."
+        try:
+            with open(sid_file, "r") as read_file:
+                uuid_ = read_file.read()
+                logger.info(
+                    f"{self.name}: Resuming session with ID: {uuid_}."
+                )
+                return uuid_, True
+        except FileNotFoundError:
+            raise ImproperlyConfigured(
+                f"Session ID file '{sid_file}' not found. Start a new session by passing the " 
+                f"'-new_session' parameter."
             )
-            return uuid_, True
 
     def _reset_session(self, sid_file):
         try:
