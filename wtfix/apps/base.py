@@ -116,7 +116,8 @@ class BaseApp:
         """
         return message
 
-    def send(self, message: FIXMessage):
+    @unsync
+    async def send(self, message: FIXMessage):
         """
         Send a message.
         :param message: The message to be sent.

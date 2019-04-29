@@ -414,7 +414,10 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             try:
                 if self.gapfill_deque[0].seq_num == message.seq_num + 1:
                     # Also process and clear gapfill queue
+                    logger.info(f"{self.name}: Gap fill completed, processing queued messages...")
+
                     for message in self.gapfill_deque:
+                        logger.info(f"{self.name}: Resubmitting queued message # {message.seq_num}.")
                         self.pipeline.receive(bytes(message))
 
                     self.gapfill_deque.clear()
@@ -426,7 +429,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
         self.send(admin.ResendRequestMessage(missing_seq_numbers[0], missing_seq_numbers[-1]))
 
         raise StopMessageProcessing(
-            f"Detected message sequence gap: {missing_seq_numbers}. Discarding message."
+            f"Detected message sequence gap: {missing_seq_numbers}. Queueing message for gap fill."
         )
 
     def _check_poss_dup(self, message):
@@ -462,8 +465,18 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
                 session_id=client_session.session_id, originator=client_session.target
             )
 
-            self._send_seq_num = sent_seq_nums[-1]
-            self._receive_seq_num = received_seq_nums[-1]
+            try:
+                self._send_seq_num = sent_seq_nums[-1]
+            except IndexError:
+                # No messages sent yet
+                self._send_seq_num = 0
+
+            try:
+                self._receive_seq_num = received_seq_nums[-1]
+            except IndexError:
+                # No messages received yet
+                self._receive_seq_num = 0
+
         else:
             self._send_seq_num = 0
             self._receive_seq_num = 0
@@ -480,7 +493,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
         logger.info(f"Resending messages {begin_seq_no} through {end_seq_no}.")
 
-        last_admin_seq_num = None
+        admin_seq_nums = []
         next_seq_num = begin_seq_no
 
         message_store = self.pipeline.apps[MessageStoreApp.name]
@@ -489,16 +502,16 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
             if resend_msg.MsgType in self.ADMIN_MESSAGES:
                 # Admin message - see if there are more sequential ones in the send log
-                last_admin_seq_num = resend_msg.seq_num
+                admin_seq_nums.append(resend_msg.seq_num)
                 continue
 
-            elif last_admin_seq_num is not None:
+            if len(admin_seq_nums) > 0:
                 # Admin messages were found, submit SequenceReset
                 self.send(
-                    admin.SequenceResetMessage(next_seq_num, last_admin_seq_num + 1)
+                    admin.SequenceResetMessage(next_seq_num, admin_seq_nums[-1] + 1)
                 )
-                next_seq_num = last_admin_seq_num + 1
-                last_admin_seq_num = None
+                next_seq_num = admin_seq_nums[-1] + 1
+                admin_seq_nums.clear()
 
             # Resend message
             resend_msg = (
@@ -510,6 +523,14 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
             self.send(resend_msg)
             next_seq_num += 1
+
+        if len(admin_seq_nums) > 0:
+            # Admin messages were found, submit SequenceReset
+            self.send(
+                admin.SequenceResetMessage(next_seq_num, admin_seq_nums[-1] + 1)
+            )
+            next_seq_num = admin_seq_nums[-1] + 1
+            admin_seq_nums.clear()
 
         return message
 
