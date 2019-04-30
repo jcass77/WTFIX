@@ -2,6 +2,12 @@
 
 This changelog is used to track all major changes to WTFIX.
 
+## v0.8.1 (UNRELEASED)
+
+**Fixes**
+
+- Add missing dependencies to setup.py.
+
 ## v0.8.0 (2019-04-30)
 
 **Enhancements**

@@ -27,11 +27,12 @@ setup(
     keywords="FIX financial information exchange",
     packages=find_packages(exclude=["contrib", "docs", "tests"]),
     install_requires=[
-        "python-dotenv~=0.10",
-        "unsync~=1.1",
+        "python-dotenv~=0.10.1",
+        "unsync~=1.2",
         "flask-restful~=0.3.7",
         "requests~=2.21.0",
         "gunicorn~=19.9.0",
+        "aioredis~=1.2",
     ],
     python_requires=">=3.6",
     project_urls={
