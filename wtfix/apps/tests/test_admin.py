@@ -236,7 +236,7 @@ class TestSeqNumManagerApp:
         with pytest.raises(SessionError):
             pipeline_mock = MagicMock(BasePipeline)
             seq_num_app = SeqNumManagerApp(pipeline_mock)
-            seq_num_app._receive_seq_num = 10
+            seq_num_app.receive_seq_num = 10
 
             user_notification_message.MsgSeqNum = 1
 
@@ -248,7 +248,7 @@ class TestSeqNumManagerApp:
         with pytest.raises(StopMessageProcessing):
             pipeline_mock = MagicMock(BasePipeline)
             seq_num_app = SeqNumManagerApp(pipeline_mock)
-            seq_num_app._receive_seq_num = 10
+            seq_num_app.receive_seq_num = 10
 
             user_notification_message.MsgSeqNum = 1
             user_notification_message.PossDupFlag = True
@@ -332,7 +332,7 @@ class TestSeqNumManagerApp:
         self, unsync_event_loop, pipeline_with_messages
     ):
         seq_num_app = SeqNumManagerApp(pipeline_with_messages)
-        seq_num_app._send_seq_num = 3  # 3 messages sent so far
+        seq_num_app.send_seq_num = 3  # 3 messages sent so far
         resend_begin_seq_num = 2  # Simulate resend request of 2 and 3
 
         await seq_num_app.on_resend_request(
@@ -375,7 +375,7 @@ class TestSeqNumManagerApp:
         for message in messages:
             await message_store_app.set_sent(message)
 
-        seq_num_app._send_seq_num = max(
+        seq_num_app.send_seq_num = max(
             message.seq_num
             for message in pipeline_with_messages.apps[
                 MessageStoreApp.name
@@ -409,7 +409,7 @@ class TestSeqNumManagerApp:
             seconds=10
         )  # Don't wait for resend requests
 
-        seq_num_app._receive_seq_num = 5  # 5 Messages received so far
+        seq_num_app.receive_seq_num = 5  # 5 Messages received so far
         user_notification_message.seq_num = 8  # Simulate missing messages 6 and 7
 
         try:

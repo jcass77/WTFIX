@@ -424,9 +424,17 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
     def send_seq_num(self):
         return self._send_seq_num
 
+    @send_seq_num.setter
+    def send_seq_num(self, value: int):
+        self._send_seq_num = int(value)  # Make sure we received an int
+
     @property
     def receive_seq_num(self):
         return self._receive_seq_num
+
+    @receive_seq_num.setter
+    def receive_seq_num(self, value: int):
+        self._receive_seq_num = int(value)  # Make sure we received an int
 
     @property
     def expected_seq_num(self):
@@ -449,35 +457,35 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             )  # Get sequence number of last message received.
 
             try:
-                self._send_seq_num = sent_seq_nums[-1]
+                self.send_seq_num = sent_seq_nums[-1]
             except IndexError:
                 # No messages sent yet
-                self._send_seq_num = 0
+                self.send_seq_num = 0
 
             try:
-                self._receive_seq_num = received_seq_nums[-1]
+                self.receive_seq_num = received_seq_nums[-1]
             except IndexError:
                 # No messages received yet
-                self._receive_seq_num = 0
+                self.receive_seq_num = 0
 
         else:
-            self._send_seq_num = 0
-            self._receive_seq_num = 0
+            self.send_seq_num = 0
+            self.receive_seq_num = 0
 
         self.startup_time = datetime.utcnow()
 
     @unsync
     async def _check_sequence_number(self, message):
 
-        if message.seq_num < self.send_seq_num:
+        if int(message.seq_num) < self.expected_seq_num:
             self._handle_sequence_number_too_low(message)
 
-        elif message.seq_num > self.expected_seq_num:
+        elif int(message.seq_num) > self.expected_seq_num:
             await self._handle_sequence_number_too_high(message)
 
         else:
             # Message received in expected order
-            self._receive_seq_num = (
+            self.receive_seq_num = (
                 message.seq_num
             )  # Update counter as early as possible
             try:
@@ -656,7 +664,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
     def _handle_sequence_reset(self, message: FIXMessage) -> FIXMessage:
         # Reset sequence number in anticipation of next message to be received.
-        self._receive_seq_num = int(message.NewSeqNo) - 1
+        self.receive_seq_num = int(message.NewSeqNo) - 1
 
         # Check the receive buffer and discard messages as required
         try:
@@ -698,7 +706,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
         if not is_duplicate:
             # Set sequence number and add to send log
-            self._send_seq_num += 1
+            self.send_seq_num += 1
             message.seq_num = self.send_seq_num
 
         return await super().on_send(message)
