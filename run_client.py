@@ -76,10 +76,11 @@ if __name__ == "__main__":
 
     except ImproperlyConfigured as e:
         logger.error(e)
-        sys.exit(os.EX_OK)
+        sys.exit(os.EX_OK)  # User needs to fix config issue before restart is attempted
 
     except Exception as e:
         logger.exception(e)
+        sys.exit(os.EX_UNAVAILABLE)
 
     finally:
         try:

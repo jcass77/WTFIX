@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+import asyncio
 import uuid
 
 import requests
@@ -59,7 +59,7 @@ class Send(Resource):
         args = self.parser.parse_args()
         message = decoders.from_json(args["message"])
 
-        self.app.send(message)
+        asyncio.ensure_future(self.app.send(message))
 
         return JsonResultResponse(
             True,

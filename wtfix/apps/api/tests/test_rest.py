@@ -5,7 +5,7 @@ from wtfix.message import admin
 
 
 class TestRESTfulServiceApp:
-    def test_get_status(self, api_app, unsync_event_loop):
+    def test_get_status(self, api_app):
         response = api_app.flask_app.get("/")
 
         assert response.status_code == 200
@@ -14,7 +14,7 @@ class TestRESTfulServiceApp:
         assert result["success"] is True
         assert result["message"] == "WTFIX REST API is up and running!"
 
-    def test_get_send(self, api_app, unsync_event_loop):
+    def test_get_send(self, api_app):
 
         msg = admin.TestRequestMessage("TEST123")
         encoded_msg = encoders.to_json(msg)

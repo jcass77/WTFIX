@@ -14,7 +14,6 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 from functools import wraps
 
 from unsync import unsync
@@ -122,7 +121,7 @@ class BaseApp:
         Send a message.
         :param message: The message to be sent.
         """
-        self.pipeline.send(message)
+        await self.pipeline.send(message)
 
 
 def on(message_type):

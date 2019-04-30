@@ -205,9 +205,9 @@ class BasePipeline:
         except Exception as e:
             # Log exception in case it is not handled properly in the Future object.
             logger.exception(
-                f"Unhandled exception while doing {method_name} for message {message}."
+                f"Unhandled exception while doing {method_name}: {e} ({message})."
             )
-            raise e
+            await self.stop()  # Block while we try to stop the pipeline
 
         return message
 

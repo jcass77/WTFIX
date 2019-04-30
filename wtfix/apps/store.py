@@ -68,6 +68,20 @@ class BaseStore(abc.ABC):
 
     @unsync
     @abc.abstractmethod
+    async def delete(
+        self, session_id: str, originator: str, seq_num: Union[str, int]
+    ) -> int:
+        """
+        Deletes a message from the store.
+
+        :param session_id: The current session ID
+        :param originator: The originator of the message
+        :param seq_num: The sequence number of the message to delete.
+        :return: the number of messages that were deleted
+        """
+
+    @unsync
+    @abc.abstractmethod
     async def filter(
         self, *, session_id: str = None, originator: str = None
     ) -> List[numbers.Integral]:
@@ -108,6 +122,17 @@ class MemoryStore(BaseStore):
             return self._store[self.get_key(session_id, originator, seq_num)]
         except KeyError:
             return None
+
+    @unsync
+    async def delete(
+        self, session_id: str, originator: str, seq_num: Union[str, int]
+    ) -> int:
+        try:
+            del self._store[self.get_key(session_id, originator, seq_num)]
+            return 1
+        except KeyError:
+            # No key found to delete
+            return 0
 
     @unsync
     async def filter(
@@ -165,6 +190,16 @@ class RedisStore(BaseStore):
             if json_message is not None:
                 return decoders.from_json(json_message)
             return json_message
+
+    @unsync
+    async def delete(
+        self, session_id: str, originator: str, seq_num: Union[str, int]
+    ) -> int:
+        with await self.redis_pool as conn:
+            return await conn.execute(
+                "del",
+                self.get_key(session_id, originator, seq_num),
+            )
 
     @unsync
     async def filter(
