@@ -15,6 +15,8 @@ been filled.
 - Add `MessageStoreApp`, with default implementations for in-memory and redis-based stores for caching and / or
 persisting messages to database.
 - Convert all `on_send` and `on_receive` handlers to async and await.
+- Messages are now sent in separate Tasks to avoid holding up the main event loop.
+- AuthenticationApp now blocks all incoming and outgoing messages until authentication has been completed.
 
 ## v0.7.0 (2019-04-21)
 

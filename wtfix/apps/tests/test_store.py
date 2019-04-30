@@ -45,6 +45,28 @@ class TestBaseStore:
         "store_class", [MemoryStore, RedisStore]
     )
     @pytest.mark.asyncio
+    async def test_delete(self, unsync_event_loop, store_class, user_notification_message):
+        store = store_class()
+        await store.initialize()
+
+        if isinstance(store, RedisStore):
+            with await store.redis_pool as conn:
+                await conn.execute("flushall")
+
+        session_id = uuid.uuid4().hex
+
+        # Add some messages
+        for idx in range(5):
+            await store.set(session_id, "TRADER", user_notification_message)
+            user_notification_message.seq_num += 1
+
+        assert await store.delete(session_id, "TRADER", 3) == 1
+        assert await store.delete(session_id, "TRADER", 99) == 0  # Does not exist
+
+    @pytest.mark.parametrize(
+        "store_class", [MemoryStore, RedisStore]
+    )
+    @pytest.mark.asyncio
     async def test_filter_all(self, unsync_event_loop, store_class, user_notification_message):
         store = store_class()
         await store.initialize()

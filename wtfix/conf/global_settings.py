@@ -57,7 +57,7 @@ SOH_INT = ord(SOH)  # Used for parsing raw byte streams.
 
 # Timeouts for app initialization and startup
 INIT_TIMEOUT = 10
-STARTUP_TIMEOUT = 5
+STARTUP_TIMEOUT = 10
 STOP_TIMEOUT = 5
 
 # Default formatting for datetime objects.

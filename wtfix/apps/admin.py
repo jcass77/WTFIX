@@ -18,7 +18,7 @@
 import asyncio
 import collections
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from unsync import unsync
 
@@ -146,7 +146,10 @@ class HeartbeatApp(MessageTypeHandlerApp):
         logger.warning(
             f"{self.name}: Heartbeat exceeded, sending test request '{self._test_request_id}'..."
         )
-        self.send(admin.TestRequestMessage(utils.encode(self._test_request_id)))
+        # Don't need to block while request is sent
+        asyncio.ensure_future(
+            self.send(admin.TestRequestMessage(utils.encode(self._test_request_id)))
+        )
 
         # Sleep while we wait for a response on the test request
         await asyncio.sleep(self.test_request_response_delay)
@@ -178,7 +181,8 @@ class HeartbeatApp(MessageTypeHandlerApp):
         logger.debug(
             f"{self.name}: Sending heartbeat in response to request {message.TestReqID}."
         )
-        self.send(admin.HeartbeatMessage(str(message.TestReqID)))
+        # Don't need to block while heartbeat is sent
+        asyncio.ensure_future(self.send(admin.HeartbeatMessage(str(message.TestReqID))))
 
         return message
 
@@ -324,6 +328,36 @@ class AuthenticationApp(MessageTypeHandlerApp):
         return message
 
     @unsync
+    async def on_receive(self, message: FIXMessage) -> FIXMessage:
+
+        # Block non-authentication messages until we've logged in successfully
+        if (
+            not self.logged_in_event.is_set()
+            and message.type not in SeqNumManagerApp.ADMIN_MESSAGES
+        ):
+            logger.warning(
+                f"{self.name}: Blocking message until logon is completed ({message})."
+            )
+            await self.logged_in_event.wait()
+
+        return await super().on_receive(message)
+
+    @unsync
+    async def on_send(self, message: FIXMessage) -> FIXMessage:
+
+        # Block non-authentication messages until we've logged in successfully
+        if (
+            not self.logged_in_event.is_set()
+            and message.type not in SeqNumManagerApp.ADMIN_MESSAGES
+        ):
+            logger.warning(
+                f"{self.name}: Blocking message until logon is completed ({message})."
+            )
+            await self.logged_in_event.wait()
+
+        return await super().on_send(message)
+
+    @unsync
     async def logon(self):
         """
         Log on to the FIX server using the provided credentials.
@@ -340,7 +374,8 @@ class AuthenticationApp(MessageTypeHandlerApp):
             logon_msg.TestMessageIndicator = "Y"
 
         logger.info(f"{self.name}: Logging in with: {logon_msg:t}...")
-        self.send(logon_msg)
+        # Don't need to block while we send logon message
+        asyncio.ensure_future(self.send(logon_msg))
 
     @unsync
     async def logout(self):
@@ -348,7 +383,8 @@ class AuthenticationApp(MessageTypeHandlerApp):
         Log out of the FIX server.
         """
         logout_msg = admin.LogoutMessage()
-        self.send(logout_msg)
+        # Fire and forget logout
+        asyncio.ensure_future(self.send(logout_msg))
 
 
 class SeqNumManagerApp(MessageTypeHandlerApp):
@@ -368,10 +404,19 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
     ]
 
     def __init__(self, pipeline, *args, **kwargs):
+
+        self.startup_time = None
         self._send_seq_num = 0
         self._receive_seq_num = 0
 
-        self.gapfill_deque = collections.deque()
+        self.receive_buffer = collections.deque()
+
+        self.resend_request_handled_event = asyncio.Event(loop=unsync.loop)
+        self.resend_request_handled_event.set()  # Detect if a resend request has been responded to
+
+        self.waited_for_resend_request_event = asyncio.Event(
+            loop=unsync.loop
+        )  # Wait for resend requests from target
 
         super().__init__(pipeline, *args, **kwargs)
 
@@ -387,68 +432,6 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
     def expected_seq_num(self):
         return self._receive_seq_num + 1
 
-    def _check_seq_num_gap(self, message):
-        if message.seq_num > self.expected_seq_num:
-            # We've missed some incoming messages
-
-            if len(self.gapfill_deque) == 0:
-                # Start a new gap fill operation
-                missing_seq_nums = [seq_num for seq_num in range(self.receive_seq_num + 1, message.seq_num)]
-
-                logger.error(
-                    f"{self.name}: Client missed {len(missing_seq_nums)} messages. Sequence numbers: "
-                    f"{missing_seq_nums}."
-                )
-
-                self.gapfill_deque.append(message)
-                self._handle_seq_num_gaps(missing_seq_nums)
-            else:
-                # Busy processing gap fill, add to queue
-                self.gapfill_deque.append(message)
-                raise StopMessageProcessing(
-                    f"Queueing message # {message.seq_num} while gap fill is in progress "
-                    f"(waiting for # {self.expected_seq_num})..."
-                )
-        else:
-            # Message received in expected order
-            try:
-                if self.gapfill_deque[0].seq_num == message.seq_num + 1:
-                    # Also process and clear gapfill queue
-                    logger.info(f"{self.name}: Gap fill completed, processing queued messages...")
-
-                    for message in self.gapfill_deque:
-                        logger.info(f"{self.name}: Resubmitting queued message # {message.seq_num}.")
-                        self.pipeline.receive(bytes(message))
-
-                    self.gapfill_deque.clear()
-            except IndexError:
-                # Gap fill not in progress - continue
-                pass
-
-    def _handle_seq_num_gaps(self, missing_seq_numbers):
-        self.send(admin.ResendRequestMessage(missing_seq_numbers[0], missing_seq_numbers[-1]))
-
-        raise StopMessageProcessing(
-            f"Detected message sequence gap: {missing_seq_numbers}. Queueing message for gap fill."
-        )
-
-    def _check_poss_dup(self, message):
-        if message.seq_num < self.expected_seq_num:
-            error_msg = f"Unexpected message sequence number '{message.seq_num}'. Expected '{self.expected_seq_num}'."
-
-            try:
-                if bool(message.PossDupFlag) is True:
-                    raise StopMessageProcessing(
-                        f"Ignoring duplicate message {message}."
-                    )
-            # According to the FIX specification, receiving a lower than expected sequence number, that is
-            # not a duplicate, is a fatal error that requires manual intervention. Throw an unhandled exception to
-            # force-stop the pipeline.
-            except TagNotFound:
-                raise SessionError(error_msg)
-
-            raise SessionError(error_msg)
-
     @unsync
     async def start(self, *args, **kwargs):
         await super().start(*args, **kwargs)
@@ -459,11 +442,11 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
             sent_seq_nums = await message_store.filter(
                 session_id=client_session.session_id, originator=client_session.sender
-            )
+            )  # Get sequence number of last message sent
 
             received_seq_nums = await message_store.filter(
                 session_id=client_session.session_id, originator=client_session.target
-            )
+            )  # Get sequence number of last message received.
 
             try:
                 self._send_seq_num = sent_seq_nums[-1]
@@ -481,6 +464,132 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             self._send_seq_num = 0
             self._receive_seq_num = 0
 
+        self.startup_time = datetime.utcnow()
+
+    @unsync
+    async def _check_sequence_number(self, message):
+
+        if message.seq_num < self.send_seq_num:
+            self._handle_sequence_number_too_low(message)
+
+        elif message.seq_num > self.expected_seq_num:
+            await self._handle_sequence_number_too_high(message)
+
+        else:
+            # Message received in expected order
+            self._receive_seq_num = (
+                message.seq_num
+            )  # Update counter as early as possible
+            try:
+                if self.receive_buffer[0].seq_num == message.seq_num + 1:
+                    # We've just received the missing sequence numbers. Also process and clear any messages that
+                    # were buffered since gap fill started.
+                    logger.info(
+                        f"{self.name}: Gap fill completed, processing queued messages..."
+                    )
+
+                    while len(self.receive_buffer) > 0:
+                        resubmit_message = self.receive_buffer.popleft()
+                        logger.info(
+                            f"{self.name}: Resubmitting queued message #{resubmit_message.seq_num} "
+                            f"({resubmit_message})."
+                        )
+                        asyncio.ensure_future(
+                            self.pipeline.receive(bytes(resubmit_message))
+                        )  # Separate, non-blocking task
+            except IndexError:
+                # Gap fill not in progress - continue
+                pass
+
+    def _handle_sequence_number_too_low(self, message):
+        """
+        According to the FIX specification, receiving a lower than expected sequence number, that is
+        not a duplicate, is a fatal error that requires manual intervention. Throw an exception to
+        force-stop the pipeline.
+
+        :param message: The FIX message to check
+        :raises: SessionError if a non-duplicate message is received with a lower than expected sequence number.
+        """
+        error_msg = f"Unexpected message sequence number '{message.seq_num}'. Expected '{self.expected_seq_num}'."
+        try:
+            if bool(message.PossDupFlag) is True:
+                # Duplicate that must already have been processed - ignore
+                raise StopMessageProcessing(
+                    f"{self.name}: Ignoring duplicate with lower than "
+                    f"expected sequence number ({message})."
+                )
+
+        except TagNotFound:
+            raise SessionError(error_msg)
+
+        raise SessionError(error_msg)
+
+    @unsync
+    async def _handle_sequence_number_too_high(self, message):
+
+        # We've missed some incoming messages
+        if len(self.receive_buffer) == 0:
+
+            # Start a new gap fill operation
+            logger.warning(
+                f"{self.name}: Sequence number gap detected! Expected: "
+                f"{self.expected_seq_num}, received: {message.seq_num})"
+            )
+            missing_seq_nums = [
+                seq_num for seq_num in range(self.receive_seq_num + 1, message.seq_num)
+            ]
+
+            logger.warning(
+                f"{self.name}: Client missed {len(missing_seq_nums)} message(s). Sequence number(s): "
+                f"{missing_seq_nums}."
+            )
+
+            self.receive_buffer.append(message)
+
+            asyncio.ensure_future(
+                self._handle_seq_num_gaps(missing_seq_nums)
+            )  # Separate task - don't block while waiting for send!
+
+        else:
+            # Busy processing gap fill, add to queue
+            self.receive_buffer.append(message)
+
+        # Delete messages that were received out of order from the message store
+        session_id = self.pipeline.apps[ClientSessionApp.name].session_id
+        await self.pipeline.apps[MessageStoreApp.name].store.delete(
+            session_id, message.SenderCompID, message.seq_num
+        )
+
+        raise StopMessageProcessing(
+            f"Queueing message #{message.seq_num} while gap fill is in progress "
+            f"(waiting for #{self.expected_seq_num})..."
+        )
+
+    @unsync
+    async def _handle_seq_num_gaps(self, missing_seq_nums):
+        # Wait for opportunity to send resend request. Must:
+        #
+        #   1.) Have waited for resend requests from the target; and
+        #   2.) Not be busy handling a resend request from the target
+
+        if not self.waited_for_resend_request_event.is_set():
+            wait_time = self.startup_time + timedelta(seconds=5)
+            wait_time = wait_time.timestamp() - datetime.utcnow().timestamp()
+            logger.info(
+                f"{self.name}: Waiting {wait_time:0.2f}ms for ResendRequests from target "
+                f"before doing gap fill..."
+            )
+
+            await asyncio.sleep(wait_time)
+            self.waited_for_resend_request_event.set()
+
+        # Don't send our own resend requests if we are busy handling one received from the target
+        await self.resend_request_handled_event.wait()
+
+        await self.send(
+            admin.ResendRequestMessage(missing_seq_nums[0], missing_seq_nums[-1])
+        )
+
     @unsync
     @on(MsgType.ResendRequest)
     async def on_resend_request(self, message):
@@ -493,22 +602,28 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
         logger.info(f"Resending messages {begin_seq_no} through {end_seq_no}.")
 
-        admin_seq_nums = []
+        admin_seq_nums = (
+            []
+        )  # Admin messages are handled differently, need a place to buffer them
         next_seq_num = begin_seq_no
 
         message_store = self.pipeline.apps[MessageStoreApp.name]
         for seq_num in range(begin_seq_no, end_seq_no + 1):
-            resend_msg = await message_store.get_sent(seq_num)
+            resend_msg = await message_store.get_sent(
+                seq_num
+            )  # Retrieve the message from the MessageStore
 
-            if resend_msg.MsgType in self.ADMIN_MESSAGES:
-                # Admin message - see if there are more sequential ones in the send log
+            if resend_msg.MsgType in SeqNumManagerApp.ADMIN_MESSAGES:
+                # Admin message - continue: to see if there are more sequential ones after this one
                 admin_seq_nums.append(resend_msg.seq_num)
                 continue
 
             if len(admin_seq_nums) > 0:
                 # Admin messages were found, submit SequenceReset
-                self.send(
-                    admin.SequenceResetMessage(next_seq_num, admin_seq_nums[-1] + 1)
+                asyncio.ensure_future(
+                    self.send(
+                        admin.SequenceResetMessage(next_seq_num, admin_seq_nums[-1] + 1)
+                    )
                 )
                 next_seq_num = admin_seq_nums[-1] + 1
                 admin_seq_nums.clear()
@@ -521,16 +636,35 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             resend_msg.PossDupFlag = "Y"
             resend_msg.OrigSendingTime = resend_msg.SendingTime
 
-            self.send(resend_msg)
+            asyncio.ensure_future(self.send(resend_msg))
             next_seq_num += 1
 
-        if len(admin_seq_nums) > 0:
-            # Admin messages were found, submit SequenceReset
-            self.send(
-                admin.SequenceResetMessage(next_seq_num, admin_seq_nums[-1] + 1)
-            )
-            next_seq_num = admin_seq_nums[-1] + 1
-            admin_seq_nums.clear()
+        else:
+            # Handle situation where last message was itself an admin message
+            if len(admin_seq_nums) > 0:
+                # Admin messages were found, submit SequenceReset
+                asyncio.ensure_future(
+                    self.send(
+                        admin.SequenceResetMessage(next_seq_num, admin_seq_nums[-1] + 1)
+                    )
+                )
+                admin_seq_nums.clear()
+
+        self.resend_request_handled_event.set()
+
+        return message
+
+    def _handle_sequence_reset(self, message: FIXMessage) -> FIXMessage:
+        # Reset sequence number in anticipation of next message to be received.
+        self._receive_seq_num = int(message.NewSeqNo) - 1
+
+        # Check the receive buffer and discard messages as required
+        try:
+            while self.receive_buffer[0].seq_num < self.expected_seq_num:
+                self.receive_buffer.popleft()
+        except IndexError:
+            # Buffer empty, continue
+            pass
 
         return message
 
@@ -539,9 +673,16 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
         """
         Check the sequence number for every message received
         """
-        self._check_poss_dup(message)
-        self._check_seq_num_gap(message)
-        self._receive_seq_num = message.seq_num
+        if message.type == MsgType.ResendRequest:
+            # Set event market to block our own gap fill requests until we've responded to this request.
+            self.resend_request_handled_event.clear()
+
+        elif message.type == MsgType.SequenceReset:
+            # Reset sequence numbers before doing any other checks
+            self._handle_sequence_reset(message)
+
+        # All other messages: just check sequence numbers
+        await self._check_sequence_number(message)
 
         return await super().on_receive(message)
 

@@ -1,4 +1,5 @@
 import os
+from asyncio import Future
 from unittest import mock
 from unittest.mock import MagicMock
 
@@ -34,6 +35,14 @@ def base_pipeline():
         ClientSessionApp.name: client_session
     }
 
+    # Mock a future message that will allow us to await pipeline.send and pipeline.receive.
+    # Only useful in situations where we are not interested in the actual message result :(
+    mock_future_message = MagicMock(return_value=Future())
+    mock_future_message.return_value.set_result({})
+
+    pipeline.send = mock_future_message
+    pipeline.receive = mock_future_message
+
     yield pipeline
 
     try:
@@ -59,7 +68,7 @@ def raw_msg_parser_app(base_pipeline):
 
 
 class ZeroDelayHeartbeatTestApp(HeartbeatApp):
-    """Heartbeat app with all delays set to zero for test purposes."""
+    """Heartbeat app with all delays set low for faster tests."""
 
     def __init__(self, pipeline, *args, **kwargs):
         super().__init__(pipeline, *args, **kwargs)
@@ -69,16 +78,16 @@ class ZeroDelayHeartbeatTestApp(HeartbeatApp):
 
     @property
     def heartbeat(self):
-        return 0
+        return 0.1
 
     @property
     def test_request_response_delay(self):
-        return 0
+        return 0.1
 
 
 @pytest.fixture
-def zero_heartbeat_app():
-    return ZeroDelayHeartbeatTestApp(MagicMock(BasePipeline))
+def zero_heartbeat_app(base_pipeline):
+    return ZeroDelayHeartbeatTestApp(base_pipeline)
 
 
 @pytest.fixture
@@ -87,11 +96,11 @@ def failing_server_heartbeat_app():
     app = ZeroDelayHeartbeatTestApp(MagicMock(BasePipeline))
     num_responses = 0
 
-    def simulate_heartbeat_response(message):
+    async def simulate_heartbeat_response(message):
         nonlocal num_responses
 
         if num_responses < 3:
-            app.on_heartbeat(HeartbeatMessage(str(message.TestReqID)))
+            await app.on_heartbeat(HeartbeatMessage(str(message.TestReqID)))
         num_responses += 1
 
     app.pipeline.send.side_effect = simulate_heartbeat_response
