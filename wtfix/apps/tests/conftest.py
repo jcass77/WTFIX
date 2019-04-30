@@ -31,9 +31,7 @@ def base_pipeline():
     client_session.sender = settings.default_connection.SENDER
     client_session.target = settings.default_connection.TARGET
 
-    pipeline.apps = {
-        ClientSessionApp.name: client_session
-    }
+    pipeline.apps = {ClientSessionApp.name: client_session}
 
     # Mock a future message that will allow us to await pipeline.send and pipeline.receive.
     # Only useful in situations where we are not interested in the actual message result :(

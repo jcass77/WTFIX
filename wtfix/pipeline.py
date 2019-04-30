@@ -196,7 +196,9 @@ class BasePipeline:
                 f"Message processing error at '{app.name}': {e} ({message})."
             )
         except StopMessageProcessing as e:
-            logger.info(f"Processing of message interrupted at '{app.name}': {e} ({message}).")
+            logger.info(
+                f"Processing of message interrupted at '{app.name}': {e} ({message})."
+            )
 
         except ImproperlyConfigured as e:
             # Raise configuration errors up to 'run_client'.

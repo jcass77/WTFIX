@@ -10,11 +10,11 @@ class TestBaseStore:
         uuid_ = uuid.uuid4().hex
         assert BaseStore.get_key(uuid_, "TRADER", 123) == f"{uuid_}:TRADER:123"
 
-    @pytest.mark.parametrize(
-        "store_class", [MemoryStore, RedisStore]
-    )
+    @pytest.mark.parametrize("store_class", [MemoryStore, RedisStore])
     @pytest.mark.asyncio
-    async def test_get_returns_message(self, unsync_event_loop, store_class, user_notification_message):
+    async def test_get_returns_message(
+        self, unsync_event_loop, store_class, user_notification_message
+    ):
         store = store_class()
         await store.initialize()
 
@@ -25,11 +25,12 @@ class TestBaseStore:
         session_id = uuid.uuid4().hex
         await store.set(session_id, "TRADER", user_notification_message)
 
-        assert await store.get(session_id, "TRADER", user_notification_message.seq_num) == user_notification_message
+        assert (
+            await store.get(session_id, "TRADER", user_notification_message.seq_num)
+            == user_notification_message
+        )
 
-    @pytest.mark.parametrize(
-        "store_class", [MemoryStore, RedisStore]
-    )
+    @pytest.mark.parametrize("store_class", [MemoryStore, RedisStore])
     @pytest.mark.asyncio
     async def test_get_not_found_returns_none(self, unsync_event_loop, store_class):
         store = store_class()
@@ -41,11 +42,11 @@ class TestBaseStore:
 
         assert await store.get(uuid.uuid4().hex, "TRADER", 123) is None
 
-    @pytest.mark.parametrize(
-        "store_class", [MemoryStore, RedisStore]
-    )
+    @pytest.mark.parametrize("store_class", [MemoryStore, RedisStore])
     @pytest.mark.asyncio
-    async def test_delete(self, unsync_event_loop, store_class, user_notification_message):
+    async def test_delete(
+        self, unsync_event_loop, store_class, user_notification_message
+    ):
         store = store_class()
         await store.initialize()
 
@@ -63,11 +64,11 @@ class TestBaseStore:
         assert await store.delete(session_id, "TRADER", 3) == 1
         assert await store.delete(session_id, "TRADER", 99) == 0  # Does not exist
 
-    @pytest.mark.parametrize(
-        "store_class", [MemoryStore, RedisStore]
-    )
+    @pytest.mark.parametrize("store_class", [MemoryStore, RedisStore])
     @pytest.mark.asyncio
-    async def test_filter_all(self, unsync_event_loop, store_class, user_notification_message):
+    async def test_filter_all(
+        self, unsync_event_loop, store_class, user_notification_message
+    ):
         store = store_class()
         await store.initialize()
 
@@ -87,11 +88,11 @@ class TestBaseStore:
         assert len(seq_nums) == 5
         assert all(seq_num in seq_nums for seq_num in range(1, 6))
 
-    @pytest.mark.parametrize(
-        "store_class", [MemoryStore, RedisStore]
-    )
+    @pytest.mark.parametrize("store_class", [MemoryStore, RedisStore])
     @pytest.mark.asyncio
-    async def test_filter_by_session_id(self, unsync_event_loop, store_class, user_notification_message):
+    async def test_filter_by_session_id(
+        self, unsync_event_loop, store_class, user_notification_message
+    ):
         store = store_class()
         await store.initialize()
 
@@ -113,11 +114,11 @@ class TestBaseStore:
         assert len(seq_nums) == 5
         assert all(seq_num in seq_nums for seq_num in range(1, 6))
 
-    @pytest.mark.parametrize(
-        "store_class", [MemoryStore, RedisStore]
-    )
+    @pytest.mark.parametrize("store_class", [MemoryStore, RedisStore])
     @pytest.mark.asyncio
-    async def test_filter_by_originator_id(self, unsync_event_loop, store_class, user_notification_message):
+    async def test_filter_by_originator_id(
+        self, unsync_event_loop, store_class, user_notification_message
+    ):
         store = store_class()
         await store.initialize()
 
@@ -138,11 +139,11 @@ class TestBaseStore:
         assert len(seq_nums) == 5
         assert all(seq_num in seq_nums for seq_num in range(1, 6))
 
-    @pytest.mark.parametrize(
-        "store_class", [MemoryStore, RedisStore]
-    )
+    @pytest.mark.parametrize("store_class", [MemoryStore, RedisStore])
     @pytest.mark.asyncio
-    async def test_filter_by_session_and_originator_id(self, unsync_event_loop, store_class, user_notification_message):
+    async def test_filter_by_session_and_originator_id(
+        self, unsync_event_loop, store_class, user_notification_message
+    ):
         store = store_class()
         await store.initialize()
 
@@ -175,13 +176,17 @@ class TestMemoryStore:
         await store.set(session_id, "TRADER", user_notification_message)
 
         assert len(store._store) == 1
-        assert store._store[f"{session_id}:TRADER:{user_notification_message.seq_num}"] == user_notification_message
+        assert (
+            store._store[f"{session_id}:TRADER:{user_notification_message.seq_num}"]
+            == user_notification_message
+        )
 
 
 class TestRedisStore:
-
     @pytest.mark.asyncio
-    async def test_initialize_creates_pool(self, unsync_event_loop, user_notification_message):
+    async def test_initialize_creates_pool(
+        self, unsync_event_loop, user_notification_message
+    ):
         store = RedisStore()
         await store.initialize()
 
@@ -195,11 +200,12 @@ class TestRedisStore:
         session_id = uuid.uuid4().hex
         await store.set(session_id, "TRADER", user_notification_message)
 
-        assert await store.redis_pool.exists(f"{session_id}:TRADER:{user_notification_message.seq_num}")
+        assert await store.redis_pool.exists(
+            f"{session_id}:TRADER:{user_notification_message.seq_num}"
+        )
 
 
 class TestMessageStoreApp:
-
     @pytest.mark.asyncio
     async def test_on_receive_adds_message_to_store(
         self, unsync_event_loop, messages, base_pipeline

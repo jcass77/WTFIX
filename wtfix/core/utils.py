@@ -50,7 +50,7 @@ def index_tag(tag, data, start=0):
     end_of_field = data.find(settings.SOH, start_of_field + 1)
 
     return (
-        data[start_of_field + len(search_bytes): end_of_field],
+        data[start_of_field + len(search_bytes) : end_of_field],
         start_of_field,
         end_of_field,
     )
@@ -76,7 +76,7 @@ def rindex_tag(tag, data, start=0):
     end_of_field = data.find(settings.SOH, start_of_field + 1)
 
     return (
-        data[start_of_field + len(search_bytes): end_of_field],
+        data[start_of_field + len(search_bytes) : end_of_field],
         start_of_field,
         end_of_field,
     )

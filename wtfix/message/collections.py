@@ -459,8 +459,8 @@ class FieldList(FieldMap):
                 tag,
                 self.values(),
                 message=f"Cannot delete Field by tag reference: "
-                        f"FieldMap contains {count} occurrences of '{tag}'. "
-                        f"Delete the Field(s) manually from 'data' instead."
+                f"FieldMap contains {count} occurrences of '{tag}'. "
+                f"Delete the Field(s) manually from 'data' instead.",
             )
 
         idx = 0

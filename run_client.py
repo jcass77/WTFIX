@@ -22,7 +22,7 @@ import sys
 from asyncio import futures
 
 # Import unsync to set event loop and start ambient unsync thread
-from unsync import (unsync,)  # noqa
+from unsync import unsync  # noqa
 
 from wtfix.conf import settings
 from wtfix.core.exceptions import ImproperlyConfigured
@@ -57,7 +57,9 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    fix_pipeline = BasePipeline(connection_name=args.connection, new_session=args.new_session)
+    fix_pipeline = BasePipeline(
+        connection_name=args.connection, new_session=args.new_session
+    )
 
     try:
         fix_pipeline.start().result()

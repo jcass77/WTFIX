@@ -17,7 +17,9 @@ class TestSettings:
     def test_default_connection_name_returns_default_if_safe(self):
         assert settings.default_connection_name == "default"
 
-    def test_default_connection_name_raises_exception_if_multiple_sessions_defined(self):
+    def test_default_connection_name_raises_exception_if_multiple_sessions_defined(
+        self
+    ):
         settings.CONNECTIONS["another_session"] = {}
 
         try:

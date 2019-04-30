@@ -197,8 +197,7 @@ class RedisStore(BaseStore):
     ) -> int:
         with await self.redis_pool as conn:
             return await conn.execute(
-                "del",
-                self.get_key(session_id, originator, seq_num),
+                "del", self.get_key(session_id, originator, seq_num)
             )
 
     @unsync
@@ -209,7 +208,7 @@ class RedisStore(BaseStore):
         matches = list()
 
         with await self.redis_pool as conn:
-            cur = b'0'  # set initial cursor to 0
+            cur = b"0"  # set initial cursor to 0
             while cur:
                 cur, keys = await conn.scan(cur, match=f"{session_id}:{originator}:*")
                 for key in keys:

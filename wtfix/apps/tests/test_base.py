@@ -59,7 +59,6 @@ class MockApp(MessageTypeHandlerApp):
 
 
 class TestMessageTypeHandlerApp:
-
     @pytest.mark.asyncio
     async def test_on_receive_handler(self, unsync_event_loop):
 
@@ -68,14 +67,18 @@ class TestMessageTypeHandlerApp:
         await app.on_receive(generic_message_factory((35, "a")))
         await app.on_receive(generic_message_factory((35, "b")))
 
-        await asyncio.sleep(0.1)  # Nothing to await. Sleep to give processes time to complete.
+        await asyncio.sleep(
+            0.1
+        )  # Nothing to await. Sleep to give processes time to complete.
 
         assert app.counter["a"] == 1
         assert app.counter["b"] == 0
         assert app.counter["unhandled"] == 1
 
     @pytest.mark.asyncio
-    async def test_on_receive_handler_raises_exception_if_message_not_returned(self, unsync_event_loop):
+    async def test_on_receive_handler_raises_exception_if_message_not_returned(
+        self, unsync_event_loop
+    ):
         with pytest.raises(MessageProcessingError):
             app = MockApp("mock_app")
             await app.on_receive(generic_message_factory((35, "z")))

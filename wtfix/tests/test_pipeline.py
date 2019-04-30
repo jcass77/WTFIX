@@ -37,9 +37,7 @@ class TestBasePipeline:
     def test_prep_processing_pipeline_inbound_order(self, three_level_app_chain):
         pipeline = BasePipeline(installed_apps=three_level_app_chain)
 
-        func, app_chain = pipeline._setup_message_handling(
-            pipeline.INBOUND_PROCESSING
-        )
+        func, app_chain = pipeline._setup_message_handling(pipeline.INBOUND_PROCESSING)
         assert func == "on_receive"
         assert next(app_chain).name == "below"
         assert next(app_chain).name == "middle"
@@ -47,9 +45,7 @@ class TestBasePipeline:
 
     def test_pre_processing_pipeline_outbound_order(self, three_level_app_chain):
         pipeline = BasePipeline(installed_apps=three_level_app_chain)
-        func, app_chain = pipeline._setup_message_handling(
-            pipeline.OUTBOUND_PROCESSING
-        )
+        func, app_chain = pipeline._setup_message_handling(pipeline.OUTBOUND_PROCESSING)
 
         assert func == "on_send"
         assert next(app_chain).name == "top"
@@ -114,7 +110,7 @@ class TestBasePipeline:
 
         call_order = [
             call[0].rstrip(".start")
-            for call in mock_parent.method_calls[-len(pipeline.apps):]
+            for call in mock_parent.method_calls[-len(pipeline.apps) :]
         ]
         assert call_order == list(reversed(pipeline.apps.keys()))
 
@@ -187,7 +183,7 @@ class TestBasePipeline:
 
         call_order = [
             call[0].rstrip("stop").rstrip(".")
-            for call in mock_parent.method_calls[-len(pipeline.apps):]
+            for call in mock_parent.method_calls[-len(pipeline.apps) :]
         ]
         assert call_order == list(pipeline.apps.keys())
 

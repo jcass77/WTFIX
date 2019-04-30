@@ -87,13 +87,11 @@ class SessionApp(BaseApp):
         try:
             with open(sid_file, "r") as read_file:
                 uuid_ = read_file.read()
-                logger.info(
-                    f"{self.name}: Resuming session with ID: {uuid_}."
-                )
+                logger.info(f"{self.name}: Resuming session with ID: {uuid_}.")
                 return uuid_, True
         except FileNotFoundError:
             raise ImproperlyConfigured(
-                f"Session ID file '{sid_file}' not found. Start a new session by passing the " 
+                f"Session ID file '{sid_file}' not found. Start a new session by passing the "
                 f"'-new_session' parameter."
             )
 
@@ -108,9 +106,7 @@ class SessionApp(BaseApp):
             uuid_ = uuid.uuid4().hex
 
             write_file.write(uuid_)
-            logger.info(
-                f"{self.name}: Starting a new session with ID: {uuid_}."
-            )
+            logger.info(f"{self.name}: Starting a new session with ID: {uuid_}.")
             return uuid_
 
     @unsync
@@ -126,8 +122,12 @@ class ClientSessionApp(SessionApp):
 
     name = "client_session"
 
-    def __init__(self, pipeline, new_session=False, sender=None, target=None, *args, **kwargs):
-        super().__init__(pipeline, new_session=new_session, sender=sender, *args, **kwargs)
+    def __init__(
+        self, pipeline, new_session=False, sender=None, target=None, *args, **kwargs
+    ):
+        super().__init__(
+            pipeline, new_session=new_session, sender=sender, *args, **kwargs
+        )
 
         if target is None:
             target = self.pipeline.settings.TARGET

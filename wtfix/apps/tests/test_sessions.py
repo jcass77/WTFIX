@@ -11,8 +11,9 @@ from wtfix.tests.conftest import get_mock_async
 
 
 class TestSessionApp:
-
-    def test_get_session_new_session_creates_file_if_not_exists(self, base_pipeline, tmp_path):
+    def test_get_session_new_session_creates_file_if_not_exists(
+        self, base_pipeline, tmp_path
+    ):
         sid_path = tmp_path / ".sid"
 
         with pytest.raises(FileNotFoundError):
@@ -23,16 +24,22 @@ class TestSessionApp:
 
         open(sid_path, "r")
 
-    def test_get_session_new_session_sets_attributes_correctly(self, base_pipeline, tmp_path):
+    def test_get_session_new_session_sets_attributes_correctly(
+        self, base_pipeline, tmp_path
+    ):
         sid_path = tmp_path / ".sid"
 
         session_app = SessionApp(base_pipeline)
-        uuid_, is_resumed = session_app._get_session(new_session=True, sid_file=sid_path)
+        uuid_, is_resumed = session_app._get_session(
+            new_session=True, sid_file=sid_path
+        )
 
         assert uuid_ is not None
         assert is_resumed is False
 
-    def test_get_session_resumed_session_sets_attributes_correctly(self, base_pipeline, tmp_path):
+    def test_get_session_resumed_session_sets_attributes_correctly(
+        self, base_pipeline, tmp_path
+    ):
         sid_path = tmp_path / ".sid"
         uuid_ = uuid.uuid4().hex
 
@@ -46,14 +53,15 @@ class TestSessionApp:
         assert is_resumed is True
 
     @pytest.mark.asyncio
-    async def test_stop_file_does_not_exist_handled_gracefully(self, unsync_event_loop, base_pipeline):
+    async def test_stop_file_does_not_exist_handled_gracefully(
+        self, unsync_event_loop, base_pipeline
+    ):
         session_app = SessionApp(base_pipeline)
 
         await session_app.stop()
 
 
 class TestClientSessionApp:
-
     @pytest.mark.asyncio
     async def test_listen_reads_a_complete_message(
         self, unsync_event_loop, base_pipeline, encoder_app
