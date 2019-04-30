@@ -1,7 +1,5 @@
 python-dotenv~=0.10.1  # https://github.com/theskumar/python-dotenv
-# TODO: Revert to official branch of unsync once https://github.com/alex-sherman/unsync/pull/5 is merged and released.
-# unsync~=1.1  # https://github.com/alex-sherman/unsync
-git+git://github.com/jcass77/unsync.git@enh/nested_instance_methods
+unsync~=1.2  # https://github.com/alex-sherman/unsync
 flask-restful~=0.3.7  # https://github.com/flask-restful/flask-restful
 requests~=2.21.0  # https://github.com/kennethreitz/requests
 gunicorn~=19.9.0  # https://gunicorn.org
