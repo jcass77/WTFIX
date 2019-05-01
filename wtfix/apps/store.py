@@ -263,6 +263,7 @@ class MessageStoreApp(BaseApp):
         self._session_app = self.pipeline.apps[
             ClientSessionApp.name
         ]  # Micro-optimization: store local reference
+
         await self.store.initialize(*args, **kwargs)
 
     @unsync
@@ -295,8 +296,7 @@ class MessageStoreApp(BaseApp):
 
     @unsync
     async def on_receive(self, message: FIXMessage) -> FIXMessage:
-        session_app = self.pipeline.apps[ClientSessionApp.name]
-        await self.store.set(session_app.session_id, session_app.target, message)
+        await self.set_received(message)
 
         return await super().on_receive(message)
 

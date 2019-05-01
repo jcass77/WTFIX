@@ -273,12 +273,14 @@ class AuthenticationApp(MessageTypeHandlerApp):
     @unsync
     async def stop(self, *args, **kwargs):
         await super().stop(*args, **kwargs)
-        logger.info(f"{self.name}: Logging out...")
 
-        await self.logout()
+        if self.logged_in_event.is_set():
+
+            logger.info(f"{self.name}: Logging out...")
+            await self.logout()
+            logger.info(f"Logout completed!")
+
         await self.logged_out_event.wait()
-
-        logger.info(f"Logout completed!")
 
     @unsync
     @on(MsgType.Logon)
@@ -417,8 +419,6 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
         self.receive_buffer = collections.deque()
 
-        self.gap_fill_in_progress_event = asyncio.Event(loop=unsync.loop)
-
         self.resend_request_handled_event = asyncio.Event(loop=unsync.loop)
         self.resend_request_handled_event.set()  # Detect if a resend request has been responded to
 
@@ -446,7 +446,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
     @property
     def expected_seq_num(self):
-        return self._receive_seq_num + 1
+        return self.receive_seq_num + 1
 
     @unsync
     async def start(self, *args, **kwargs):
@@ -492,46 +492,52 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             message = await self._handle_sequence_number_too_high(message)
 
         else:
-            # Message received in expected order
-            self.receive_seq_num = (
-                message.seq_num
-            )  # Update counter as early as possible
-            try:
-                if self.receive_buffer[0].seq_num == message.seq_num + 1:
-                    # We've just received the missing sequence numbers. Also process and clear any messages that
-                    # were buffered since gap fill started.
-                    logger.info(
-                        f"{self.name}: Gap fill completed, processing {len(self.receive_buffer)} queued "
-                        f"messages (#{self.receive_buffer[0].seq_num} - #{self.receive_buffer[-1].seq_num})."
-                    )
+            # Message received in correct order.
+            if message.type == MsgType.SequenceReset:
+                # Special handling for SequenceReset admin message
+                message = self._handle_sequence_reset(message)
+            else:
+                # Update counter as early as possible
+                self.receive_seq_num = message.seq_num
 
-                    while len(self.receive_buffer) > 0:
-                        resubmit_message = self.receive_buffer.popleft()
-                        if resubmit_message.type in SeqNumManagerApp.ADMIN_MESSAGES:
-                            # Don't re-submit admin messages
-                            logger.info(
-                                f"{self.name}: Skipping queued admin message #{resubmit_message.seq_num} "
-                                f"({resubmit_message})."
-                            )
-                            self._receive_seq_num += 1
-                            continue
-
-                        logger.info(
-                            f"{self.name}: Resubmitting queued message #{resubmit_message.seq_num} "
-                            f"({resubmit_message})."
-                        )
-                        asyncio.ensure_future(
-                            self.pipeline.receive(bytes(resubmit_message)),
-                            loop=unsync.loop,
-                        )  # Separate, non-blocking task
-
-                    self.gap_fill_in_progress_event.clear()  # Gap fill completed!
-
-            except IndexError:
-                # Gap fill not in progress
-                self.gap_fill_in_progress_event.clear()
+            if len(self.receive_buffer) > 0:
+                # See if the gap has been filled and we can replay buffered messages.
+                self._replay_buffered_messages()
 
         return message
+
+    def _replay_buffered_messages(self):
+        try:
+            if self.receive_buffer[0].seq_num == self.expected_seq_num:
+                # We've just received the missing sequence numbers. Process and clear any messages that
+                # were buffered since gap fill started.
+                logger.info(
+                    f"{self.name}: Gap fill completed, processing {len(self.receive_buffer)} queued "
+                    f"messages (#{self.receive_buffer[0].seq_num} - #{self.receive_buffer[-1].seq_num})."
+                )
+
+                while len(self.receive_buffer) > 0:
+                    resubmit_message = self.receive_buffer.popleft()
+                    if resubmit_message.type in SeqNumManagerApp.ADMIN_MESSAGES:
+                        # Don't re-submit admin messages
+                        logger.info(
+                            f"{self.name}: Skipping queued admin message #{resubmit_message.seq_num} "
+                            f"({resubmit_message})."
+                        )
+                        self.receive_seq_num += 1
+                        continue
+
+                    logger.info(
+                        f"{self.name}: Resubmitting queued message #{resubmit_message.seq_num} "
+                        f"({resubmit_message})."
+                    )
+                    asyncio.ensure_future(
+                        self.pipeline.receive(bytes(resubmit_message)), loop=unsync.loop
+                    )  # Separate, non-blocking task
+
+        except IndexError:
+            # Buffer is empty - continue
+            pass
 
     def _handle_sequence_number_too_low(self, message):
         """
@@ -560,8 +566,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
     async def _handle_sequence_number_too_high(self, message):
 
         # We've missed some incoming messages
-        if not self.gap_fill_in_progress_event.is_set():
-            self.gap_fill_in_progress_event.set()
+        if len(self.receive_buffer) == 0:
 
             # Start a new gap fill operation
             logger.warning(
@@ -585,7 +590,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             )  # Separate task - don't block while waiting for send!
 
         else:
-            # Busy processing gap fill, add to queue
+            # Already busy processing gap fill, add to queue
             self.receive_buffer.append(message)
 
         # Delete messages that were received out of order from the message store
@@ -706,13 +711,13 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
         return message
 
     def _handle_sequence_reset(self, message: FIXMessage) -> FIXMessage:
-        # Discard messages buffered messages with lower sequence numbers than SequenceReset
+        # Discard buffered messages with lower sequence numbers than SequenceReset
         try:
             while self.receive_buffer[0].seq_num < int(message.NewSeqNo):
                 self.receive_buffer.popleft()
         except IndexError:
-            # Buffer empty, no more gap fill required.
-            self.gap_fill_in_progress_event.clear()
+            # Buffer empty, continue
+            pass
 
         # Reset sequence number: increment receive_seq_num so that the correct sequence number is expected next.
         self.receive_seq_num = int(message.NewSeqNo) - 1
@@ -731,11 +736,6 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             )  # Handle resend request immediately.
 
         message = await self._check_sequence_number(message)
-
-        # Special handling for SequenceReset admin message: reset expected sequence number (must still be received
-        # in the correct order first though).
-        if message.type == MsgType.SequenceReset:
-            message = self._handle_sequence_reset(message)
 
         return await super().on_receive(message)
 
