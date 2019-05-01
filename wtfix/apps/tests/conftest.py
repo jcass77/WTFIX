@@ -44,7 +44,7 @@ def base_pipeline():
     yield pipeline
 
     try:
-        os.remove(client_session.default_sid_file)
+        os.remove(client_session._sid_path)
     except FileNotFoundError:
         # File does not exist - skip deletion
         pass

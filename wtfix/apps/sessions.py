@@ -40,79 +40,72 @@ class SessionApp(BaseApp):
 
     name = "session"
 
-    def __init__(self, pipeline, new_session=False, sender=None, *args, **kwargs):
+    def __init__(
+        self, pipeline, new_session=False, sid_path=None, sender=None, *args, **kwargs
+    ):
         super().__init__(pipeline, *args, **kwargs)
-        self.reader = None
-        self.writer = None
+
+        self._new_session = new_session
+        self._session_id = None
+
+        if sid_path is None:
+            sid_path = Path(settings.ROOT_DIR) / f"{self.pipeline.settings.TARGET}.sid"
+
+        self._sid_path = sid_path
 
         if sender is None:
             sender = self.pipeline.settings.SENDER
 
         self.sender = sender
-        self.next_in_seq_num = 1
 
-        self._new_session = new_session
-        self._session_id = None
-        self._is_resumed = None
+        self.reader = None
+        self.writer = None
 
     @property
     def session_id(self):
-        if self._session_id is None:
-            self._session_id, self._is_resumed = self._get_session()
-
         return self._session_id
 
     @property
-    def default_sid_file(self):
-        return Path(settings.ROOT_DIR) / f"{self.pipeline.settings.TARGET}.sid"
-
-    @property
     def is_resumed(self):
-        if self._is_resumed is None:
-            self._session_id, self._is_resumed = self._get_session()
+        return not self._new_session
 
-        return self._is_resumed
-
-    def _get_session(self, *, new_session=None, sid_file=None):
-        if new_session is None:
-            new_session = self._new_session
-
-        if sid_file is None:
-            sid_file = self.default_sid_file
-
-        if new_session is True:
-            uuid_ = self._reset_session(sid_file)
-            return uuid_, False
-
+    def _resume_session(self):
         try:
-            with open(sid_file, "r") as read_file:
-                uuid_ = read_file.read()
-                logger.info(f"{self.name}: Resuming session with ID: {uuid_}.")
-                return uuid_, True
+            with open(self._sid_path, "r") as read_file:
+                self._session_id = read_file.read()
+                logger.info(
+                    f"{self.name}: Resuming session with ID: {self._session_id}."
+                )
+
         except FileNotFoundError:
             raise ImproperlyConfigured(
-                f"Session ID file '{sid_file}' not found. Start a new session by passing the "
+                f"Session ID file '{self._sid_path}' not found. Start a new session by passing the "
                 f"'-new_session' parameter."
             )
 
-    def _reset_session(self, sid_file):
+    def _reset_session(self):
         try:
-            os.remove(sid_file)
+            os.remove(self._sid_path)
         except FileNotFoundError:
             # File does not exist - skip deletion
             pass
 
-        with open(sid_file, "w") as write_file:
-            uuid_ = uuid.uuid4().hex
+        with open(self._sid_path, "w") as write_file:
+            self._session_id = uuid.uuid4().hex
 
-            write_file.write(uuid_)
-            logger.info(f"{self.name}: Starting a new session with ID: {uuid_}.")
-            return uuid_
+            write_file.write(self._session_id)
+            logger.info(
+                f"{self.name}: Starting a new session with ID: {self._session_id}."
+            )
 
     @unsync
     async def initialize(self, *args, **kwargs):
         await super().initialize(*args, **kwargs)
-        self._get_session()
+
+        if self._new_session is True:
+            self._reset_session()
+        else:
+            self._resume_session()
 
 
 class ClientSessionApp(SessionApp):

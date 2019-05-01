@@ -34,12 +34,23 @@ logger = settings.logger
 
 
 class BaseStore(abc.ABC):
+    """
+    Base class for storing messages as part of a cache, queue, persistent database, etc.
+    """
+
     @unsync
-    @abc.abstractmethod
     async def initialize(self, *args, **kwargs):
         """
         Initialize the memory store.
         """
+        pass
+
+    @unsync
+    async def finalize(self, *args, **kwargs):
+        """
+        Perform any cleanup or finalization of the memory store before the pipeline is stopped.
+        """
+        pass
 
     @unsync
     @abc.abstractmethod
@@ -86,7 +97,7 @@ class BaseStore(abc.ABC):
         self, *, session_id: str = None, originator: str = None
     ) -> List[numbers.Integral]:
         """
-        Retrieves all of the sequence numbers for the given session ID and originator.
+        Retrieves all of the stored sequence numbers for the given session ID and originator.
 
         :param session_id: The session ID to retrieve the sequence numbers for.
         :param originator: The originator to retrieve the sequence numbers for.
@@ -100,15 +111,11 @@ class BaseStore(abc.ABC):
 
 class MemoryStore(BaseStore):
     """
-    Simple in-memory storage system
+    Simple in-memory message store
     """
 
     def __init__(self):
         self._store = OrderedDict()
-
-    @unsync
-    async def initialize(self, *args, **kwargs):
-        pass  # Nothing to do
 
     @unsync
     async def set(self, session_id: str, originator: str, message: FIXMessage):
@@ -167,6 +174,13 @@ class RedisStore(BaseStore):
         self.redis_pool = await aioredis.create_redis_pool(
             settings.REDIS_URI, loop=unsync.loop
         )
+
+    @unsync
+    async def finalize(self, *args, **kwargs):
+        await super().finalize(*args, **kwargs)
+
+        self.redis_pool.close()
+        await self.redis_pool.wait_closed()  # Closing all open connections
 
     @unsync
     async def set(self, session_id: str, originator: str, message: FIXMessage):
@@ -238,6 +252,7 @@ class MessageStoreApp(BaseApp):
             store = class_()
 
         self._store = store
+        self._session_app = None
 
     @property
     def store(self):
@@ -245,27 +260,38 @@ class MessageStoreApp(BaseApp):
 
     @unsync
     async def initialize(self, *args, **kwargs):
+        self._session_app = self.pipeline.apps[
+            ClientSessionApp.name
+        ]  # Micro-optimization: store local reference
         await self.store.initialize(*args, **kwargs)
 
     @unsync
+    async def stop(self, *args, **kwargs):
+        await self.store.finalize(*args, **kwargs)
+
+    @unsync
     async def get_sent(self, seq_num: Union[str, int]) -> Union[FIXMessage, None]:
-        session_app = self.pipeline.apps[ClientSessionApp.name]
-        return await self.store.get(session_app.session_id, session_app.sender, seq_num)
+        return await self.store.get(
+            self._session_app.session_id, self._session_app.sender, seq_num
+        )
 
     @unsync
     async def set_sent(self, message: FIXMessage):
-        session_app = self.pipeline.apps[ClientSessionApp.name]
-        return await self.store.set(session_app.session_id, session_app.sender, message)
+        return await self.store.set(
+            self._session_app.session_id, self._session_app.sender, message
+        )
 
     @unsync
     async def get_received(self, seq_num: Union[str, int]) -> Union[FIXMessage, None]:
-        session_app = self.pipeline.apps[ClientSessionApp.name]
-        return await self.store.get(session_app.session_id, session_app.target, seq_num)
+        return await self.store.get(
+            self._session_app.session_id, self._session_app.target, seq_num
+        )
 
     @unsync
     async def set_received(self, message: FIXMessage):
-        session_app = self.pipeline.apps[ClientSessionApp.name]
-        return await self.store.set(session_app.session_id, session_app.target, message)
+        return await self.store.set(
+            self._session_app.session_id, self._session_app.target, message
+        )
 
     @unsync
     async def on_receive(self, message: FIXMessage) -> FIXMessage:
@@ -276,7 +302,6 @@ class MessageStoreApp(BaseApp):
 
     @unsync
     async def on_send(self, message: FIXMessage) -> FIXMessage:
-        session_app = self.pipeline.apps[ClientSessionApp.name]
-        await self.store.set(session_app.session_id, session_app.sender, message)
+        await self.set_sent(message)
 
         return await super().on_send(message)

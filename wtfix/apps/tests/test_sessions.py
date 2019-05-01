@@ -11,46 +11,41 @@ from wtfix.tests.conftest import get_mock_async
 
 
 class TestSessionApp:
-    def test_get_session_new_session_creates_file_if_not_exists(
-        self, base_pipeline, tmp_path
-    ):
-        sid_path = tmp_path / ".sid"
-
-        with pytest.raises(FileNotFoundError):
-            open(sid_path, "r")
-
-        session_app = SessionApp(base_pipeline)
-        session_app._get_session(new_session=True, sid_file=sid_path)
-
-        open(sid_path, "r")
-
-    def test_get_session_new_session_sets_attributes_correctly(
-        self, base_pipeline, tmp_path
-    ):
-        sid_path = tmp_path / ".sid"
-
-        session_app = SessionApp(base_pipeline)
-        uuid_, is_resumed = session_app._get_session(
-            new_session=True, sid_file=sid_path
-        )
-
-        assert uuid_ is not None
-        assert is_resumed is False
-
-    def test_get_session_resumed_session_sets_attributes_correctly(
-        self, base_pipeline, tmp_path
-    ):
+    def test_resume_session_sets_session_id(self, base_pipeline, tmp_path):
         sid_path = tmp_path / ".sid"
         uuid_ = uuid.uuid4().hex
 
         with open(sid_path, "w") as file:
             file.write(uuid_)
 
-        session_app = SessionApp(base_pipeline)
-        read_uuid, is_resumed = session_app._get_session(sid_file=sid_path)
+        session_app = SessionApp(base_pipeline, new_session=False, sid_path=sid_path)
+        session_app._resume_session()
 
-        assert read_uuid == uuid_
-        assert is_resumed is True
+        assert session_app.session_id == uuid_
+        assert session_app.is_resumed is True
+
+    def test_reset_session_creates_file_if_not_exists(self, base_pipeline, tmp_path):
+        sid_path = tmp_path / ".sid"
+
+        with pytest.raises(FileNotFoundError):
+            open(sid_path, "r")
+
+        session_app = SessionApp(base_pipeline, new_session=True, sid_path=sid_path)
+        session_app._reset_session()
+
+        open(sid_path, "r")
+
+    def test_reset_session_resets_session_id(self, base_pipeline, tmp_path):
+        sid_path = tmp_path / ".sid"
+        uuid_ = uuid.uuid4().hex
+
+        session_app = SessionApp(base_pipeline, new_session=True, sid_path=sid_path)
+        session_app._session_id = uuid_
+
+        session_app._reset_session()
+
+        assert session_app.session_id != uuid_
+        assert session_app.is_resumed is False
 
     @pytest.mark.asyncio
     async def test_stop_file_does_not_exist_handled_gracefully(

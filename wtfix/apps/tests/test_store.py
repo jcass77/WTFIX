@@ -211,6 +211,7 @@ class TestMessageStoreApp:
         self, unsync_event_loop, messages, base_pipeline
     ):
         store_app = MessageStoreApp(base_pipeline, store=MemoryStore())
+        await store_app.initialize()
 
         for next_message in messages:
             await store_app.on_receive(next_message)
@@ -223,9 +224,10 @@ class TestMessageStoreApp:
         self, unsync_event_loop, messages, base_pipeline
     ):
         store_app = MessageStoreApp(base_pipeline, store=MemoryStore())
+        await store_app.initialize()
 
         for next_message in messages:
-            store_app.on_send(next_message)
+            await store_app.on_send(next_message)
 
         for next_message in messages:
             assert await store_app.get_sent(next_message.seq_num) == next_message
