@@ -214,7 +214,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
             datetime.utcnow()
         )  # Update timestamp on every message received
 
-        return message
+        return await super().on_receive(message)
 
 
 class AuthenticationApp(MessageTypeHandlerApp):
@@ -332,7 +332,7 @@ class AuthenticationApp(MessageTypeHandlerApp):
             )
             await self.logged_in_event.wait()
 
-        return message
+        return await super().on_receive(message)
 
     @unsync
     async def on_send(self, message: FIXMessage) -> FIXMessage:
