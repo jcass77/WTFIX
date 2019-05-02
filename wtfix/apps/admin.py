@@ -274,12 +274,7 @@ class AuthenticationApp(MessageTypeHandlerApp):
     async def stop(self, *args, **kwargs):
         await super().stop(*args, **kwargs)
 
-        if self.logged_in_event.is_set():
-
-            logger.info(f"{self.name}: Logging out...")
-            await self.logout()
-            logger.info(f"Logout completed!")
-
+        await self.logout()
         await self.logged_out_event.wait()
 
     @unsync
@@ -387,9 +382,18 @@ class AuthenticationApp(MessageTypeHandlerApp):
         """
         Log out of the FIX server.
         """
-        logout_msg = admin.LogoutMessage()
-        # Fire and forget logout
-        asyncio.ensure_future(self.send(logout_msg), loop=unsync.loop)
+        if self.logged_in_event.is_set():
+
+            logger.info(f"{self.name}: Logging out...")
+            logout_msg = admin.LogoutMessage()
+            # Fire and forget logout
+            asyncio.ensure_future(self.send(logout_msg), loop=unsync.loop)
+
+            await self.logged_out_event.wait()
+
+            logger.info(f"Logout completed!")
+        else:
+            self.logged_out_event.set()
 
 
 class SeqNumManagerApp(MessageTypeHandlerApp):
