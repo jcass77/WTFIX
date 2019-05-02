@@ -46,6 +46,7 @@ CONNECTIONS = {
         # APPS
         "PIPELINE_APPS": [
             "wtfix.apps.api.rest.RESTfulServiceApp",
+            "wtfix.apps.brokers.RedisPubSubApp",
             "wtfix.apps.admin.HeartbeatApp",
             "wtfix.apps.admin.AuthenticationApp",
             "wtfix.apps.admin.SeqNumManagerApp",

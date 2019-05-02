@@ -92,7 +92,8 @@ class BaseApp:
         """
         return message
 
-    def on_resend(self, message: FIXMessage) -> FIXMessage:
+    @unsync
+    async def on_resend(self, message: FIXMessage) -> FIXMessage:
         """
         Override this message in order to define what to do when a message was not received successfully
         by the counter party.
@@ -195,7 +196,7 @@ class MessageTypeHandlerApp(BaseApp):
                 f"{self.__module__}.{self.__class__.__name__}.{handler.__name__}?"
             )
 
-        return await super().on_receive(message)
+        return message
 
     @unsync
     async def on_unhandled(self, message: FIXMessage) -> FIXMessage:

@@ -2,6 +2,17 @@
 
 This changelog is used to track all major changes to WTFIX.
 
+## v0.9.0 (2019-05-02)
+
+**Enhancements**
+
+- Added RedisPubSubApp for sending / receiving messages using the redis Pub/Sub messaging paradigm.
+- Various performance optimizations.
+
+**Fixes**
+
+- Add missing dependencies to setup.py.
+
 ## v0.8.0 (2019-04-30)
 
 **Enhancements**

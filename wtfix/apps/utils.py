@@ -34,7 +34,7 @@ class OutboundLoggingApp(BaseApp):
     async def on_send(self, message: FIXMessage) -> FIXMessage:
         logger.info(f" --> {message:t}")
 
-        return super().on_send(message)
+        return message
 
 
 class InboundLoggingApp(BaseApp):
@@ -48,4 +48,4 @@ class InboundLoggingApp(BaseApp):
     async def on_receive(self, message: FIXMessage) -> FIXMessage:
         logger.info(f" <-- {message:t}")
 
-        return await super().on_receive(message)
+        return message

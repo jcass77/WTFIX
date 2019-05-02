@@ -193,6 +193,8 @@ class TestSeqNumManagerApp:
     @pytest.mark.asyncio
     async def pipeline_with_messages(self, unsync_event_loop, base_pipeline, messages):
         message_store_app = MessageStoreApp(base_pipeline, store=MemoryStore())
+        await message_store_app.initialize()
+
         base_pipeline.apps[MessageStoreApp.name] = message_store_app
 
         for message in messages[0:3]:  # 3 sent messages
@@ -211,7 +213,7 @@ class TestSeqNumManagerApp:
         self, unsync_event_loop, pipeline_with_messages
     ):
 
-        pipeline_with_messages.apps[ClientSessionApp.name]._is_resumed = True
+        pipeline_with_messages.apps[ClientSessionApp.name]._new_session = False
         seq_num_app = SeqNumManagerApp(pipeline_with_messages)
         await seq_num_app.start()
 
@@ -223,7 +225,7 @@ class TestSeqNumManagerApp:
         self, unsync_event_loop, pipeline_with_messages
     ):
 
-        pipeline_with_messages.apps[ClientSessionApp.name]._is_resumed = False
+        pipeline_with_messages.apps[ClientSessionApp.name]._new_session = True
         seq_num_app = SeqNumManagerApp(pipeline_with_messages)
         await seq_num_app.start()
 
@@ -300,7 +302,7 @@ class TestSeqNumManagerApp:
         assert pipeline_with_messages.send.call_count == 1
 
     @pytest.mark.asyncio
-    async def test_handle_seq_num_gaps_waits_for_target_before_doing_gapfill(
+    async def test_send_resend_request_waits_for_target_before_doing_gapfill(
         self, unsync_event_loop, pipeline_with_messages
     ):
 
@@ -310,12 +312,12 @@ class TestSeqNumManagerApp:
         )  # Don't wait
         assert not seq_num_app.waited_for_resend_request_event.is_set()
 
-        await seq_num_app._handle_seq_num_gaps([1, 2])
+        await seq_num_app._send_resend_request([1, 2])
 
         assert seq_num_app.waited_for_resend_request_event.is_set()
 
     @pytest.mark.asyncio
-    async def test_handle_seq_num_gaps_sends_resend_request(
+    async def test_send_resend_request_sends_resend_request(
         self, unsync_event_loop, pipeline_with_messages
     ):
         seq_num_app = SeqNumManagerApp(pipeline_with_messages)
@@ -323,19 +325,19 @@ class TestSeqNumManagerApp:
             seconds=5
         )  # Don't wait
 
-        await seq_num_app._handle_seq_num_gaps([1, 2])
+        await seq_num_app._send_resend_request([1, 2])
 
         assert pipeline_with_messages.send.call_count == 1
 
     @pytest.mark.asyncio
-    async def test_on_resend_request_sends_resend_request(
+    async def test_handle_resend_request_sends_resend_request(
         self, unsync_event_loop, pipeline_with_messages
     ):
         seq_num_app = SeqNumManagerApp(pipeline_with_messages)
         seq_num_app.send_seq_num = 3  # 3 messages sent so far
         resend_begin_seq_num = 2  # Simulate resend request of 2 and 3
 
-        await seq_num_app.on_resend_request(
+        await seq_num_app._handle_resend_request(
             admin.ResendRequestMessage(resend_begin_seq_num)
         )
 
@@ -355,7 +357,7 @@ class TestSeqNumManagerApp:
             assert message.OrigSendingTime == message.SendingTime
 
     @pytest.mark.asyncio
-    async def test_on_resend_request_handles_admin_messages_correctly(
+    async def test_handle_resend_request_converts_admin_messages_to_sequence_reset_messages(
         self, unsync_event_loop, logon_message, pipeline_with_messages, messages
     ):
         seq_num_app = SeqNumManagerApp(pipeline_with_messages)
@@ -370,6 +372,7 @@ class TestSeqNumManagerApp:
             message.MsgSeqNum = idx + 1
 
         message_store_app = pipeline_with_messages.apps[MessageStoreApp.name]
+        await message_store_app.initialize()
         message_store_app.store._store.clear()
 
         for message in messages:
@@ -384,7 +387,7 @@ class TestSeqNumManagerApp:
 
         resend_begin_seq_num = 1
 
-        await seq_num_app.on_resend_request(
+        await seq_num_app._handle_resend_request(
             admin.ResendRequestMessage(resend_begin_seq_num)
         )
 
