@@ -2,7 +2,11 @@
 
 This changelog is used to track all major changes to WTFIX.
 
-## v0.9.1 (UNRELEASED)
+## v0.10.0 (UNRELEASED)
+
+**Enhancements**
+
+- Automatically start a new session if no relevant .sid file can be found.
 
 **Fixes**
 
