@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-ROOT_DIR = Path(__file__).parents[2]  # (wtfix/config/settings/base.py - 2 = wtfix/)
+ROOT_DIR = Path(__file__).parents[3]  # (wtfix/config/settings/base.py - 3 = wtfix/)
 
 # GENERAL
 # ------------------------------------------------------------------------------

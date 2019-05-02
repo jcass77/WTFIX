@@ -2,6 +2,13 @@
 
 This changelog is used to track all major changes to WTFIX.
 
+## v0.9.1 (UNRELEASED)
+
+**Fixes**
+
+- Fix path to .sid files.
+
+
 ## v0.9.0 (2019-05-02)
 
 **Enhancements**
