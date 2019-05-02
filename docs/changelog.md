@@ -2,11 +2,12 @@
 
 This changelog is used to track all major changes to WTFIX.
 
-## v0.9.0 (UNRELEASED)
+## v0.9.0 (2019-05-02)
 
 **Enhancements**
 
 - Added RedisPubSubApp for sending / receiving messages using the redis Pub/Sub messaging paradigm.
+- Various performance optimizations.
 
 **Fixes**
 
