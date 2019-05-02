@@ -158,7 +158,8 @@ class ClientSessionApp(SessionApp):
         """
         await super().start(*args, **kwargs)
 
-        self.listen()  # Start the listener
+        self.listen()  # Start the listener in separate task
+
         # Wait for connection to stabilize to make sure that we are listening
         # and that we do not miss any rejection messages.
         await asyncio.sleep(1)

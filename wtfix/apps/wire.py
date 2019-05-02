@@ -49,9 +49,8 @@ class EncoderApp(BaseApp):
     }
 
     @unsync
-    async def on_send(self, message: FIXMessage) -> FIXMessage:
-        message = self.encode_message(message)
-        return await super().on_send(message)
+    async def on_send(self, message: FIXMessage) -> bytes:
+        return self.encode_message(message)
 
     # TODO: Add support for encoding RawMessage instances in addition to GenericMessage instances?
     def encode_message(self, message: FIXMessage) -> bytes:

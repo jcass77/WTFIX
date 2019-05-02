@@ -14,7 +14,6 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import asyncio
 
 import aioredis
 from unsync import unsync
@@ -41,7 +40,7 @@ class RedisPubSubApp(BaseApp):
         self.redis_pool = None
 
     @unsync
-    async def _send_reader(self):
+    async def _send_channel_reader(self):
         try:
             with await self.redis_pool as conn:
                 await conn.subscribe(RedisPubSubApp.SEND_CHANNEL)
@@ -51,9 +50,7 @@ class RedisPubSubApp(BaseApp):
                 while await send_channel.wait_message():
                     message = await send_channel.get()
                     message = decoders.from_json(utils.decode(message))
-                    asyncio.ensure_future(
-                        self.send(message), loop=unsync.loop
-                    )  # Pass message on to pipeline
+                    self.send(message)  # Pass message on to pipeline
 
         except aioredis.ChannelClosedError:
             # Shutting down...
@@ -71,11 +68,11 @@ class RedisPubSubApp(BaseApp):
     async def start(self, *args, **kwargs):
         await super().start(*args, **kwargs)
 
-        asyncio.ensure_future(self._send_reader(), loop=unsync.loop)
+        self._send_channel_reader()
 
     @unsync
     async def stop(self, *args, **kwargs):
-        await super().start(*args, **kwargs)
+        await super().stop(*args, **kwargs)
 
         with await self.redis_pool as conn:
             await conn.unsubscribe(RedisPubSubApp.SEND_CHANNEL)

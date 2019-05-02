@@ -298,10 +298,10 @@ class MessageStoreApp(BaseApp):
     async def on_receive(self, message: FIXMessage) -> FIXMessage:
         await self.set_received(message)
 
-        return await super().on_receive(message)
+        return message
 
     @unsync
     async def on_send(self, message: FIXMessage) -> FIXMessage:
         await self.set_sent(message)
 
-        return await super().on_send(message)
+        return message

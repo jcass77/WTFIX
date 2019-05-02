@@ -44,7 +44,9 @@ class HeartbeatApp(MessageTypeHandlerApp):
     name = "heartbeat"
 
     def __init__(self, pipeline, *args, **kwargs):
-        self._last_receive = datetime.utcnow()
+        super().__init__(pipeline, *args, **kwargs)
+
+        self._last_receive = None
 
         self._test_request_id = (
             None
@@ -52,8 +54,6 @@ class HeartbeatApp(MessageTypeHandlerApp):
 
         self._heartbeat_monitor_unfuture = None
         self._server_not_responding = asyncio.Event(loop=unsync.loop)
-
-        super().__init__(pipeline, *args, **kwargs)
 
     @property
     def heartbeat(self):
@@ -95,6 +95,8 @@ class HeartbeatApp(MessageTypeHandlerApp):
         Start the heartbeat monitor.
         """
         await super().start(*args, **kwargs)
+
+        self._last_receive = datetime.utcnow()
 
         # Keep a reference to running monitor, so that we can cancel it if needed.
         self._heartbeat_monitor_unfuture = self.monitor_heartbeat()
@@ -147,10 +149,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
             f"{self.name}: Heartbeat exceeded, sending test request '{self._test_request_id}'..."
         )
         # Don't need to block while request is sent
-        asyncio.ensure_future(
-            self.send(admin.TestRequestMessage(utils.encode(self._test_request_id))),
-            loop=unsync.loop,
-        )
+        self.send(admin.TestRequestMessage(utils.encode(self._test_request_id)))
 
         # Sleep while we wait for a response on the test request
         await asyncio.sleep(self.test_request_response_delay)
@@ -183,9 +182,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
             f"{self.name}: Sending heartbeat in response to request {message.TestReqID}."
         )
         # Don't need to block while heartbeat is sent
-        asyncio.ensure_future(
-            self.send(admin.HeartbeatMessage(str(message.TestReqID))), loop=unsync.loop
-        )
+        self.send(admin.HeartbeatMessage(str(message.TestReqID)))
 
         return message
 
@@ -217,7 +214,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
             datetime.utcnow()
         )  # Update timestamp on every message received
 
-        return await super().on_receive(message)
+        return message
 
 
 class AuthenticationApp(MessageTypeHandlerApp):
@@ -263,19 +260,14 @@ class AuthenticationApp(MessageTypeHandlerApp):
     @unsync
     async def start(self, *args, **kwargs):
         await super().start(*args, **kwargs)
-        logger.info(f"{self.name}: Logging in...")
 
         await self.logon()
-        await self.logged_in_event.wait()
-
-        logger.info(f"Successfully logged on!")
 
     @unsync
     async def stop(self, *args, **kwargs):
         await super().stop(*args, **kwargs)
 
         await self.logout()
-        await self.logged_out_event.wait()
 
     @unsync
     @on(MsgType.Logon)
@@ -340,7 +332,7 @@ class AuthenticationApp(MessageTypeHandlerApp):
             )
             await self.logged_in_event.wait()
 
-        return await super().on_receive(message)
+        return message
 
     @unsync
     async def on_send(self, message: FIXMessage) -> FIXMessage:
@@ -355,27 +347,33 @@ class AuthenticationApp(MessageTypeHandlerApp):
             )
             await self.logged_in_event.wait()
 
-        return await super().on_send(message)
+        return message
 
     @unsync
     async def logon(self):
         """
         Log on to the FIX server using the provided credentials.
         """
+        logger.info(f"{self.name}: Logging in...")
+
         logon_msg = admin.LogonMessage(
             self.username, self.password, heartbeat_int=self.heartbeat_int
         )
 
         self.reset_seq_nums = not self.pipeline.apps[ClientSessionApp.name].is_resumed
         if self.reset_seq_nums:
-            logon_msg.ResetSeqNumFlag = "Y"
+            logon_msg.ResetSeqNumFlag = True
 
         if self.test_mode is True:
-            logon_msg.TestMessageIndicator = "Y"
+            logon_msg.TestMessageIndicator = True
 
         logger.info(f"{self.name}: Logging in with: {logon_msg:t}...")
         # Don't need to block while we send logon message
-        asyncio.ensure_future(self.send(logon_msg), loop=unsync.loop)
+        self.send(logon_msg)
+
+        await self.logged_in_event.wait()
+
+        logger.info(f"Successfully logged on!")
 
     @unsync
     async def logout(self):
@@ -387,7 +385,7 @@ class AuthenticationApp(MessageTypeHandlerApp):
             logger.info(f"{self.name}: Logging out...")
             logout_msg = admin.LogoutMessage()
             # Fire and forget logout
-            asyncio.ensure_future(self.send(logout_msg), loop=unsync.loop)
+            self.send(logout_msg)
 
             await self.logged_out_event.wait()
 
@@ -417,7 +415,9 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
     def __init__(self, pipeline, *args, **kwargs):
 
-        self.startup_time = None
+        self.startup_time = (
+            None
+        )  # Needed to check if we should wait for resend requests from target
         self._send_seq_num = 0
         self._receive_seq_num = 0
 
@@ -535,8 +535,8 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
                         f"{self.name}: Resubmitting queued message #{resubmit_message.seq_num} "
                         f"({resubmit_message})."
                     )
-                    asyncio.ensure_future(
-                        self.pipeline.receive(bytes(resubmit_message)), loop=unsync.loop
+                    self.pipeline.receive(
+                        bytes(resubmit_message)
                     )  # Separate, non-blocking task
 
         except IndexError:
@@ -589,8 +589,8 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             # Start buffering out-of-sequence messages
             self.receive_buffer.append(message)
 
-            asyncio.ensure_future(
-                self._send_resend_request(missing_seq_nums), loop=unsync.loop
+            self._send_resend_request(
+                missing_seq_nums
             )  # Separate task - don't block while waiting for send!
 
         else:
@@ -638,12 +638,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
         # Don't send our own resend requests if we are busy handling one received from the target
         await self.resend_request_handled_event.wait()
 
-        asyncio.ensure_future(
-            self.send(
-                admin.ResendRequestMessage(missing_seq_nums[0], missing_seq_nums[-1])
-            ),
-            loop=unsync.loop,
-        )
+        self.send(admin.ResendRequestMessage(missing_seq_nums[0], missing_seq_nums[-1]))
 
     @unsync
     async def _handle_resend_request(self, message):
@@ -678,11 +673,8 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
             if len(admin_seq_nums) > 0:
                 # Admin messages were found, submit SequenceReset
-                asyncio.ensure_future(
-                    self.send(
-                        admin.SequenceResetMessage(next_seq_num, admin_seq_nums[-1] + 1)
-                    ),
-                    loop=unsync.loop,
+                self.send(
+                    admin.SequenceResetMessage(next_seq_num, admin_seq_nums[-1] + 1)
                 )
                 next_seq_num = admin_seq_nums[-1] + 1
                 admin_seq_nums.clear()
@@ -695,18 +687,15 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             resend_msg.PossDupFlag = "Y"
             resend_msg.OrigSendingTime = resend_msg.SendingTime
 
-            asyncio.ensure_future(self.send(resend_msg), loop=unsync.loop)
+            self.send(resend_msg)
             next_seq_num += 1
 
         else:
             # Handle situation where last message was itself an admin message
             if len(admin_seq_nums) > 0:
                 # Admin messages were found, submit SequenceReset
-                asyncio.ensure_future(
-                    self.send(
-                        admin.SequenceResetMessage(next_seq_num, admin_seq_nums[-1] + 1)
-                    ),
-                    loop=unsync.loop,
+                self.send(
+                    admin.SequenceResetMessage(next_seq_num, admin_seq_nums[-1] + 1)
                 )
                 admin_seq_nums.clear()
 

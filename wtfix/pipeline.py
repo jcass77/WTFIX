@@ -159,7 +159,7 @@ class BasePipeline:
                     f"Timeout waiting for app '{app}' to stop, cancelling all outstanding tasks..."
                 )
                 # Stop all asyncio tasks
-                for task in asyncio.Task.all_tasks():
+                for task in asyncio.Task.all_tasks(unsync.loop):
                     task.cancel()
 
     def _setup_message_handling(self, direction):
@@ -216,9 +216,9 @@ class BasePipeline:
     @unsync
     async def receive(self, message):
         """Receives a new message to be processed"""
-        return await self._process_message(message, self.INBOUND_PROCESSING)
+        return await self._process_message(message, BasePipeline.INBOUND_PROCESSING)
 
     @unsync
     async def send(self, message):
         """Processes a new message to be sent"""
-        return await self._process_message(message, self.OUTBOUND_PROCESSING)
+        return await self._process_message(message, BasePipeline.OUTBOUND_PROCESSING)
