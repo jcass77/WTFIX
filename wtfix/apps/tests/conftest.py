@@ -71,11 +71,11 @@ class ZeroDelayHeartbeatTestApp(HeartbeatApp):
     def __init__(self, pipeline, *args, **kwargs):
         super().__init__(pipeline, *args, **kwargs)
 
-        self.sec_since_last_receive = mock.MagicMock()
-        self.sec_since_last_receive.return_value = 1
+        self.seconds_to_next_check = mock.MagicMock()
+        self.seconds_to_next_check.return_value = 0
 
     @property
-    def heartbeat(self):
+    def heartbeat_interval(self):
         return 0.1
 
     @property

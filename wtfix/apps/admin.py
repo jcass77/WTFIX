@@ -46,41 +46,48 @@ class HeartbeatApp(MessageTypeHandlerApp):
     def __init__(self, pipeline, *args, **kwargs):
         super().__init__(pipeline, *args, **kwargs)
 
-        self._last_receive = None
+        self._last_received_ts = None
+        self._last_sent_ts = None
 
         self._test_request_id = (
             None
         )  # A waiting TestRequest message for which no response has been received.
 
-        self._heartbeat_monitor_unfuture = None
+        self._received_monitor = None
+        self._sent_monitor = None
         self._server_not_responding = asyncio.Event(loop=unsync.loop)
 
     @property
-    def heartbeat(self):
+    def heartbeat_interval(self):
         try:
-            return self._heartbeat
+            return self._heartbeat_interval
         except AttributeError:
-            self._heartbeat = self.pipeline.settings.HEARTBEAT_INT
+            self._heartbeat_interval = self.pipeline.settings.HEARTBEAT_INT
 
-            return self._heartbeat
+            return self._heartbeat_interval
 
-    @heartbeat.setter
-    def heartbeat(self, value):
-        logger.debug(f"{self.name}: Heartbeat changed to {value}.")
-        self._heartbeat = value
+    @heartbeat_interval.setter
+    def heartbeat_interval(self, value):
+        logger.debug(f"{self.name}: Heartbeat interval changed to {value}.")
+        self._heartbeat_interval = value
 
     @property
     def test_request_response_delay(self):
         """
         The amount of time to wait for a TestRequest response from the server.
         """
-        return 2 * self.heartbeat + 4
+        return 2 * self.heartbeat_interval + 4
 
-    def sec_since_last_receive(self):
+    def seconds_to_next_check(self, monitor_timestamp):
         """
-        :return: The number of seconds since the last message was received.
+        :monitor_timestamp: The timestamp of the monitor being checked (sent / received)
+        :return: The number of seconds before the next check is due to occur.
         """
-        return (datetime.utcnow() - self._last_receive).total_seconds()
+        if monitor_timestamp is None:
+            monitor_timestamp = datetime.utcnow()
+
+        elapsed = (datetime.utcnow() - monitor_timestamp).total_seconds()
+        return max(self.heartbeat_interval - elapsed, 0)
 
     def is_waiting(self):
         """
@@ -96,13 +103,16 @@ class HeartbeatApp(MessageTypeHandlerApp):
         """
         await super().start(*args, **kwargs)
 
-        self._last_receive = datetime.utcnow()
-
-        # Keep a reference to running monitor, so that we can cancel it if needed.
-        self._heartbeat_monitor_unfuture = self.monitor_heartbeat()
+        # Keep a reference to running monitors, so that we can cancel them if needed.
+        self._received_monitor = self.heartbeat_monitor(
+            self._last_received_ts, self.send_test_request
+        )
+        self._sent_monitor = self.heartbeat_monitor(
+            self._last_sent_ts, self.send_heartbeat
+        )
 
         logger.info(
-            f"{self.name}: Started heartbeat monitor with {self.heartbeat} second interval."
+            f"{self.name}: Started heartbeat monitor with {self.heartbeat_interval} second interval."
         )
 
     @unsync
@@ -111,25 +121,30 @@ class HeartbeatApp(MessageTypeHandlerApp):
         Cancel the heartbeat monitor on the next iteration of the event loop.
         """
         await super().stop(*args, **kwargs)
-        if self._heartbeat_monitor_unfuture is not None:
-            # Heartbeat has been started - stop it now.
-            self._heartbeat_monitor_unfuture.future.cancel()
+        # Stop heartbeat monitors
+        if self._received_monitor is not None:
+            self._received_monitor.future.cancel()
+
+        if self._sent_monitor is not None:
+            self._sent_monitor.future.cancel()
 
     @unsync
-    async def monitor_heartbeat(self):
+    async def heartbeat_monitor(self, reference_timestamp, interval_exceeded_response):
         """
-        Monitors the heartbeat, sending TestRequest messages as necessary.
+        Monitors the heartbeat, sending appropriate response as necessary.
+
+        :reference_timestamp: The timestamp to use as reference against the heartbeat interval
+        :interval_exceeded_response: The response to take if the interval is exceeded. Must be an awaitable.
         """
         while not self._server_not_responding.is_set():
             # Keep sending heartbeats until the server stops responding.
-            next_check = max(self.heartbeat - self.sec_since_last_receive(), 0)
             await asyncio.sleep(
-                next_check
+                self.seconds_to_next_check(reference_timestamp)
             )  # Wait until the next scheduled heartbeat check.
 
-            if self.sec_since_last_receive() > self.heartbeat:
-                # Heartbeat exceeded, send test message
-                await self.send_test_request()
+            if self.seconds_to_next_check(reference_timestamp) == 0:
+                # Heartbeat exceeded, send response
+                await interval_exceeded_response()
 
         # No response received, force logout!
         logger.error(
@@ -158,6 +173,15 @@ class HeartbeatApp(MessageTypeHandlerApp):
             self._server_not_responding.set()
 
     @unsync
+    async def send_heartbeat(self):
+        """
+        Send our own heartbeat to indicate that the pipeline is still responding.
+        """
+        logger.debug(f"{self.name}: Pipeline idle, sending heartbeat...")
+        # Don't need to block while heartbeat is sent
+        self.send(admin.HeartbeatMessage())
+
+    @unsync
     @on(MsgType.Logon)
     async def on_logon(self, message):
         """
@@ -166,7 +190,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
         :param message: The Logon message received. Should contain a HeartBtInt tag that will be used
         to set the heartbeat interval to monitor.
         """
-        self._heartbeat = int(message.HeartBtInt)
+        self.heartbeat_interval = int(message.HeartBtInt)
 
         return message
 
@@ -205,12 +229,20 @@ class HeartbeatApp(MessageTypeHandlerApp):
         return message
 
     @unsync
+    async def on_send(self, message: FIXMessage) -> FIXMessage:
+        """
+        Update the timestamp whenever any message is sent.
+        """
+        self._last_sent_ts = datetime.utcnow()  # Update timestamp on every message sent
+
+        return await super().on_receive(message)
+
+    @unsync
     async def on_receive(self, message: FIXMessage) -> FIXMessage:
         """
         Update the timestamp whenever any message is received.
-        :param message:
         """
-        self._last_receive = (
+        self._last_received_ts = (
             datetime.utcnow()
         )  # Update timestamp on every message received
 

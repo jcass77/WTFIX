@@ -69,13 +69,19 @@ class TestAuthenticationApp:
 class TestHeartbeatApp:
     def test_heartbeat_getter_defaults_to_global_settings(self, base_pipeline):
         heartbeat_app = HeartbeatApp(base_pipeline)
-        assert heartbeat_app.heartbeat == settings.default_connection.HEARTBEAT_INT
+        assert (
+            heartbeat_app.heartbeat_interval
+            == settings.default_connection.HEARTBEAT_INT
+        )
 
     @pytest.mark.asyncio
     async def test_server_stops_responding_after_three_test_requests(
         self, unsync_event_loop, failing_server_heartbeat_app
     ):
-        await failing_server_heartbeat_app.monitor_heartbeat()
+        await failing_server_heartbeat_app.heartbeat_monitor(
+            failing_server_heartbeat_app._last_received_ts,
+            failing_server_heartbeat_app.send_test_request,
+        )
 
         await asyncio.sleep(0.1)
         assert failing_server_heartbeat_app.pipeline.send.call_count == 4
@@ -85,14 +91,20 @@ class TestHeartbeatApp:
     async def test_monitor_heartbeat_test_request_not_necessary(
         self, unsync_event_loop, zero_heartbeat_app
     ):
-        """Simulate normal heartbeat rhythm - message just received"""
+        """Simulate normal heartbeat_interval rhythm - message just received"""
         with mock.patch.object(
             HeartbeatApp, "send_test_request", return_value=Unfuture.from_value(None)
         ) as check:
 
-            zero_heartbeat_app.sec_since_last_receive.return_value = 0
+            zero_heartbeat_app.seconds_to_next_check.return_value = 1
             try:
-                await asyncio.wait_for(zero_heartbeat_app.monitor_heartbeat(), 0.1)
+                await asyncio.wait_for(
+                    zero_heartbeat_app.heartbeat_monitor(
+                        zero_heartbeat_app._last_received_ts,
+                        zero_heartbeat_app.send_test_request,
+                    ),
+                    0.1,
+                )
             except asyncio.futures.TimeoutError:
                 pass
 
@@ -102,13 +114,19 @@ class TestHeartbeatApp:
     async def test_monitor_heartbeat_heartbeat_exceeded(
         self, unsync_event_loop, zero_heartbeat_app
     ):
-        """Simulate normal heartbeat rhythm - heartbeat exceeded since last message was received"""
+        """Simulate normal heartbeat_interval rhythm - heartbeat_interval exceeded since last message was received"""
         with mock.patch.object(
             HeartbeatApp, "send_test_request", return_value=Unfuture.from_value(None)
         ) as check:
 
             try:
-                await asyncio.wait_for(zero_heartbeat_app.monitor_heartbeat(), 0.1)
+                await asyncio.wait_for(
+                    zero_heartbeat_app.heartbeat_monitor(
+                        zero_heartbeat_app._last_received_ts,
+                        zero_heartbeat_app.send_test_request,
+                    ),
+                    0.1,
+                )
             except asyncio.futures.TimeoutError:
                 pass
 
@@ -124,7 +142,13 @@ class TestHeartbeatApp:
         zero_heartbeat_app.pipeline.send.side_effect = simulate_heartbeat_response
 
         try:
-            await asyncio.wait_for(zero_heartbeat_app.monitor_heartbeat(), 0.1)
+            await asyncio.wait_for(
+                zero_heartbeat_app.heartbeat_monitor(
+                    zero_heartbeat_app._last_received_ts,
+                    zero_heartbeat_app.send_test_request,
+                ),
+                0.1,
+            )
         except asyncio.futures.TimeoutError:
             pass
 
@@ -146,7 +170,7 @@ class TestHeartbeatApp:
         logon_message.HeartBtInt = 45
         await heartbeat_app.on_logon(logon_message)
 
-        assert heartbeat_app.heartbeat == 45
+        assert heartbeat_app.heartbeat_interval == 45
 
     @pytest.mark.asyncio
     async def test_sends_heartbeat_on_test_request(
@@ -182,10 +206,10 @@ class TestHeartbeatApp:
     async def test_on_receive_updated_timestamp(
         self, unsync_event_loop, zero_heartbeat_app
     ):
-        prev_timestamp = zero_heartbeat_app._last_receive
+        prev_timestamp = zero_heartbeat_app._last_received_ts
 
         await zero_heartbeat_app.on_receive(TestRequestMessage("test123"))
-        assert zero_heartbeat_app._last_receive != prev_timestamp
+        assert zero_heartbeat_app._last_received_ts != prev_timestamp
 
 
 class TestSeqNumManagerApp:

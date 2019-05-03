@@ -7,6 +7,7 @@ This changelog is used to track all major changes to WTFIX.
 **Enhancements**
 
 - Automatically start a new session if no relevant .sid file can be found.
+- Heartbeat monitor now proactively sends heartbeats as well, in compliance with the FIX protocol specification.
 
 **Fixes**
 
