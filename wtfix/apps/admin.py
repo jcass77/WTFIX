@@ -43,11 +43,13 @@ class HeartbeatApp(MessageTypeHandlerApp):
 
     name = "heartbeat"
 
+    SEND_TIMESTAMP = 0
+    RECEIVE_TIMESTAMP = 1
+
     def __init__(self, pipeline, *args, **kwargs):
         super().__init__(pipeline, *args, **kwargs)
 
-        self._last_received_ts = None
-        self._last_sent_ts = None
+        self._timestamps = [None, None]  # Send / receive timestamps
 
         self._test_request_id = (
             None
@@ -78,15 +80,15 @@ class HeartbeatApp(MessageTypeHandlerApp):
         """
         return 2 * self.heartbeat_interval + 4
 
-    def seconds_to_next_check(self, monitor_timestamp):
+    def seconds_to_next_check(self, timestamp_no: int):
         """
-        :monitor_timestamp: The timestamp of the monitor being checked (sent / received)
+        :timestamp_no: The timestamp of the monitor being checked (sent / received)
         :return: The number of seconds before the next check is due to occur.
         """
-        if monitor_timestamp is None:
-            monitor_timestamp = datetime.utcnow()
+        if self._timestamps[timestamp_no] is None:
+            self._timestamps[timestamp_no] = datetime.utcnow()
 
-        elapsed = (datetime.utcnow() - monitor_timestamp).total_seconds()
+        elapsed = (datetime.utcnow() - self._timestamps[timestamp_no]).total_seconds()
         return max(self.heartbeat_interval - elapsed, 0)
 
     def is_waiting(self):
@@ -105,10 +107,10 @@ class HeartbeatApp(MessageTypeHandlerApp):
 
         # Keep a reference to running monitors, so that we can cancel them if needed.
         self._received_monitor = self.heartbeat_monitor(
-            self._last_received_ts, self.send_test_request
+            HeartbeatApp.RECEIVE_TIMESTAMP, self.send_test_request
         )
         self._sent_monitor = self.heartbeat_monitor(
-            self._last_sent_ts, self.send_heartbeat
+            HeartbeatApp.SEND_TIMESTAMP, self.send_heartbeat
         )
 
         logger.info(
@@ -129,20 +131,20 @@ class HeartbeatApp(MessageTypeHandlerApp):
             self._sent_monitor.future.cancel()
 
     @unsync
-    async def heartbeat_monitor(self, reference_timestamp, interval_exceeded_response):
+    async def heartbeat_monitor(self, timestamp_no, interval_exceeded_response):
         """
         Monitors the heartbeat, sending appropriate response as necessary.
 
-        :reference_timestamp: The timestamp to use as reference against the heartbeat interval
+        :timestamp_no: The timestamp to use as reference against the heartbeat interval
         :interval_exceeded_response: The response to take if the interval is exceeded. Must be an awaitable.
         """
         while not self._server_not_responding.is_set():
             # Keep sending heartbeats until the server stops responding.
             await asyncio.sleep(
-                self.seconds_to_next_check(reference_timestamp)
+                self.seconds_to_next_check(timestamp_no)
             )  # Wait until the next scheduled heartbeat check.
 
-            if self.seconds_to_next_check(reference_timestamp) == 0:
+            if self.seconds_to_next_check(timestamp_no) == 0:
                 # Heartbeat exceeded, send response
                 await interval_exceeded_response()
 
@@ -179,9 +181,11 @@ class HeartbeatApp(MessageTypeHandlerApp):
         """
         logger.debug(f"{self.name}: Pipeline idle, sending heartbeat...")
         # Don't need to block while heartbeat is sent
-        self._last_sent_ts = (
+        self._timestamps[
+            HeartbeatApp.SEND_TIMESTAMP
+        ] = (
             datetime.utcnow()
-        )  # Update timestamp immediately to avoid flooding.
+        )  # Update timestamp immediately to avoid flooding the target with heartbeats.
         self.send(admin.HeartbeatMessage())
 
     @unsync
@@ -236,7 +240,9 @@ class HeartbeatApp(MessageTypeHandlerApp):
         """
         Update the timestamp whenever any message is sent.
         """
-        self._last_sent_ts = datetime.utcnow()  # Update timestamp on every message sent
+        self._timestamps[
+            HeartbeatApp.SEND_TIMESTAMP
+        ] = datetime.utcnow()  # Update timestamp on every message sent
 
         return await super().on_receive(message)
 
@@ -245,9 +251,9 @@ class HeartbeatApp(MessageTypeHandlerApp):
         """
         Update the timestamp whenever any message is received.
         """
-        self._last_received_ts = (
-            datetime.utcnow()
-        )  # Update timestamp on every message received
+        self._timestamps[
+            HeartbeatApp.RECEIVE_TIMESTAMP
+        ] = datetime.utcnow()  # Update timestamp on every message received
 
         return await super().on_receive(message)
 
