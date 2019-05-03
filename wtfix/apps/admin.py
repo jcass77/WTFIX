@@ -179,6 +179,9 @@ class HeartbeatApp(MessageTypeHandlerApp):
         """
         logger.debug(f"{self.name}: Pipeline idle, sending heartbeat...")
         # Don't need to block while heartbeat is sent
+        self._last_sent_ts = (
+            datetime.utcnow()
+        )  # Update timestamp immediately to avoid flooding.
         self.send(admin.HeartbeatMessage())
 
     @unsync
