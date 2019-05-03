@@ -79,7 +79,7 @@ class TestHeartbeatApp:
         self, unsync_event_loop, failing_server_heartbeat_app
     ):
         await failing_server_heartbeat_app.heartbeat_monitor(
-            failing_server_heartbeat_app._last_received_ts,
+            HeartbeatApp.RECEIVE_TIMESTAMP,
             failing_server_heartbeat_app.send_test_request,
         )
 
@@ -100,7 +100,7 @@ class TestHeartbeatApp:
             try:
                 await asyncio.wait_for(
                     zero_heartbeat_app.heartbeat_monitor(
-                        zero_heartbeat_app._last_received_ts,
+                        HeartbeatApp.RECEIVE_TIMESTAMP,
                         zero_heartbeat_app.send_test_request,
                     ),
                     0.1,
@@ -122,7 +122,7 @@ class TestHeartbeatApp:
             try:
                 await asyncio.wait_for(
                     zero_heartbeat_app.heartbeat_monitor(
-                        zero_heartbeat_app._last_received_ts,
+                        HeartbeatApp.RECEIVE_TIMESTAMP,
                         zero_heartbeat_app.send_test_request,
                     ),
                     0.1,
@@ -144,8 +144,7 @@ class TestHeartbeatApp:
         try:
             await asyncio.wait_for(
                 zero_heartbeat_app.heartbeat_monitor(
-                    zero_heartbeat_app._last_received_ts,
-                    zero_heartbeat_app.send_test_request,
+                    HeartbeatApp.RECEIVE_TIMESTAMP, zero_heartbeat_app.send_test_request
                 ),
                 0.1,
             )
@@ -206,10 +205,15 @@ class TestHeartbeatApp:
     async def test_on_receive_updated_timestamp(
         self, unsync_event_loop, zero_heartbeat_app
     ):
-        prev_timestamp = zero_heartbeat_app._last_received_ts
+        prev_timestamp = (
+            zero_heartbeat_app._timestamps[HeartbeatApp.RECEIVE_TIMESTAMP],
+        )
 
         await zero_heartbeat_app.on_receive(TestRequestMessage("test123"))
-        assert zero_heartbeat_app._last_received_ts != prev_timestamp
+        assert (
+            zero_heartbeat_app._timestamps[HeartbeatApp.RECEIVE_TIMESTAMP]
+            != prev_timestamp
+        )
 
 
 class TestSeqNumManagerApp:
