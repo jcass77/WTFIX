@@ -84,7 +84,7 @@ class MsgType:
     NewOrderList = "E"
     NewOrderMultileg = "AB"
     NewOrderSingle = "D"
-    News = ""
+    News = "B"
     OrderCancelReject = "9"
     OrderCancelReplaceRequest = "G"
     OrderCancelRequest = "F"
