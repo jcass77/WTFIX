@@ -180,13 +180,15 @@ class HeartbeatApp(MessageTypeHandlerApp):
         Send our own heartbeat to indicate that the pipeline is still responding.
         """
         logger.debug(f"{self.name}: Pipeline idle, sending heartbeat...")
-        # Don't need to block while heartbeat is sent
         self._timestamps[
             HeartbeatApp.SEND_TIMESTAMP
         ] = (
             datetime.utcnow()
         )  # Update timestamp immediately to avoid flooding the target with heartbeats.
-        self.send(admin.HeartbeatMessage())
+
+        self.send(
+            admin.HeartbeatMessage()
+        )  # Don't need to block while heartbeat is sent
 
     @unsync
     @on(MsgType.Logon)
@@ -244,7 +246,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
             HeartbeatApp.SEND_TIMESTAMP
         ] = datetime.utcnow()  # Update timestamp on every message sent
 
-        return await super().on_receive(message)
+        return await super().on_send(message)
 
     @unsync
     async def on_receive(self, message: FIXMessage) -> FIXMessage:

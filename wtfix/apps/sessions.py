@@ -82,6 +82,7 @@ class SessionApp(BaseApp):
 
         with open(self._sid_path, "w") as write_file:
             self._session_id = uuid.uuid4().hex
+            self._new_session = True
 
             write_file.write(self._session_id)
             logger.info(
@@ -102,7 +103,6 @@ class SessionApp(BaseApp):
                     f"Session ID file '{self._sid_path}' not found. Starting a new session..."
                 )
                 self._reset_session()
-                self._new_session = True
 
 
 class ClientSessionApp(SessionApp):
