@@ -6,7 +6,12 @@ from unittest.mock import MagicMock
 import pytest
 from unsync import Unfuture
 
-from wtfix.apps.admin import HeartbeatApp, SeqNumManagerApp, AuthenticationApp
+from wtfix.apps.admin import (
+    HeartbeatApp,
+    SeqNumManagerApp,
+    AuthenticationApp,
+    HeartbeatTimers,
+)
 from wtfix.apps.sessions import ClientSessionApp
 from wtfix.apps.store import MessageStoreApp, MemoryStore
 from wtfix.conf import settings
@@ -79,8 +84,7 @@ class TestHeartbeatApp:
         self, unsync_event_loop, failing_server_heartbeat_app
     ):
         await failing_server_heartbeat_app.heartbeat_monitor(
-            HeartbeatApp.RECEIVE_TIMESTAMP,
-            failing_server_heartbeat_app.send_test_request,
+            HeartbeatTimers.RECEIVE, failing_server_heartbeat_app.send_test_request
         )
 
         await asyncio.sleep(0.1)
@@ -100,8 +104,7 @@ class TestHeartbeatApp:
             try:
                 await asyncio.wait_for(
                     zero_heartbeat_app.heartbeat_monitor(
-                        HeartbeatApp.RECEIVE_TIMESTAMP,
-                        zero_heartbeat_app.send_test_request,
+                        HeartbeatTimers.RECEIVE, zero_heartbeat_app.send_test_request
                     ),
                     0.1,
                 )
@@ -122,8 +125,7 @@ class TestHeartbeatApp:
             try:
                 await asyncio.wait_for(
                     zero_heartbeat_app.heartbeat_monitor(
-                        HeartbeatApp.RECEIVE_TIMESTAMP,
-                        zero_heartbeat_app.send_test_request,
+                        HeartbeatTimers.RECEIVE, zero_heartbeat_app.send_test_request
                     ),
                     0.1,
                 )
@@ -144,7 +146,7 @@ class TestHeartbeatApp:
         try:
             await asyncio.wait_for(
                 zero_heartbeat_app.heartbeat_monitor(
-                    HeartbeatApp.RECEIVE_TIMESTAMP, zero_heartbeat_app.send_test_request
+                    HeartbeatTimers.RECEIVE, zero_heartbeat_app.send_test_request
                 ),
                 0.1,
             )
@@ -205,15 +207,10 @@ class TestHeartbeatApp:
     async def test_on_receive_updated_timestamp(
         self, unsync_event_loop, zero_heartbeat_app
     ):
-        prev_timestamp = (
-            zero_heartbeat_app._timestamps[HeartbeatApp.RECEIVE_TIMESTAMP],
-        )
+        prev_timestamp = HeartbeatTimers.RECEIVE.timestamp
 
         await zero_heartbeat_app.on_receive(TestRequestMessage("test123"))
-        assert (
-            zero_heartbeat_app._timestamps[HeartbeatApp.RECEIVE_TIMESTAMP]
-            != prev_timestamp
-        )
+        assert HeartbeatTimers.RECEIVE.timestamp != prev_timestamp
 
 
 class TestSeqNumManagerApp:
