@@ -16,9 +16,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import argparse
+import functools
 import logging
 import os
 import sys
+import signal
 from asyncio import futures
 
 # Import unsync to set event loop and start ambient unsync thread
@@ -50,6 +52,20 @@ parser.add_argument(
 )
 
 
+@unsync
+async def graceful_shutdown(sig_name_, pipeline):
+    logger.info(f"Received signal {sig_name_}! Initiating shutdown...")
+
+    try:
+        task = pipeline.stop()
+        await task
+        task.cancel()  # Terminate the task once we're done
+
+    except futures.CancelledError as e:
+        logger.error(f"Cancelled: connection terminated abnormally! ({e})")
+        sys.exit(os.EX_UNAVAILABLE)
+
+
 if __name__ == "__main__":
     logging.basicConfig(
         level=settings.LOGGING_LEVEL,
@@ -62,6 +78,14 @@ if __name__ == "__main__":
     )
 
     try:
+        # Graceful shutdown on termination signals.
+        # See: https://docs.python.org/3.6/library/asyncio-eventloop.html#set-signal-handlers-for-sigint-and-sigterm
+        for sig_name in {"SIGINT", "SIGTERM"}:
+            unsync.loop.add_signal_handler(
+                getattr(signal, sig_name),
+                functools.partial(graceful_shutdown, sig_name, fix_pipeline),
+            )
+
         fix_pipeline.start().result()
 
     except futures.TimeoutError as e:
