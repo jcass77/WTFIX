@@ -47,10 +47,10 @@ class LogoutMessage(OptimizedGenericMessage):
 class HeartbeatMessage(OptimizedGenericMessage):
     """Generic Heartbeat message"""
 
-    def __init__(self, test_request_id):
-        super().__init__(
-            (Tag.MsgType, MsgType.Heartbeat), (Tag.TestReqID, test_request_id)
-        )
+    def __init__(self, test_request_id=None):
+        super().__init__((Tag.MsgType, MsgType.Heartbeat))
+        if test_request_id is not None:
+            self.TestReqID = test_request_id
 
 
 class TestRequestMessage(OptimizedGenericMessage):

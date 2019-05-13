@@ -2,6 +2,19 @@
 
 This changelog is used to track all major changes to WTFIX.
 
+## v0.10.0 (2019-05-13)
+
+**Enhancements**
+
+- Automatically start a new session if no relevant .sid file can be found.
+- Heartbeat monitor now proactively sends heartbeats as well, in compliance with the FIX protocol specification.
+- Pipeline now shuts down gracefully on SIGTERM and SIGINT signals in addition to CTRL+C.
+
+**Fixes**
+
+- Fix path to .sid files.
+
+
 ## v0.9.0 (2019-05-02)
 
 **Enhancements**
