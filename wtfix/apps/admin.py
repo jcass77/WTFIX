@@ -678,7 +678,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             )
             wait_time = wait_time.timestamp() - datetime.utcnow().timestamp()
             logger.info(
-                f"{self.name}: Waiting {wait_time:0.2f}ms for ResendRequests from target "
+                f"{self.name}: Waiting {wait_time:0.2f}s for ResendRequests from target "
                 f"before doing gap fill..."
             )
 
