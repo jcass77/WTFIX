@@ -36,6 +36,8 @@ class LogonMessage(OptimizedGenericMessage):
             (Tag.HeartBtInt, heartbeat_int),
         )
 
+        self[10222] = "344"
+
         if username is not None:
             self.Username = username
 

@@ -7,6 +7,7 @@ This changelog is used to track all major changes to WTFIX.
 **Enhancements**
 
 - Make username and password optional for Logon messages.
+- Fixed an issue that caused only one Heartbeat timer to be used for both sending and receiving messages.
 
 
 ## v0.10.0 (2019-05-13)

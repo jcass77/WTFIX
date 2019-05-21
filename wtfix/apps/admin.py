@@ -19,7 +19,7 @@ import asyncio
 import collections
 import uuid
 from datetime import datetime, timedelta
-from enum import Enum
+from enum import Enum, auto
 from typing import Callable
 
 from unsync import unsync
@@ -41,8 +41,8 @@ logger = settings.logger
 class HeartbeatTimers(Enum):
     """Send / receive timers used by the heartbeat monitor"""
 
-    SEND = None
-    RECEIVE = None
+    SEND = auto()
+    RECEIVE = auto()
 
     def __init__(self, timestamp: int):
         self.timestamp = timestamp
