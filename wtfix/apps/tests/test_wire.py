@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 
 from wtfix.apps.wire import DecoderApp
@@ -27,6 +29,7 @@ class TestEncoderApp:
     def test_encode_message_nested_group(self, encoder_app, nested_parties_group):
         m = generic_message_factory((35, "a"), (34, 1), (2, "bb"))
         m[nested_parties_group.tag] = nested_parties_group
+        m.SendingTime = datetime.utcnow().strftime(settings.DATETIME_FORMAT)[:-3]
 
         # Compare just the group-related bytes.
         assert encoder_app.encode_message(m)[82:-7] == (
@@ -113,6 +116,10 @@ class TestDecoderApp:
                 (Tag.MsgType, MsgType.TestRequest),
                 (Tag.MsgSeqNum, 1),
                 (Tag.TestReqID, "a"),
+                (
+                    Tag.SendingTime,
+                    datetime.utcnow().strftime(settings.DATETIME_FORMAT)[:-3],
+                ),
             )
             data = encoder_app.encode_message(m).replace(
                 b"8=" + utils.encode(settings.BEGIN_STRING), b""

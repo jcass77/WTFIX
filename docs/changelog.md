@@ -9,6 +9,10 @@ This changelog is used to track all major changes to WTFIX.
 - Make username and password optional for Logon messages.
 - Fixed an issue that caused only one Heartbeat timer to be used for both sending and receiving messages.
 
+**Fixes**
+
+- Set `SendingTime` before message is added to the message store (Fixes [#2](https://github.com/jcass77/WTFIX/issues/2)).
+
 
 ## v0.10.0 (2019-05-13)
 

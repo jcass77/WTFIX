@@ -797,4 +797,6 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             self.send_seq_num += 1
             message.seq_num = self.send_seq_num
 
+        message.SendingTime = datetime.utcnow().strftime(settings.DATETIME_FORMAT)[:-3]
+
         return await super().on_send(message)
