@@ -15,8 +15,6 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from datetime import datetime
-
 from unsync import unsync
 
 from wtfix.apps.base import BaseApp
@@ -84,7 +82,7 @@ class EncoderApp(BaseApp):
             + utils.encode(message.sender_id)
             + settings.SOH
             + utils.encode(f"{Tag.SendingTime}=")
-            + utils.encode(datetime.utcnow().strftime(settings.DATETIME_FORMAT)[:-3])
+            + utils.encode(str(message.SendingTime))
             + settings.SOH
             + utils.encode(f"{Tag.TargetCompID}=")
             + utils.encode(message.target_id)

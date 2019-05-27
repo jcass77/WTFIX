@@ -23,7 +23,9 @@ from wtfix.protocol.common import MsgType, Tag
 class LogonMessage(OptimizedGenericMessage):
     """Generic Logon message"""
 
-    def __init__(self, username, password, encryption_method=0, heartbeat_int=None):
+    def __init__(
+        self, username=None, password=None, encryption_method=0, heartbeat_int=None
+    ):
 
         if heartbeat_int is None:
             heartbeat_int = settings.default_connection.HEARTBEAT_INT
@@ -32,9 +34,13 @@ class LogonMessage(OptimizedGenericMessage):
             (Tag.MsgType, MsgType.Logon),
             (Tag.EncryptMethod, encryption_method),
             (Tag.HeartBtInt, heartbeat_int),
-            (Tag.Username, username),
-            (Tag.Password, password),
         )
+
+        if username is not None:
+            self.Username = username
+
+        if password is not None:
+            self.Password = password
 
 
 class LogoutMessage(OptimizedGenericMessage):

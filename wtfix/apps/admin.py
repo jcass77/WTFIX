@@ -19,7 +19,7 @@ import asyncio
 import collections
 import uuid
 from datetime import datetime, timedelta
-from enum import Enum
+from enum import Enum, auto
 from typing import Callable
 
 from unsync import unsync
@@ -41,8 +41,8 @@ logger = settings.logger
 class HeartbeatTimers(Enum):
     """Send / receive timers used by the heartbeat monitor"""
 
-    SEND = None
-    RECEIVE = None
+    SEND = auto()
+    RECEIVE = auto()
 
     def __init__(self, timestamp: int):
         self.timestamp = timestamp
@@ -378,7 +378,7 @@ class AuthenticationApp(MessageTypeHandlerApp):
             and message.type not in SeqNumManagerApp.ADMIN_MESSAGES
         ):
             logger.warning(
-                f"{self.name}: Blocking message until logon is completed ({message})."
+                f"{self.name}: Blocking message until logon is completed: {message}."
             )
             await self.logged_in_event.wait()
 
@@ -393,7 +393,7 @@ class AuthenticationApp(MessageTypeHandlerApp):
             and message.type not in SeqNumManagerApp.ADMIN_MESSAGES
         ):
             logger.warning(
-                f"{self.name}: Blocking message until logon is completed ({message})."
+                f"{self.name}: Blocking message until logon is completed: {message}."
             )
             await self.logged_in_event.wait()
 
@@ -608,7 +608,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
                 # Duplicate that must already have been processed - ignore
                 raise StopMessageProcessing(
                     f"{self.name}: Ignoring duplicate with lower than "
-                    f"expected sequence number ({message})."
+                    f"expected sequence number: {message}."
                 )
 
         except TagNotFound:
@@ -676,9 +676,9 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             wait_time = self.startup_time + timedelta(
                 seconds=SeqNumManagerApp.RESEND_WAIT_TIME
             )
-            wait_time = wait_time.timestamp() - datetime.utcnow().timestamp()
+            wait_time = max(wait_time.timestamp() - datetime.utcnow().timestamp(), 0)
             logger.info(
-                f"{self.name}: Waiting {wait_time:0.2f}ms for ResendRequests from target "
+                f"{self.name}: Waiting {wait_time:0.2f}s for ResendRequests from target "
                 f"before doing gap fill..."
             )
 
@@ -796,5 +796,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             # Set sequence number
             self.send_seq_num += 1
             message.seq_num = self.send_seq_num
+
+        message.SendingTime = datetime.utcnow().strftime(settings.DATETIME_FORMAT)[:-3]
 
         return await super().on_send(message)

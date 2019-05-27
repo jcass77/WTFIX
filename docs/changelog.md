@@ -2,6 +2,20 @@
 
 This changelog is used to track all major changes to WTFIX.
 
+## v0.11.0 (2019-05-27)
+
+**Enhancements**
+
+- Make username and password optional for Logon messages.
+- Fixed an issue that caused only one Heartbeat timer to be used for both sending and receiving messages.
+- Collections of FIXMessages can now be sorted by their sequence numbers.
+
+**Fixes**
+
+- Set `SendingTime` before message is added to the message store (Fixes [#2](https://github.com/jcass77/WTFIX/issues/2)).
+- Enforce serial processing: wait until a message has been propagated through the entire pipeline before receiving the next message.
+
+
 ## v0.10.0 (2019-05-13)
 
 **Enhancements**

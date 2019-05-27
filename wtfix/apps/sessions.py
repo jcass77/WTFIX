@@ -196,7 +196,7 @@ class ClientSessionApp(SessionApp):
                     settings.SOH
                 )  # Detect final message delimiter.
 
-                self.pipeline.receive(data)
+                await self.pipeline.receive(data)
                 data = None
 
             except IncompleteReadError as e:
@@ -205,8 +205,7 @@ class ClientSessionApp(SessionApp):
                     utils.encode(f"{Tag.MsgType}={MsgType.Logout}") + settings.SOH
                     in data
                 ):
-                    # Process logout message that was sent by the server.
-                    self.pipeline.receive(
+                    await self.pipeline.receive(
                         data
                     )  # Process logout message in the pipeline as per normal
 

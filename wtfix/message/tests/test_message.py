@@ -66,6 +66,22 @@ class TestFixMessageMixin:
             m = generic_message_class((1, "a"), (2, "bb"))
             m.validate()
 
+    def test_sorting(self):
+        m1 = generic_message_factory((Tag.MsgSeqNum, 1))
+        m2 = generic_message_factory((Tag.MsgSeqNum, 2))
+        m3 = generic_message_factory((Tag.MsgSeqNum, 3))
+
+        list_ = [m2, m3, m1]
+        assert sorted(list_) == [m1, m2, m3]
+
+    def test_sorting_not_implemented(self):
+        with pytest.raises(TypeError):
+            m1 = generic_message_factory((Tag.MsgSeqNum, 1))
+            m2 = 2
+
+            list_ = [m2, m1]
+            sorted(list_)
+
 
 class TestRawMessage:
     def test_copy(self):

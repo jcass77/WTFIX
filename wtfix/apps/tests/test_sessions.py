@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from unittest import mock
 
 import asyncio
@@ -6,6 +7,7 @@ import asyncio
 import pytest
 
 from wtfix.apps.sessions import ClientSessionApp, SessionApp
+from wtfix.conf import settings
 from wtfix.message import admin
 from wtfix.tests.conftest import get_mock_async
 
@@ -72,6 +74,7 @@ class TestClientSessionApp:
         session_app.pipeline.receive = get_mock_async()
 
         msg = admin.TestRequestMessage("Test123")
+        msg.SendingTime = datetime.utcnow().strftime(settings.DATETIME_FORMAT)[:-3]
 
         encoded_msg = encoder_app.encode_message(msg)
 
