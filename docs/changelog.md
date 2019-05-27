@@ -2,7 +2,7 @@
 
 This changelog is used to track all major changes to WTFIX.
 
-## v0.11.0 (UNRELEASED)
+## v0.11.0 (2019-05-27)
 
 **Enhancements**
 
@@ -13,8 +13,7 @@ This changelog is used to track all major changes to WTFIX.
 **Fixes**
 
 - Set `SendingTime` before message is added to the message store (Fixes [#2](https://github.com/jcass77/WTFIX/issues/2)).
-- Fixed an issue where out of sequence messages that arrived late were not being discarded before gap fill operations
-started.
+- Enforce serial processing: wait until a message has been propagated through the entire pipeline before receiving the next message.
 
 
 ## v0.10.0 (2019-05-13)
