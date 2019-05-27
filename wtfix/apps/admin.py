@@ -619,10 +619,6 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
     @unsync
     async def _handle_sequence_number_too_high(self, message):
 
-        pipeline_interrupt_message = (
-            f"Queueing message #{message.seq_num} while gap fill is in progress "
-            f"(waiting for #{self.expected_seq_num})..."
-        )
         # We've missed some incoming messages
         if len(self.receive_buffer) == 0:
 
@@ -649,12 +645,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
         else:
             # Already busy processing gap fill, add to queue
-            if message.seq_num <= self.receive_buffer[-1].seq_num:
-                pipeline_interrupt_message = (
-                    f"Ignoring late arrival #{message.seq_num}: {message}"
-                )
-            else:
-                self.receive_buffer.append(message)
+            self.receive_buffer.append(message)
 
         # Delete messages that were received out of order from the message store
         session_id = self.pipeline.apps[ClientSessionApp.name].session_id
@@ -669,7 +660,10 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             return message
 
         # ALL OTHER MESSAGE TYPES: don't propagate any further!
-        raise StopMessageProcessing(pipeline_interrupt_message)
+        raise StopMessageProcessing(
+            f"Queueing message #{message.seq_num} while gap fill is in progress "
+            f"(waiting for #{self.expected_seq_num})..."
+        )
 
     @unsync
     async def _send_resend_request(self, missing_seq_nums):

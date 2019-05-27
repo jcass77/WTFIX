@@ -16,6 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import abc
+from functools import total_ordering
 
 from wtfix.conf import settings
 from wtfix.core import utils
@@ -29,6 +30,7 @@ from wtfix.protocol.common import Tag, MsgType
 from .collections import FieldDict, FieldList, FieldMap
 
 
+@total_ordering
 class FIXMessage(FieldMap, abc.ABC):
     """
     Mixin class that promotes FieldMaps to FIX messages. Provides often-used shortcuts for common tag number
@@ -118,6 +120,12 @@ class FIXMessage(FieldMap, abc.ABC):
             raise ValidationError(f"No 'MsgType (35)' specified for {self}.") from e
 
         return self
+
+    def __lt__(self, other):
+        try:
+            return self.seq_num < other.seq_num
+        except AttributeError:
+            return NotImplemented
 
     def __format__(self, format_spec):
         """
