@@ -312,12 +312,10 @@ class TestSeqNumManagerApp:
         )  # Don't wait
 
         for idx in range(5):
-            user_notification_message.copy()
-            user_notification_message.MsgSeqNum = 5 + idx
+            out_of_sequence_msg = user_notification_message.copy()
+            out_of_sequence_msg.MsgSeqNum = 5 + idx
             try:
-                await seq_num_app._handle_sequence_number_too_high(
-                    user_notification_message
-                )
+                await seq_num_app._handle_sequence_number_too_high(out_of_sequence_msg)
             except StopMessageProcessing:
                 # Expected
                 pass
