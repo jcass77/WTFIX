@@ -7,7 +7,7 @@ import pytest
 def encoded_dict_sample():
     return json.dumps(
         {
-            1: "a",
+            35: "a",
             2: "b",
             539: [
                 {
@@ -24,7 +24,10 @@ def encoded_dict_sample():
                 },
             ],
             3: "c",
-            "group_templates": {539: [524, 525, 538, 804], 804: [545, 805]},
+            "group_templates": {
+                539: {"*": [524, 525, 538, 804]},
+                804: {"*": [545, 805]},
+            },
         }
     )
 
@@ -33,7 +36,7 @@ def encoded_dict_sample():
 def encoded_list_sample():
     return json.dumps(
         [
-            (1, "a"),
+            (35, "a"),
             (2, "b"),
             (539, "2"),
             (524, "a"),

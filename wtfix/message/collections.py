@@ -20,14 +20,7 @@ import collections
 import itertools
 from typing import Union, Sequence, Generator
 
-from wtfix.conf import settings
-from wtfix.core.exceptions import (
-    TagNotFound,
-    UnknownTag,
-    DuplicateTags,
-    ParsingError,
-    ImproperlyConfigured,
-)
+from wtfix.core.exceptions import TagNotFound, UnknownTag, DuplicateTags, ParsingError
 from wtfix.core.utils import GroupTemplateMixin
 from wtfix.message.field import Field
 from wtfix.protocol import common
@@ -557,7 +550,16 @@ class FieldDict(FieldMap, GroupTemplateMixin):
 
             if field.tag in self.group_templates:
                 # Tag denotes the start of a new repeating group.
-                group = self._parse_group_fields(fields, group_index=idx)
+                try:
+                    message_type = str(parsed_fields[Tag.MsgType])
+                except KeyError:
+                    # Message type not yet determined!
+                    raise ParsingError(
+                        f"Cannot parse repeating group as MsgType tag ({Tag.MsgType}) has not "
+                        "been seen yet!"
+                    )
+
+                group = self._parse_group_fields(fields, idx, message_type)
                 parsed_fields[group.tag] = group
 
                 # Skip over all of the fields that were processed as part of the group.
@@ -569,12 +571,21 @@ class FieldDict(FieldMap, GroupTemplateMixin):
 
         return parsed_fields
 
-    def _parse_group_fields(self, fields, group_index):
+    def _parse_group_fields(self, fields, group_index, message_type):
         parsed_fields = []
 
         # Retrieve the template for this repeating group
         group_identifier = Field(fields[group_index][0], fields[group_index][1])
-        instance_template = self.group_templates[group_identifier.tag]
+        templates = self.get_group_templates(
+            group_identifier.tag, message_type=message_type
+        )
+        if len(templates) != 1:
+            # Cannot have more than one template defined for a group_identifier / message_type pair
+            raise ParsingError(
+                f"Could not determine template for tag {group_identifier.tag}."
+            )
+
+        instance_template = templates[0]
         idx = group_index + 1
 
         while idx < len(fields):
@@ -594,7 +605,7 @@ class FieldDict(FieldMap, GroupTemplateMixin):
 
             if field.tag in self.group_templates:
                 # Tag denotes the start of a new repeating group.
-                group = self._parse_group_fields(fields, group_index=idx)
+                group = self._parse_group_fields(fields, idx, message_type)
 
                 parsed_fields.append(group)
                 # Skip over all of the fields that were processed as part of the group.
@@ -604,16 +615,12 @@ class FieldDict(FieldMap, GroupTemplateMixin):
             parsed_fields.append(field)
             idx += 1
 
-        return Group(
-            group_identifier,
-            *parsed_fields,
-            template=self.group_templates[group_identifier.tag],
-        )
+        return Group(group_identifier, *parsed_fields, template=instance_template)
 
     def __setitem__(self, tag: int, value: any):
         if isinstance(value, Group):
             # Also add group templates when a new group is set.
-            self.add_group_templates({tag: value.template})
+            self.add_group_templates({tag: {"*": value.template}})
 
         elif not (isinstance(value, Field)):
             # Create a new Field if value is not a Field or Group already.
@@ -668,25 +675,37 @@ class FieldDict(FieldMap, GroupTemplateMixin):
         return f"{{{super().__str__()}}}"
 
 
-class Group(FieldMap):
+class Group(FieldMap, GroupTemplateMixin):
     """
     A repeating group of FieldList 'instances' that form the Group.
     """
 
-    def __init__(self, identifier, *fields, template=None):
+    def __init__(self, identifier, *fields, template=None, message_type="*"):
         """
         :param identifier: A Field that identifies the repeating Group. The value of the 'identifier' Field
         indicates the number of times that GroupInstance repeats in this Group.
         :param fields: A FieldMap or list of (tag, value) tuples.
         :param template: Optional. The list of tags that this repeating group consists of. If no template is
         provided then tries to find a template corresponding to identifier.tag in the default GROUP_TEMPLATES setting.
-        :raises: ImproperlyConfigured if no template is specified and no template could be found in settings.
+        :param message_type: Optional. The message type that this repeating group is for (used to retrieve the correct
+        default template).
+        :raises: ParsingError if no template is specified and no template could be found in settings.
         """
         group_identifier = Field(
             *identifier
         )  # First, make sure the group identifier is a valid Field.
+
         if template is None:
-            template = self._get_template(group_identifier)
+            templates = self.get_group_templates(
+                group_identifier.tag, message_type=message_type
+            )
+            if len(templates) != 1:
+                # FieldDicts are not message-type aware, so can only handle a single template per identifier tag
+                raise ParsingError(
+                    f"Could not determine template for tag {group_identifier.tag}."
+                )
+
+            template = templates[0]
 
         self.identifier = group_identifier
         self._instance_template = template
@@ -754,17 +773,6 @@ class Group(FieldMap):
             instances.append(FieldList(*parsed_fields))
 
         return instances
-
-    @classmethod
-    def _get_template(cls, group_identifier):
-        try:
-            return settings.default_connection.GROUP_TEMPLATES[group_identifier.tag]
-        except KeyError:
-            raise (
-                ImproperlyConfigured(
-                    f"No template available for repeating group identifier {group_identifier}."
-                )
-            )
 
     def __add__(
         self, other: Union["Group", FieldMap, Sequence[Field], Sequence[tuple]]

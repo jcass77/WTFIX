@@ -12,11 +12,11 @@ class TestJSONMessageEncoder:
         self, nested_parties_group, encoded_dict_sample
     ):
         fm = FieldDict(
-            (1, "a"),
+            (35, "a"),
             (2, "b"),
             *nested_parties_group.values(),
             (3, "c"),
-            group_templates={539: [524, 525, 538, 804], 804: [545, 805]},
+            group_templates={539: {"*": [524, 525, 538, 804]}, 804: {"*": [545, 805]}},
         )
 
         assert encoders.to_json(fm) == encoded_dict_sample
@@ -25,31 +25,36 @@ class TestJSONMessageEncoder:
         self, nested_parties_group
     ):
         with pytest.raises(DuplicateTags):
-            fm = FieldDict((1, "a"), (2, "b"), *nested_parties_group.values(), (3, "c"))
+            fm = FieldDict(
+                (35, "a"), (2, "b"), *nested_parties_group.values(), (3, "c")
+            )
 
             encoders.to_json(fm)
 
     def test_to_json_nested_fieldlist_encodes_as_expected(
         self, nested_parties_group, encoded_list_sample
     ):
-        fm = FieldList((1, "a"), (2, "b"), *nested_parties_group.values(), (3, "c"))
+        fm = FieldList((35, "a"), (2, "b"), *nested_parties_group.values(), (3, "c"))
 
         assert encoders.to_json(fm) == encoded_list_sample
 
     def test_to_json_encodes_bytestrings(
         self, nested_parties_group, encoded_list_sample
     ):
-        fm = FieldList((1, "a"), (2, b"b"), (3, "c"))
+        fm = FieldList((35, "a"), (2, b"b"), (3, "c"))
 
-        assert encoders.to_json(fm) == json.dumps([[1, "a"], [2, "b"], [3, "c"]])
+        assert encoders.to_json(fm) == json.dumps([[35, "a"], [2, "b"], [3, "c"]])
 
 
 def test_serialization_is_idempotent(fieldmap_class, nested_parties_group):
     kwargs = {}
-    fields = [(1, "a"), (2, "b"), *nested_parties_group.values(), (3, "c")]
+    fields = [(35, "a"), (2, "b"), *nested_parties_group.values(), (3, "c")]
 
     if fieldmap_class.__name__ == FieldDict.__name__:
-        kwargs["group_templates"] = {539: [524, 525, 538, 804], 804: [545, 805]}
+        kwargs["group_templates"] = {
+            539: {"*": [524, 525, 538, 804]},
+            804: {"*": [545, 805]},
+        }
 
     fm = fieldmap_class(*fields, **kwargs)
 

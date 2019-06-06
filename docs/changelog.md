@@ -2,6 +2,13 @@
 
 This changelog is used to track all major changes to WTFIX.
 
+## v0.12.0 (UNRELEASED)
+
+**Enhancements**
+
+- Repeating group templates can now be configured on a per-message-type basis.
+
+
 ## v0.11.0 (2019-05-27)
 
 **Enhancements**

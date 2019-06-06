@@ -215,34 +215,82 @@ class GroupTemplateMixin:
 
     @group_templates.setter
     def group_templates(self, value):
-        self._group_templates = value
+        self.set_group_templates(value)
 
     def _init_group_templates(self):
         if settings.has_safe_defaults:
-            self._group_templates = settings.default_connection.GROUP_TEMPLATES
+            self.set_group_templates(settings.default_connection.GROUP_TEMPLATES)
         else:
             self._group_templates = {}
+
+    def get_group_templates(self, identifier_tag, message_type=None):
+
+        try:
+            templates = [self.group_templates[identifier_tag]]
+        except KeyError:
+            return []
+
+        matching_templates = []
+
+        for template in templates:
+
+            for message_types, instance_tags in template.items():
+
+                if message_type is None or any(
+                    filter_type in message_types for filter_type in [message_type, "*"]
+                ):
+                    matching_templates.append(instance_tags)
+
+        return matching_templates
+
+    def set_group_templates(self, templates):
+        self._group_templates = {}
+        if templates == {}:
+            # Nothing more to do
+            return
+
+        self.add_group_templates(templates)
 
     def add_group_templates(self, templates):
         """
         Performs some basic validation checks when adding additional group templates.
 
-        :param templates: A dictionary of templates in the format {identifier tag: [tag_1,...,tag_n]}
+        :param templates: A dictionary of templates in the format:
+
+            {
+                identifier tag 1: {
+                    (message_type_1.1a, message_type_1.1b, ..., message_type_1.1n): [tag_1, ..., tag_n],
+                    (message_type_1.2a, message_type_1.2b, ..., message_type_1.2n): [tag_1, ..., tag_n],
+                    ...
+                    (message_type_1.na, message_type_1.nb, ..., message_type_1.nn): [tag_1, ..., tag_n],
+                },
+                identifier tag 2: {
+                    (message_type_2.1a, message_type_2.1b, ..., message_type_2.1n): [tag_1, ..., tag_n],
+                    (message_type_2.2a, message_type_2.2b, ..., message_type_2.2n): [tag_1, ..., tag_n],
+                    ...
+                    (message_type_2.na, message_type_2.nb, ..., message_type_2.nn): [tag_1, ..., tag_n],
+                },
+            }
+
+        ...where 'message type' is the FIX message type that the group applies to or '*' for any message type.
         """
-        if len(templates) == 0 or len(list(templates.values())[0]) == 0:
+        if len(templates) == 0:
             raise ValidationError(
-                f"At least one group instance tag needs to be defined for group {templates}."
+                f"At least one group identifier tag needs to be defined for template {templates}."
             )
 
-        self.group_templates = {**self.group_templates, **templates}
+        # Even though less efficient, we loop over the group instances and add them one by one to do some
+        # basic validation and ensure that 'templates' consists of a nested dictionary structure.
+        for group_identifier, message_types in templates.items():
 
-    def remove_group_template(self, identifier_tag):
-        """
-        Safely remove a group template.
-
-        :param identifier_tag: The identifier tag number of the group that should be removed.
-        """
-        del self.group_templates[identifier_tag]
+            for message_type, instance_tags in message_types.items():
+                if len(instance_tags) == 0:
+                    raise ValidationError(
+                        f"At least one group instance tag needs to be defined for group identifier {group_identifier}."
+                    )
+                self.group_templates.setdefault(
+                    group_identifier, {message_type: instance_tags}
+                )[message_type] = instance_tags
 
     def is_template_tag(self, tag):
         """
@@ -251,5 +299,8 @@ class GroupTemplateMixin:
         if tag in self.group_templates:
             return True
 
-        for template in self.group_templates.values():
-            return tag in template
+        for templates in self.group_templates.values():
+            if any(tag in template for template in templates.values()):
+                return True
+        else:
+            return False
