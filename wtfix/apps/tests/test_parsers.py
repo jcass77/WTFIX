@@ -35,7 +35,7 @@ class TestRawMessageParser:
     async def test_parse_uses_group_template_to_create_optimized_messages(
         self, unsync_event_loop, raw_msg_parser_app
     ):
-        raw_msg_parser_app.add_group_templates({1: [2]})
+        raw_msg_parser_app.add_group_templates({1: {"*": [2]}})
         rm = RawMessage(encoded_body=b"1=2\x012=a\x012=b\x01")
 
         rm = await raw_msg_parser_app.on_receive(rm)

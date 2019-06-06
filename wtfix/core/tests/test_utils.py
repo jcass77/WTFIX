@@ -124,33 +124,74 @@ class TestGroupTemplateMixin:
             == settings.default_connection.GROUP_TEMPLATES
         )
 
+    def test_get_group_templates(self):
+        gt = GroupTemplateMixin()
+
+        gt.group_templates = {
+            Tag.NoSecurityAltID: {"a": [Tag.SecurityAltID, Tag.SecurityAltIDSource]},
+            Tag.NoRoutingIDs: {"*": [Tag.RoutingType, Tag.RoutingID]},
+        }
+
+        assert gt.get_group_templates(identifier_tag=Tag.NoSecurityAltID) == [
+            [Tag.SecurityAltID, Tag.SecurityAltIDSource]
+        ]
+        assert gt.get_group_templates(
+            identifier_tag=Tag.NoSecurityAltID, message_type="a"
+        ) == [[Tag.SecurityAltID, Tag.SecurityAltIDSource]]
+
+    def test_get_group_templates_not_found(self):
+        gt = GroupTemplateMixin()
+        gt.group_templates = {
+            Tag.NoSecurityAltID: {"a": [Tag.SecurityAltID, Tag.SecurityAltIDSource]},
+            Tag.NoRoutingIDs: {"*": [Tag.RoutingType, Tag.RoutingID]},
+        }
+
+        assert gt.get_group_templates(identifier_tag=999) == []
+        assert gt.get_group_templates(identifier_tag=999, message_type="b") == []
+
+    def test_get_group_templates_falls_back_to_wildcard(self):
+        gt = GroupTemplateMixin()
+        gt.group_templates = {
+            Tag.NoSecurityAltID: {"a": [Tag.SecurityAltID, Tag.SecurityAltIDSource]},
+            Tag.NoRoutingIDs: {"*": [Tag.RoutingType, Tag.RoutingID]},
+        }
+
+        assert gt.get_group_templates(
+            identifier_tag=Tag.NoRoutingIDs, message_type="a"
+        ) == [[Tag.RoutingType, Tag.RoutingID]]
+
     def test_add_group_templates(self):
         gt = GroupTemplateMixin()
         gt.add_group_templates(
-            {Tag.NoSecurityAltID: [Tag.SecurityAltID, Tag.SecurityAltIDSource]}
+            {Tag.NoSecurityAltID: {"*": [Tag.SecurityAltID, Tag.SecurityAltIDSource]}}
         )
 
         assert Tag.NoRoutingIDs in gt.group_templates
         assert Tag.NoSecurityAltID in gt.group_templates
 
-    def test_add_group_template_too_short_raises_exception(self):
+        assert gt.group_templates[Tag.NoSecurityAltID]["*"] == [
+            Tag.SecurityAltID,
+            Tag.SecurityAltIDSource,
+        ]
+
+    def test_add_group_template_empty_raises_exception(self):
         with pytest.raises(ValidationError):
-            GroupTemplateMixin().add_group_templates({35: []})
+            GroupTemplateMixin().add_group_templates({})
 
-    def test_remove_group_template(self):
-        gt = GroupTemplateMixin()
-        gt.add_group_templates({215: [216, 217]})
+    def test_add_group_template_empty_instance_raises_exception(self):
+        with pytest.raises(ValidationError):
+            GroupTemplateMixin().add_group_templates({35: {"*": []}})
 
-        assert 215 in gt.group_templates
-
-        gt.remove_group_template(215)
-        assert 215 not in gt._group_templates
+    def test_add_group_template_wrong_structure_raises_exception(self):
+        with pytest.raises(AttributeError):
+            GroupTemplateMixin().add_group_templates({35: [1, 2, 3]})
 
     def test_is_template_tag(self):
         gt = GroupTemplateMixin()
-        gt.add_group_templates({215: [216, 216]})
+        gt.add_group_templates({215: {"*": [216, 217]}})
 
         assert gt.is_template_tag(215) is True
         assert gt.is_template_tag(216) is True
+        assert gt.is_template_tag(217) is True
 
-        assert gt.is_template_tag(217) is False
+        assert gt.is_template_tag(218) is False
