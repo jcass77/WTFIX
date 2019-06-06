@@ -19,5 +19,5 @@ CONNECTIONS["default"]["PASSWORD"] = "TEST_PASSWORD"
 # REPEATING GROUPS
 CONNECTIONS["default"]["GROUP_TEMPLATES"] = {
     # Routing IDs
-    Tag.NoRoutingIDs: {("*",): [Tag.RoutingType, Tag.RoutingID]}
+    Tag.NoRoutingIDs: {"*": [Tag.RoutingType, Tag.RoutingID]}
 }
