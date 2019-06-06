@@ -152,7 +152,7 @@ class TestGenericMessage:
 class TestOptimizedGenericMessage:
     def test_copy(self):
         m = OptimizedGenericMessage(
-            (1, "a"), (2, 2), (3, "b"), (3, "c"), group_templates={2: [3]}
+            (35, "a"), (2, 2), (3, "b"), (3, "c"), group_templates={2: {"*": [3]}}
         )
 
         new_m = m.copy()
@@ -171,6 +171,6 @@ def test_message_factory_falls_back_to_generic_if_no_group_template_is_defined()
 
 def test_message_factory_uses_group_template_to_create_optimized_messages():
     m = generic_message_factory(
-        (1, "a"), (2, 2), (3, "b"), (3, "c"), group_templates={2: [3]}
+        (35, "a"), (2, 2), (3, "b"), (3, "c"), group_templates={2: {"a": [3]}}
     )
     assert isinstance(m, OptimizedGenericMessage)

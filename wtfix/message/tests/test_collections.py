@@ -10,12 +10,7 @@ from wtfix.message.message import generic_message_factory
 from wtfix.protocol.common import Tag, MsgType
 from ..field import Field
 from ..collections import FieldDict, Group, FieldList
-from wtfix.core.exceptions import (
-    TagNotFound,
-    DuplicateTags,
-    ImproperlyConfigured,
-    ParsingError,
-)
+from wtfix.core.exceptions import TagNotFound, DuplicateTags, ParsingError
 
 
 class TestFieldMap:
@@ -298,7 +293,7 @@ class TestFieldMap:
         fm = fieldmap_class((1, "a"), (2, "bb"))
         fm[routing_id_group.tag] = routing_id_group
 
-        group_tags = set(field.tag for field in routing_id_group.values())
+        group_tags = {field.tag for field in routing_id_group.values()}
         assert all(tag in fm for tag in group_tags)
 
     def test_getattr(self, fieldmap_impl_abc_123):
@@ -450,15 +445,16 @@ class TestFieldDict:
 
     def test_parse_repeating_group(self, routing_id_group):
         fm = FieldDict(
-            (1, "a"),
-            (2, "b"),
+            (35, "a"),
+            (1, "b"),
+            (2, "c"),
             *routing_id_group.values(),
             (3, "e"),
-            group_templates={Tag.NoRoutingIDs: [Tag.RoutingType, Tag.RoutingID]},
+            group_templates={Tag.NoRoutingIDs: {"*": [Tag.RoutingType, Tag.RoutingID]}},
         )
 
         assert Tag.NoRoutingIDs in fm
-        assert fm[1] == "a"
+        assert fm[1] == "b"
 
         group = fm[Tag.NoRoutingIDs]
         assert group.size == 2
@@ -475,18 +471,19 @@ class TestFieldDict:
 
     def test_parse_incomplete_repeating_group(self):
         fm = FieldDict(
-            (1, "a"),
-            (2, "b"),
+            (35, "a"),
+            (1, "b"),
+            (2, "c"),
             (Tag.NoRoutingIDs, 2),
             (Tag.RoutingType, "a"),
             # (217, "b"),  <-- Simulated one instance not containing all template fields
             (Tag.RoutingType, "c"),
             (Tag.RoutingID, "d"),
             (3, "e"),
-            group_templates={Tag.NoRoutingIDs: [Tag.RoutingType, Tag.RoutingID]},
+            group_templates={Tag.NoRoutingIDs: {"*": [Tag.RoutingType, Tag.RoutingID]}},
         )
         assert 215 in fm
-        assert fm[1] == "a"
+        assert fm[1] == "b"
 
         group = fm[215]
         assert group.size == 2
@@ -502,6 +499,7 @@ class TestFieldDict:
 
     def test_parse_repeating_group_wrong_order(self):
         fm = FieldDict(
+            (35, "a"),
             (1, "a"),
             (2, "b"),
             (3, 2),
@@ -512,7 +510,7 @@ class TestFieldDict:
             (6, "y"),  # <-- Switch tag order
             (5, "d"),
             (7, "e"),
-            group_templates={3: [4, 5, 6]},
+            group_templates={3: {"*": [4, 5, 6]}},
         )
 
         assert 3 in fm
@@ -536,6 +534,7 @@ class TestFieldDict:
     def test_parse_repeating_group_duplicate_tags(self):
         with pytest.raises(ParsingError):
             fm = FieldDict(
+                (35, "a"),
                 (1, "a"),
                 (2, "b"),
                 (3, 2),
@@ -547,7 +546,7 @@ class TestFieldDict:
                 (5, "d"),
                 (6, "y"),
                 (7, "e"),
-                group_templates={3: [4, 5, 6]},
+                group_templates={3: {"*": [4, 5, 6]}},
             )
 
             assert 3 in fm
@@ -570,11 +569,12 @@ class TestFieldDict:
 
     def test_parse_nested_repeating_group(self, nested_parties_group):
         fm = FieldDict(
+            (35, "a"),
             (1, "a"),
             (2, "b"),
             *nested_parties_group.values(),
             (3, "c"),
-            group_templates={539: [524, 525, 538, 804], 804: [545, 805]},
+            group_templates={539: {"*": [524, 525, 538, 804]}, 804: {"*": [545, 805]}},
         )
 
         group = fm[539]
@@ -723,7 +723,7 @@ class TestGroup:
         assert g[0].RoutingID == "a"
 
     def test_raises_exception_if_no_group_template_available(self):
-        with pytest.raises(ImproperlyConfigured):
+        with pytest.raises(ParsingError):
             Group((1_234_567_890, 0))
 
     def test_invalid_group(self):

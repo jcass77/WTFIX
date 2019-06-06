@@ -59,7 +59,7 @@ class JSONMessageDecoder(JSONDecoder):
 
         if isinstance(decoded, dict):
             fields = []
-            group_teplates = {
+            group_templates = {
                 int(k): v for k, v in decoded.pop("group_templates", {}).items()
             }
 
@@ -70,4 +70,4 @@ class JSONMessageDecoder(JSONDecoder):
                 else:
                     fields.append((int(k), v))
 
-            return OptimizedGenericMessage(*fields, group_templates=group_teplates)
+            return OptimizedGenericMessage(*fields, group_templates=group_templates)
