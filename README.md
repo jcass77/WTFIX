@@ -13,15 +13,15 @@ The Pythonic Financial Information eXchange (FIX) client for humans.
 ## Project Highlights and Goals
 
 - Built from the ground up for Python 3.
-- Provides custom `Field` and `FieldMap` types for working with FIX tags and field values. These types are 'pythonic',
-implementing many of the standard protocols, and behave as expected when you integrate them in existing Python
-code.
-- Batteries included - comes with everything that you need to connect to a FIX server and start sending and receiving messages in minutes. Provides default implementations for:
+- Batteries included - comes with everything that you need to connect to a FIX server and start sending and receiving
+messages in minutes. Provides default implementations for:
     - Authentication
     - Maintaining a heartbeat
     - Sequence number management and resend requests
+    - Message storage and retrieval
 - Fast, easy to understand message processing pipeline based on a modern ``async and await`` implementation.
-- Easily extendable architecture - modular 'apps' can be added to the pipeline stack to add new application logic.
+- Easily extendable architecture - modular 'apps' can be added to the pipeline stack to add custom message processing
+routines or new application features.
 
     ```python
     PIPELINE_APPS = [
@@ -39,6 +39,9 @@ code.
         "wtfix.apps.sessions.ClientSessionApp",    # HTTP session management
     ]
     ```
+- Messages can be cached in memory or saved to a Redis message store for later retrieval. Or add your own message storage
+solution using the provided interfaces.
+- Send messages using the provided REST API, or by publishing them to a Redis Pub/Sub channel for immediate delivery
 
 - Provides a convenient ``@on`` decorator for fine-grained control over which apps will respond to which types of messages:
 
@@ -60,6 +63,9 @@ code.
           logger.info(f"Received message {message}!")
     ```
 
+- Provides custom `Field` and `FieldMap` types for working with FIX tags and field values. These types are 'pythonic',
+implementing many of the standard protocols, and behave as expected when you integrate them in existing Python
+code.
 - A simple message tag syntax, with various convenience methods, for quick access to commonly
 used message attributes.
 
