@@ -39,9 +39,10 @@ routines or new application features.
         "wtfix.apps.sessions.ClientSessionApp",    # HTTP session management
     ]
     ```
-- Messages can be cached in memory or saved to a Redis message store for later retrieval. Or add your own message storage
-solution using the provided interfaces.
-- Send messages using the provided REST API, or by publishing them to a Redis Pub/Sub channel for immediate delivery
+- Messages can be cached in memory or saved to a Redis message store for later retrieval. Alternatively you can add
+your own message storage solution using the provided interfaces.
+- Send messages directly from the pipeline, via 3rd party applications using a REST API, or by publishing them to
+a Redis Pub/Sub channel for immediate delivery.
 
 - Provides a convenient ``@on`` decorator for fine-grained control over which apps will respond to which types of messages:
 
