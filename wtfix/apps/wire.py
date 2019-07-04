@@ -42,7 +42,6 @@ class EncoderApp(BaseApp):
         Tag.SenderCompID,
         Tag.TargetCompID,
         Tag.SendingTime,
-        Tag.PossDupFlag,
         Tag.DeliverToCompID,
     }
 
