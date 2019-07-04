@@ -2,7 +2,7 @@
 
 This changelog is used to track all major changes to WTFIX.
 
-## v0.12.3 (UNRELEASED)
+## v0.12.3 (2019-07-04)
 
 **Fixes**
 
@@ -14,7 +14,7 @@ This changelog is used to track all major changes to WTFIX.
 
 **Fixes**
 
-- ClientSessionApp: handle NoneType error when shutting down.
+- `ClientSessionApp`: handle `NoneType` error when shutting down.
 
 ## v0.12.1 (2019-07-04)
 
