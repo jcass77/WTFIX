@@ -735,7 +735,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             )  # Make a copy so that we do not change entries in the send log.
             resend_msg.MsgSeqNum = next_seq_num
             resend_msg.PossDupFlag = "Y"
-            resend_msg.OrigSendingTime = resend_msg.SendingTime
+            resend_msg.OrigSendingTime = str(resend_msg.SendingTime)
 
             self.send(resend_msg)
             next_seq_num += 1
