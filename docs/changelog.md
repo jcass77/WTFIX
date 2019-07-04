@@ -2,6 +2,12 @@
 
 This changelog is used to track all major changes to WTFIX.
 
+## v0.12.2 (UNRELEASED)
+
+**Fixes**
+
+- ClientSessionApp: handle NoneType error when shutting down.
+
 ## v0.12.1 (2019-07-04)
 
 **Fixes**

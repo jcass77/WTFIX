@@ -168,9 +168,10 @@ class ClientSessionApp(SessionApp):
         """
         await super().stop(*args, **kwargs)
 
-        logger.info(f"{self.name}: Initiating disconnect...")
-        self.writer.close()
-        logger.info(f"{self.name}: Session closed!")
+        if self.writer is not None:
+            logger.info(f"{self.name}: Initiating disconnect...")
+            self.writer.close()
+            logger.info(f"{self.name}: Session closed!")
 
     @unsync
     async def listen(self):
