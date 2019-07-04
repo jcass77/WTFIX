@@ -22,6 +22,7 @@ from collections import OrderedDict
 
 from unsync import unsync
 
+from wtfix.protocol.common import MsgType
 from wtfix.conf import SessionSettings
 from wtfix.conf import settings
 from wtfix.core.exceptions import (
@@ -51,6 +52,7 @@ class BasePipeline:
         logger.info(f"Created new FIX application pipeline: {list(self.apps.keys())}.")
 
         self.stop_lock = asyncio.Lock(loop=unsync.loop)
+        self.stopping_event = asyncio.Event(loop=unsync.loop)
         self.stopped_event = asyncio.Event(loop=unsync.loop)
 
     @property
@@ -142,9 +144,11 @@ class BasePipeline:
         :raises: TimeoutError if STOP_TIMEOUT is exceeded.
         """
         async with self.stop_lock:  # Ensure that more than one app does not attempt to initiate a shutdown at once
-            if self.stopped_event.is_set():
-                # Pipeline has already been stopped - nothing more to do.
+            if self.stopping_event.is_set() or self.stopped_event.is_set():
+                # Pipeline has already been stopped or is in the process of shutting down - nothing more to do.
                 return
+
+            self.stopping_event.set()  # Mark start of shutdown event
 
             logger.info("Shutting down pipeline...")
             try:
@@ -205,11 +209,25 @@ class BasePipeline:
             raise e
 
         except Exception as e:
-            # Log exception in case it is not handled properly in the Future object.
-            logger.exception(
-                f"Unhandled exception while doing {method_name}: {e} ({message})."
-            )
-            await self.stop()  # Block while we try to stop the pipeline
+            if (
+                isinstance(Exception, ConnectionError)
+                and message.type == MsgType.Logout
+                and self.stopping_event.is_set()
+            ):
+                # Mute connection errors that occur while we are trying to shut down / log out - connection issues
+                # are probably what triggered the shutdown in the first place. And, if we are wrong and our logout
+                # message gets lost, then the worst that will happen is that the server will terminate our connection
+                # when it does not receive any more responses to heartbeat requests.
+                logger.warning(
+                    f"Ignoring connection error during shutdown / logout: {e}"
+                )
+            else:
+
+                # Log exception in case it is not handled properly in the Future object.
+                logger.exception(
+                    f"Unhandled exception while doing {method_name}: {e} ({message})."
+                )
+                await self.stop()  # Block while we try to stop the pipeline
 
         return message
 

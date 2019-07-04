@@ -2,6 +2,14 @@
 
 This changelog is used to track all major changes to WTFIX.
 
+## v0.12.1 (UNRELEASED)
+
+**Fixes**
+
+- Prevent a pipeline shutdown from being triggered multiple times.
+- Less verbose logging of connection errors that occur during shutdown / logout.
+
+
 ## v0.12.0 (2019-06-06)
 
 **Enhancements**
