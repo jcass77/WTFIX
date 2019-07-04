@@ -2,6 +2,14 @@
 
 This changelog is used to track all major changes to WTFIX.
 
+## v0.12.3 (UNRELEASED)
+
+**Fixes**
+
+- Fixed encoding of `PossDupFlag` in `EncoderApp`.
+- Fixed setting of `OrigSendingTime` tag for messages that are resent.
+
+
 ## v0.12.2 (2019-07-04)
 
 **Fixes**
