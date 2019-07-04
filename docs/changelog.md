@@ -2,11 +2,19 @@
 
 This changelog is used to track all major changes to WTFIX.
 
+## v0.12.3 (2019-07-04)
+
+**Fixes**
+
+- Fixed encoding of `PossDupFlag` in `EncoderApp`.
+- Fixed setting of `OrigSendingTime` tag for messages that are resent.
+
+
 ## v0.12.2 (2019-07-04)
 
 **Fixes**
 
-- ClientSessionApp: handle NoneType error when shutting down.
+- `ClientSessionApp`: handle `NoneType` error when shutting down.
 
 ## v0.12.1 (2019-07-04)
 
