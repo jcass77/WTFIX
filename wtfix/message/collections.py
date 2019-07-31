@@ -274,7 +274,7 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
         Add support for formatting FieldMaps using the custom 't' option to add tag names.
 
         :param format_spec: specification in Format Specification Mini-Language format.
-        :return: A formatted string representation this Field.
+        :return: A formatted string representation of this Field.
         """
         fields_str = ""
         for field in self.values():
