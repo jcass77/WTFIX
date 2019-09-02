@@ -2,7 +2,7 @@
 
 This changelog is used to track all major changes to WTFIX.
 
-## v0.12.4 (UNRELEASED)
+## v0.12.4 (2019-09-02)
 
 **Fixes**
 
