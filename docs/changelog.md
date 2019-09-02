@@ -2,6 +2,14 @@
 
 This changelog is used to track all major changes to WTFIX.
 
+## v0.12.4 (2019-09-02)
+
+**Fixes**
+
+- Update dependencies to latest versions.
+- Change `RedisPubSubApp` to allow subclasses to override the Redis sending channel name via
+  `RedisPubSubApp.SEND_CHANNEL`
+
 ## v0.12.3 (2019-07-04)
 
 **Fixes**

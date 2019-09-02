@@ -377,7 +377,7 @@ class TestSeqNumManagerApp:
             # Check PossDup flag
             assert bool(message.PossDupFlag) is True
             # Check sending time
-            assert message.OrigSendingTime == message.SendingTime
+            assert str(message.OrigSendingTime) == str(message.SendingTime)
 
     @pytest.mark.asyncio
     async def test_handle_resend_request_converts_admin_messages_to_sequence_reset_messages(

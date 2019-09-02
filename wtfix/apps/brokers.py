@@ -43,9 +43,9 @@ class RedisPubSubApp(BaseApp):
     async def _send_channel_reader(self):
         try:
             with await self.redis_pool as conn:
-                await conn.subscribe(RedisPubSubApp.SEND_CHANNEL)
+                await conn.subscribe(self.SEND_CHANNEL)
 
-                send_channel = conn.channels[RedisPubSubApp.SEND_CHANNEL]
+                send_channel = conn.channels[self.SEND_CHANNEL]
 
                 while await send_channel.wait_message():
                     message = await send_channel.get()
@@ -75,7 +75,7 @@ class RedisPubSubApp(BaseApp):
         await super().stop(*args, **kwargs)
 
         with await self.redis_pool as conn:
-            await conn.unsubscribe(RedisPubSubApp.SEND_CHANNEL)
+            await conn.unsubscribe(self.SEND_CHANNEL)
 
             self.redis_pool.close()
             await self.redis_pool.wait_closed()  # Closing all open connections
