@@ -15,25 +15,34 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import importlib
+import json
 import numbers
 from collections import OrderedDict
-from typing import Union, List
+from typing import Union, List, Type
 
 import aioredis
 import abc
 from unsync import unsync
 
+from wtfix.core.decoders import JSONMessageDecoder
+from wtfix.core.encoders import JSONMessageEncoder
+from wtfix.core.utils import get_class_from_module_string
 from wtfix.apps.base import BaseApp
 from wtfix.apps.sessions import ClientSessionApp
 from wtfix.conf import settings
-from wtfix.core import encoders, decoders, utils
+from wtfix.core import utils
 from wtfix.message.message import FIXMessage
 
 logger = settings.logger
 
 
 class BaseStore(abc.ABC):
+    def __init__(
+        self, encoder: Type = JSONMessageEncoder, decoder: Type = JSONMessageDecoder
+    ):
+        self.encoder = encoder
+        self.decoder = decoder
+
     """
     Base class for storing messages as part of a cache, queue, persistent database, etc.
     """
@@ -114,7 +123,10 @@ class MemoryStore(BaseStore):
     Simple in-memory message store
     """
 
-    def __init__(self):
+    def __init__(
+        self, encoder: Type = JSONMessageEncoder, decoder: Type = JSONMessageDecoder
+    ):
+        super().__init__(encoder=encoder, decoder=decoder)
         self._store = OrderedDict()
 
     @unsync
@@ -164,7 +176,10 @@ class RedisStore(BaseStore):
     Stores messages using redis.
     """
 
-    def __init__(self):
+    def __init__(
+        self, encoder: Type = JSONMessageEncoder, decoder: Type = JSONMessageDecoder
+    ):
+        super().__init__(encoder=encoder, decoder=decoder)
         self.redis_pool = None
 
     @unsync
@@ -188,7 +203,7 @@ class RedisStore(BaseStore):
             return await conn.execute(
                 "set",
                 self.get_key(session_id, originator, message.seq_num),
-                encoders.to_json(message),
+                json.dumps(message, cls=self.encoder),
             )
 
     @unsync
@@ -202,7 +217,7 @@ class RedisStore(BaseStore):
             )
 
             if json_message is not None:
-                return decoders.from_json(json_message)
+                return json.loads(json_message, cls=self.decoder)
             return json_message
 
     @unsync
@@ -239,19 +254,32 @@ class MessageStoreApp(BaseApp):
 
     name = "message_store"
 
-    def __init__(self, pipeline, *args, store: BaseStore = None, **kwargs):
+    def __init__(
+        self,
+        pipeline,
+        *args,
+        store: Type = None,
+        encoder: Type = None,
+        decoder: Type = None,
+        **kwargs,
+    ):
         super().__init__(pipeline, *args, **kwargs)
 
+        store_config = self.pipeline.settings.MESSAGE_STORE
+
         if store is None:
-            store = settings.MESSAGE_STORE
+            store_import = store_config["CLASS"]
+            store = get_class_from_module_string(store_import)
 
-            mod_name, class_name = store.rsplit(".", 1)
-            module = importlib.import_module(mod_name)
+        if encoder is None:
+            encoder_import = store_config["ENCODER"]
+            encoder = get_class_from_module_string(encoder_import)
 
-            class_ = getattr(module, class_name)
-            store = class_()
+        if decoder is None:
+            decoder_import = store_config["DECODER"]
+            decoder = get_class_from_module_string(decoder_import)
 
-        self._store = store
+        self._store = store(encoder, decoder)
         self._session_app = None
 
     @property

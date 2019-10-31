@@ -28,10 +28,6 @@ USE_TZ = True
 # ------------------------------------------------------------------------------
 REDIS_URI = os.getenv("REDIS_URI", "redis://localhost:6379/0")
 
-# MESSAGE STORE
-# ------------------------------------------------------------------------------
-MESSAGE_STORE = os.getenv("MESSAGE_STORE", "wtfix.apps.store.MemoryStore")
-
 # CONNECTIONS
 # ------------------------------------------------------------------------------
 CONNECTIONS = {
@@ -57,6 +53,12 @@ CONNECTIONS = {
             "wtfix.apps.wire.WireCommsApp",
             "wtfix.apps.sessions.ClientSessionApp",
         ],
+        # MESSAGE STORE
+        "MESSAGE_STORE": {
+            "CLASS": "wtfix.apps.store.MemoryStore",
+            "ENCODER": "wtfix.core.encoders.JSONMessageEncoder",
+            "DECODER": "wtfix.core.decoders.JSONMessageDecoder",
+        },
         # REPEATING GROUPS
         "GROUP_TEMPLATES": {},
     }

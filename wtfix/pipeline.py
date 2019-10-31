@@ -16,12 +16,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import asyncio
-import importlib
 from asyncio import futures
 from collections import OrderedDict
 
 from unsync import unsync
 
+from wtfix.core.utils import get_class_from_module_string
 from wtfix.protocol.common import MsgType
 from wtfix.conf import SessionSettings
 from wtfix.conf import settings
@@ -49,7 +49,9 @@ class BasePipeline:
 
         self.settings = SessionSettings(connection_name)
         self._installed_apps = self._load_apps(installed_apps=installed_apps, **kwargs)
-        logger.info(f"Created new FIX application pipeline: {list(self.apps.keys())}.")
+        logger.info(
+            f"Created new WTFIX application pipeline: {list(self.apps.keys())}."
+        )
 
         self.stop_lock = asyncio.Lock(loop=unsync.loop)
         self.stopping_event = asyncio.Event(loop=unsync.loop)
@@ -75,17 +77,9 @@ class BasePipeline:
                 f"At least one application needs to be added to the pipeline by using the PIPELINE_APPS setting."
             )
 
-        settings_kwargs = {
-            **kwargs,
-            **{key.lower(): value for key, value in self.settings.__dict__.items()},
-        }
-
         for app in installed_apps:
-            mod_name, class_name = app.rsplit(".", 1)
-            module = importlib.import_module(mod_name)
-
-            class_ = getattr(module, class_name)
-            instance = class_(self, **settings_kwargs)
+            class_ = get_class_from_module_string(app)
+            instance = class_(self)
 
             loaded_apps[instance.name] = instance
 

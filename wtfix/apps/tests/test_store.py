@@ -210,7 +210,7 @@ class TestMessageStoreApp:
     async def test_on_receive_adds_message_to_store(
         self, unsync_event_loop, messages, base_pipeline
     ):
-        store_app = MessageStoreApp(base_pipeline, store=MemoryStore())
+        store_app = MessageStoreApp(base_pipeline, store=MemoryStore)
         await store_app.initialize()
 
         for next_message in messages:
@@ -223,7 +223,7 @@ class TestMessageStoreApp:
     async def test_on_send_adds_message_to_store(
         self, unsync_event_loop, messages, base_pipeline
     ):
-        store_app = MessageStoreApp(base_pipeline, store=MemoryStore())
+        store_app = MessageStoreApp(base_pipeline, store=MemoryStore)
         await store_app.initialize()
 
         for next_message in messages:

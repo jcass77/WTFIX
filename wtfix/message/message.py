@@ -27,7 +27,7 @@ from wtfix.core.exceptions import (
     DuplicateTags,
 )
 from wtfix.protocol.common import Tag, MsgType
-from .collections import FieldDict, FieldList, FieldMap
+from wtfix.message.collections import FieldDict, FieldList, FieldMap
 
 
 @total_ordering

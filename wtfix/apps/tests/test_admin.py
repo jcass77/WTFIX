@@ -217,7 +217,7 @@ class TestSeqNumManagerApp:
     @pytest.fixture
     @pytest.mark.asyncio
     async def pipeline_with_messages(self, unsync_event_loop, base_pipeline, messages):
-        message_store_app = MessageStoreApp(base_pipeline, store=MemoryStore())
+        message_store_app = MessageStoreApp(base_pipeline, store=MemoryStore)
         await message_store_app.initialize()
 
         base_pipeline.apps[MessageStoreApp.name] = message_store_app

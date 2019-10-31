@@ -68,6 +68,12 @@ class HeartbeatApp(MessageTypeHandlerApp):
 
     @property
     def heartbeat_interval(self):
+        """
+        The heartbeat interval is supposed to be agreed between the sender and target as part of the logon
+        process (which is why we do not accept it as a parameter or set it in the constructor).
+
+        Use a default value here as fallback.
+        """
         try:
             return self._heartbeat_interval
         except AttributeError:
