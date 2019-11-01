@@ -23,8 +23,10 @@ from typing import Callable, Union
 from wtfix.core import exceptions
 from wtfix.conf import settings
 from wtfix.core.exceptions import ParsingError
-from wtfix.protocol import common
 from wtfix.core import utils
+
+
+protocol = settings.active_protocol
 
 
 class Field(collections.abc.MutableSequence):
@@ -108,7 +110,7 @@ class Field(collections.abc.MutableSequence):
         or 'Unknown' otherwise.
         """
         try:
-            return common.Tag.get_name(self.tag)
+            return protocol.Tag.get_name(self.tag)
         except exceptions.UnknownTag:
             return self.UNKNOWN_TAG
 

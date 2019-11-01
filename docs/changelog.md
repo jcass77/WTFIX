@@ -2,16 +2,17 @@
 
 This changelog is used to track all major changes to WTFIX.
 
-This changelog is used to track all major changes to WTFIX.
-
 ## v0.13.0 (UNRELEASED)
 
 **Enhancements**
 
-- Add configuration option for specifying which JSON encoder / decoder to use when adding messages to a message store.
-- BREAKING CHANGE: the config file format has changed so that the MESSAGE_STORE parameters now form part of the
-  ONNECTION section. This allows individual message stores to be configured when multiple connections need to be run
-  simultaneously.
+- BREAKING CONFIG CHANGES (please update your settings files in `wtfix.config.settings`):
+    - The MESSAGE_STORE parameters now form part of the CONNECTION section. This allows individual message stores to
+      be configured when multiple connections need to be run simultaneously.
+    - Add configuration option for specifying which JSON encoder / decoder to use when adding messages to a message
+      store.
+    - The FIX protocol and version can now be configured for individual CONNECTIONS. This lays the foundation for
+      supporting various different protocols and versions in the future. FIX 4.4 is currently the default.
 
 
 ## v0.12.4 (2019-09-02)

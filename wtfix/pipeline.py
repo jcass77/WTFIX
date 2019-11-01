@@ -21,8 +21,7 @@ from collections import OrderedDict
 
 from unsync import unsync
 
-from wtfix.core.utils import get_class_from_module_string
-from wtfix.protocol.common import MsgType
+from wtfix.core.klass import get_class_from_module_string
 from wtfix.conf import SessionSettings
 from wtfix.conf import settings
 from wtfix.core.exceptions import (
@@ -203,9 +202,10 @@ class BasePipeline:
             raise e
 
         except Exception as e:
+            protocol = self.settings.active_protocol
             if (
                 isinstance(Exception, ConnectionError)
-                and message.type == MsgType.Logout
+                and message.type == protocol.MsgType.Logout
                 and self.stopping_event.is_set()
             ):
                 # Mute connection errors that occur while we are trying to shut down / log out - connection issues

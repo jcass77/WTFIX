@@ -20,11 +20,12 @@ import collections
 import itertools
 from typing import Union, Sequence, Generator
 
+from wtfix.conf import settings
 from wtfix.core.exceptions import TagNotFound, UnknownTag, DuplicateTags, ParsingError
 from wtfix.core.utils import GroupTemplateMixin
 from wtfix.message.field import Field
-from wtfix.protocol import common
-from wtfix.protocol.common import Tag
+
+protocol = settings.active_protocol
 
 
 class FieldMap(collections.abc.MutableMapping, abc.ABC):
@@ -181,8 +182,8 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
         :param key: The Field's tag name
         :param value: The value to set the Field to
         """
-        if key in Tag.__dict__.keys():
-            self[Tag.__dict__[key]] = value
+        if key in protocol.Tag.__dict__.keys():
+            self[protocol.Tag.__dict__[key]] = value
         else:
             super().__setattr__(key, value)
 
@@ -192,8 +193,8 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
 
         :param item: The Field's tag name
         """
-        if item in Tag.__dict__.keys():
-            del self[Tag.__dict__[item]]
+        if item in protocol.Tag.__dict__.keys():
+            del self[protocol.Tag.__dict__[item]]
         else:
             super().__delattr__(item)
 
@@ -234,7 +235,7 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
         """
         try:
             # First, try to get the tag number associated with 'name'.
-            tag = common.Tag.get_tag(name)
+            tag = protocol.Tag.get_tag(name)
         except UnknownTag as e:
             # Not a known tag, ignore.
             raise AttributeError(
@@ -551,11 +552,11 @@ class FieldDict(FieldMap, GroupTemplateMixin):
             if field.tag in self.group_templates:
                 # Tag denotes the start of a new repeating group.
                 try:
-                    message_type = str(parsed_fields[Tag.MsgType])
+                    message_type = str(parsed_fields[protocol.Tag.MsgType])
                 except KeyError:
                     # Message type not yet determined!
                     raise ParsingError(
-                        f"Cannot parse repeating group as MsgType tag ({Tag.MsgType}) has not "
+                        f"Cannot parse repeating group as MsgType tag ({protocol.Tag.MsgType}) has not "
                         "been seen yet!"
                     )
 

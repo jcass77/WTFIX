@@ -14,7 +14,9 @@ from wtfix.conf import settings
 from wtfix.message.admin import HeartbeatMessage
 from wtfix.message.message import generic_message_factory
 from wtfix.pipeline import BasePipeline
-from wtfix.protocol.common import Tag, MsgType
+
+
+protocol = settings.active_protocol
 
 
 @pytest.fixture
@@ -111,16 +113,16 @@ def user_notification_message():
     faker = Faker()
 
     return generic_message_factory(
-        (Tag.MsgType, MsgType.UserNotification),
-        (Tag.MsgSeqNum, 1),
-        (Tag.SenderCompID, settings.default_connection.SENDER),
-        (Tag.SendingTime, "20181206-10:24:27.018"),
-        (Tag.TargetCompID, settings.default_connection.TARGET),
-        (Tag.NoLinesOfText, 1),
-        (Tag.Text, "abc"),
-        (Tag.EmailType, 0),
-        (Tag.Subject, "Test message"),
-        (Tag.EmailThreadID, faker.pyint()),
+        (protocol.Tag.MsgType, protocol.MsgType.UserNotification),
+        (protocol.Tag.MsgSeqNum, 1),
+        (protocol.Tag.SenderCompID, settings.default_connection.SENDER),
+        (protocol.Tag.SendingTime, "20181206-10:24:27.018"),
+        (protocol.Tag.TargetCompID, settings.default_connection.TARGET),
+        (protocol.Tag.NoLinesOfText, 1),
+        (protocol.Tag.Text, "abc"),
+        (protocol.Tag.EmailType, 0),
+        (protocol.Tag.Subject, "Test message"),
+        (protocol.Tag.EmailThreadID, faker.pyint()),
     )
 
 

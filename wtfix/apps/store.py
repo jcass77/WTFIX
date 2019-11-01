@@ -26,7 +26,7 @@ from unsync import unsync
 
 from wtfix.core.decoders import JSONMessageDecoder
 from wtfix.core.encoders import JSONMessageEncoder
-from wtfix.core.utils import get_class_from_module_string
+from wtfix.core.klass import get_class_from_module_string
 from wtfix.apps.base import BaseApp
 from wtfix.apps.sessions import ClientSessionApp
 from wtfix.conf import settings

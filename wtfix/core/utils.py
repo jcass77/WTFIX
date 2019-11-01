@@ -14,7 +14,6 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import importlib
 import numbers
 from functools import singledispatch
 
@@ -194,13 +193,6 @@ def _(b):
 @is_null.register(bytearray)
 def _(ba):
     return ba == encode(null)
-
-
-def get_class_from_module_string(module_string):
-    mod_name, class_name = module_string.rsplit(".", 1)
-    module = importlib.import_module(mod_name)
-
-    return getattr(module, class_name)
 
 
 class GroupTemplateMixin:

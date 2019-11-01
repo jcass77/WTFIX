@@ -7,7 +7,9 @@ from wtfix.conf import settings
 from wtfix.core.exceptions import ValidationError, ParsingError
 from wtfix.message.message import generic_message_factory
 from wtfix.core import utils
-from wtfix.protocol.common import Tag, MsgType
+
+
+protocol = settings.active_protocol
 
 
 class TestEncoderApp:
@@ -113,11 +115,11 @@ class TestDecoderApp:
     ):
         with pytest.raises(ParsingError):
             m = generic_message_factory(
-                (Tag.MsgType, MsgType.TestRequest),
-                (Tag.MsgSeqNum, 1),
-                (Tag.TestReqID, "a"),
+                (protocol.Tag.MsgType, protocol.MsgType.TestRequest),
+                (protocol.Tag.MsgSeqNum, 1),
+                (protocol.Tag.TestReqID, "a"),
                 (
-                    Tag.SendingTime,
+                    protocol.Tag.SendingTime,
                     datetime.utcnow().strftime(settings.DATETIME_FORMAT)[:-3],
                 ),
             )

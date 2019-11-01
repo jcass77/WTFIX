@@ -24,9 +24,10 @@ Read values from the module specified by the WTFIX_SETTINGS_MODULE environment v
 import importlib
 import os
 import logging
+from typing import Type
 
-from . import global_settings
-from ..core.exceptions import ImproperlyConfigured
+from wtfix.conf import global_settings
+from wtfix.core.exceptions import ImproperlyConfigured
 
 from dotenv import load_dotenv
 
@@ -76,6 +77,8 @@ class Settings:
                 setattr(self, setting, setting_value)
                 self._explicit_settings.add(setting)
 
+        self._active_protocol = None
+
     @property
     def has_safe_defaults(self):
         return len(self.CONNECTIONS) == 1
@@ -93,6 +96,21 @@ class Settings:
     @property
     def default_connection(self):
         return SessionSettings(self.default_connection_name)
+
+    @property
+    def active_protocol(self):
+        if self._active_protocol is None:
+            mod_name, class_name = self.default_connection.PROTOCOL.rsplit(".", 1)
+            module = importlib.import_module(mod_name)
+            protocol_class = getattr(module, class_name)
+
+            self._active_protocol = protocol_class
+
+        return self._active_protocol
+
+    @active_protocol.setter
+    def active_protocol(self, protocol_class: Type):
+        self._active_protocol = protocol_class
 
     @property
     def logger(self):
@@ -151,4 +169,11 @@ class SessionSettings:
             connection_name = settings.default_connection[0]
 
         for setting, setting_value in settings.CONNECTIONS[connection_name].items():
+            if setting == "PROTOCOL":
+                mod_name, class_name = setting_value.rsplit(".", 1)
+                module = importlib.import_module(mod_name)
+                protocol_class = getattr(module, class_name)
+
+                settings.active_protocol = protocol_class
+
             setattr(self, setting, setting_value)

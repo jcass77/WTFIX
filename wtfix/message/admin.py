@@ -17,7 +17,8 @@
 
 from wtfix.conf import settings
 from wtfix.message.message import OptimizedGenericMessage
-from wtfix.protocol.common import MsgType, Tag
+
+protocol = settings.active_protocol
 
 
 class LogonMessage(OptimizedGenericMessage):
@@ -31,9 +32,9 @@ class LogonMessage(OptimizedGenericMessage):
             heartbeat_int = settings.default_connection.HEARTBEAT_INT
 
         super().__init__(
-            (Tag.MsgType, MsgType.Logon),
-            (Tag.EncryptMethod, encryption_method),
-            (Tag.HeartBtInt, heartbeat_int),
+            (protocol.Tag.MsgType, protocol.MsgType.Logon),
+            (protocol.Tag.EncryptMethod, encryption_method),
+            (protocol.Tag.HeartBtInt, heartbeat_int),
         )
 
         if username is not None:
@@ -47,14 +48,14 @@ class LogoutMessage(OptimizedGenericMessage):
     """Generic Logout message"""
 
     def __init__(self):
-        super().__init__((Tag.MsgType, MsgType.Logout))
+        super().__init__((protocol.Tag.MsgType, protocol.MsgType.Logout))
 
 
 class HeartbeatMessage(OptimizedGenericMessage):
     """Generic Heartbeat message"""
 
     def __init__(self, test_request_id=None):
-        super().__init__((Tag.MsgType, MsgType.Heartbeat))
+        super().__init__((protocol.Tag.MsgType, protocol.MsgType.Heartbeat))
         if test_request_id is not None:
             self.TestReqID = test_request_id
 
@@ -67,7 +68,8 @@ class TestRequestMessage(OptimizedGenericMessage):
 
     def __init__(self, test_request_id):
         super().__init__(
-            (Tag.MsgType, MsgType.TestRequest), (Tag.TestReqID, test_request_id)
+            (protocol.Tag.MsgType, protocol.MsgType.TestRequest),
+            (protocol.Tag.TestReqID, test_request_id),
         )
 
 
@@ -76,9 +78,9 @@ class ResendRequestMessage(OptimizedGenericMessage):
 
     def __init__(self, from_seq_num, to_seq_num=0):
         super().__init__(
-            (Tag.MsgType, MsgType.ResendRequest),
-            (Tag.BeginSeqNo, from_seq_num),
-            (Tag.EndSeqNo, to_seq_num),
+            (protocol.Tag.MsgType, protocol.MsgType.ResendRequest),
+            (protocol.Tag.BeginSeqNo, from_seq_num),
+            (protocol.Tag.EndSeqNo, to_seq_num),
         )
 
 
@@ -87,8 +89,8 @@ class SequenceResetMessage(OptimizedGenericMessage):
 
     def __init__(self, next_seq_num, new_seq_num):
         super().__init__(
-            (Tag.MsgType, MsgType.SequenceReset),
-            (Tag.MsgSeqNum, next_seq_num),
-            (Tag.PossDupFlag, "Y"),
-            (Tag.NewSeqNo, new_seq_num),
+            (protocol.Tag.MsgType, protocol.MsgType.SequenceReset),
+            (protocol.Tag.MsgSeqNum, next_seq_num),
+            (protocol.Tag.PossDupFlag, "Y"),
+            (protocol.Tag.NewSeqNo, new_seq_num),
         )

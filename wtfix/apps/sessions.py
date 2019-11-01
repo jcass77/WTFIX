@@ -26,10 +26,10 @@ from unsync import unsync
 from wtfix.apps.base import BaseApp
 from wtfix.conf import settings
 from wtfix.core import utils
-from wtfix.protocol.common import MsgType, Tag
 
 
 logger = settings.logger
+protocol = settings.active_protocol
 
 
 class SessionApp(BaseApp):
@@ -178,10 +178,10 @@ class ClientSessionApp(SessionApp):
         """
         Listen for new messages that are sent by the server.
         """
-        begin_string = utils.encode(f"{Tag.BeginString}=") + utils.encode(
+        begin_string = utils.encode(f"{protocol.Tag.BeginString}=") + utils.encode(
             settings.BEGIN_STRING
         )
-        checksum_start = settings.SOH + utils.encode(f"{Tag.CheckSum}=")
+        checksum_start = settings.SOH + utils.encode(f"{protocol.Tag.CheckSum}=")
 
         while not self.writer.transport.is_closing():  # Listen forever for new messages
             try:
@@ -203,7 +203,8 @@ class ClientSessionApp(SessionApp):
             except IncompleteReadError as e:
                 # Connection was closed before a complete message could be received.
                 if (
-                    utils.encode(f"{Tag.MsgType}={MsgType.Logout}") + settings.SOH
+                    utils.encode(f"{protocol.Tag.MsgType}={protocol.MsgType.Logout}")
+                    + settings.SOH
                     in data
                 ):
                     await self.pipeline.receive(

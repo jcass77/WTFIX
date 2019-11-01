@@ -48,14 +48,14 @@ a Redis Pub/Sub channel for immediate delivery.
 
     ```python
     from wtfix.apps.base import MessageTypeHandlerApp, on
-    from wtfix.protocol.common import MsgType
     from wtfix.conf import settings
 
     logger = settings.logger
+    protocol = settings.active_protocol
 
     class SecretAlgoTradingRecipe(MessageTypeHandlerApp):
 
-        @on(MsgType.Logon)  # Only invoked when 'Logon (type A)' messages are received.
+        @on(protocol.MsgType.Logon)  # Only invoked when 'Logon (type A)' messages are received.
         def on_logon(self, message):
             self.send_security_definition_request()
             return message
@@ -72,7 +72,7 @@ used message attributes.
 
     ```python
     >>> from wtfix.message import admin
-    >>> from wtfix.protocol.common import Tag
+    >>> protocol = settings.active_protocol
 
     # Instantiate a new 'Logon' message
     >>> logon_msg = admin.LogonMessage("my_username", "my_password", heartbeat_int=30)
@@ -102,7 +102,7 @@ used message attributes.
     >>> logon_msg[108]  # Using old school tag number
     Field(108, '30')
 
-    >>> logon_msg[Tag.HeartBtInt]  # Using the tag name as per the FIX specification
+    >>> logon_msg[protocol.Tag.HeartBtInt]  # Using the tag name as per the FIX specification
     Field(108, '30')
 
     >>> logon_msg.HeartBtInt  # Using tag name shortcut

@@ -1,12 +1,21 @@
 import pytest
 from unsync import unsync
 
+from config.settings import base
+from wtfix.conf import settings
 from wtfix.message import admin
-from wtfix.protocol.common import MsgType, Tag
 from wtfix.message.message import GenericMessage, OptimizedGenericMessage
 from wtfix.message.collections import Group, FieldDict, FieldList
 
 from pytest_socket import socket_allow_hosts
+
+protocol = settings.active_protocol
+
+
+@pytest.fixture(autouse=True, params=[base.CONNECTIONS])
+def connection_setup(request):
+    # Example of running test suite for each connection (and different protocols) individually
+    base.CONNECTIONS = {"test_connection": request.param}
 
 
 # https://github.com/miketheman/pytest-socket#usage
@@ -47,12 +56,12 @@ def fieldmap_class(request):
 def routing_id_group():
     """Example of a RoutingID repeating group"""
     return Group(
-        (Tag.NoRoutingIDs, "2"),
-        (Tag.RoutingType, "a"),
-        (Tag.RoutingID, "b"),
-        (Tag.RoutingType, "c"),
-        (Tag.RoutingID, "d"),
-        template=[Tag.RoutingType, Tag.RoutingID],
+        (protocol.Tag.NoRoutingIDs, "2"),
+        (protocol.Tag.RoutingType, "a"),
+        (protocol.Tag.RoutingID, "b"),
+        (protocol.Tag.RoutingType, "c"),
+        (protocol.Tag.RoutingID, "d"),
+        template=[protocol.Tag.RoutingType, protocol.Tag.RoutingID],
     )
 
 
@@ -105,15 +114,18 @@ def logon_message():
 def sdr_message_fields():
     """Sample of a security definition request message fields"""
     return [
-        (Tag.MsgType, MsgType.SecurityDefinitionRequest),
-        (Tag.MsgSeqNum, "1"),  # MsgSeqNum: 1
-        (Tag.SenderCompID, "SENDER"),  # SenderCompID
-        (Tag.SendingTime, "20181127-11:33:31.505"),  # SendingTime
-        (Tag.TargetCompID, "TARGET"),  # TargetCompID
-        (Tag.Symbol, "^.*$"),  # Symbol
-        (Tag.SecurityType, "CS"),  # SecurityType: CommonStock
-        (Tag.SecurityReqID, "37a0b5c8afb543ec8f29eca2a44be2ec"),  # SecurityReqID
-        (Tag.SecurityRequestType, "3"),  # SecurityRequestType: all
+        (protocol.Tag.MsgType, protocol.MsgType.SecurityDefinitionRequest),
+        (protocol.Tag.MsgSeqNum, "1"),  # MsgSeqNum: 1
+        (protocol.Tag.SenderCompID, "SENDER"),  # SenderCompID
+        (protocol.Tag.SendingTime, "20181127-11:33:31.505"),  # SendingTime
+        (protocol.Tag.TargetCompID, "TARGET"),  # TargetCompID
+        (protocol.Tag.Symbol, "^.*$"),  # Symbol
+        (protocol.Tag.SecurityType, "CS"),  # SecurityType: CommonStock
+        (
+            protocol.Tag.SecurityReqID,
+            "37a0b5c8afb543ec8f29eca2a44be2ec",
+        ),  # SecurityReqID
+        (protocol.Tag.SecurityRequestType, "3"),  # SecurityRequestType: all
     ]
 
 

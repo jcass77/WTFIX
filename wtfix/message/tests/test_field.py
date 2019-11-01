@@ -84,7 +84,7 @@ class TestField:
 
     def test_name_getter_unknown(self):
         f = Field(1234567890, "k")
-        assert f.name == "Unknown"
+        assert f.name == Field.UNKNOWN_TAG
 
     def test_make_from_iterable(self):
         assert Field._make([1, "abc"]) == Field(1, "abc")
@@ -201,7 +201,7 @@ class TestField:
     def test_null_value_casting(self):
         assert Field(1, utils.null) == None  # noqa
         assert Field(1, str(utils.null)) == None  # noqa
-        assert Field(1, utils.encode((utils.null))) == None  # noqa
+        assert Field(1, utils.encode(utils.null)) == None  # noqa
 
     def test_deletion_raises_exception(self):
         with pytest.raises(TypeError):

@@ -20,7 +20,8 @@ from wtfix.message import admin
 from wtfix.message.admin import TestRequestMessage, HeartbeatMessage
 from wtfix.message.message import OptimizedGenericMessage
 from wtfix.pipeline import BasePipeline
-from wtfix.protocol.common import MsgType, Tag
+
+protocol = settings.active_protocol
 
 
 class TestAuthenticationApp:
@@ -199,7 +200,9 @@ class TestHeartbeatApp:
     async def test_on_heartbeat_handles_empty_request_id(
         self, unsync_event_loop, zero_heartbeat_app
     ):
-        test_request = OptimizedGenericMessage((Tag.MsgType, MsgType.TestRequest))
+        test_request = OptimizedGenericMessage(
+            (protocol.Tag.MsgType, protocol.MsgType.TestRequest)
+        )
 
         assert await zero_heartbeat_app.on_heartbeat(test_request) == test_request
 

@@ -53,6 +53,8 @@ CONNECTIONS = {
             "wtfix.apps.wire.WireCommsApp",
             "wtfix.apps.sessions.ClientSessionApp",
         ],
+        # PROTOCOL
+        "PROTOCOL": "wtfix.protocol.fix._44.spec.FIX44Protocol",
         # MESSAGE STORE
         "MESSAGE_STORE": {
             "CLASS": "wtfix.apps.store.MemoryStore",
