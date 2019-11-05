@@ -324,20 +324,12 @@ class MessageStoreApp(BaseApp):
 
     @unsync
     async def on_receive(self, message: FIXMessage) -> FIXMessage:
-        if message.seq_num is None:
-            # Message cannot be stored as it does not have a unique key
-            return message
-
         await self.set_received(message)
 
         return message
 
     @unsync
     async def on_send(self, message: FIXMessage) -> FIXMessage:
-        if message.seq_num is None:
-            # Message cannot be stored as it does not have a unique key
-            return message
-
         await self.set_sent(message)
 
         return message
