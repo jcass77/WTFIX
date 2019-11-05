@@ -49,3 +49,15 @@ class InboundLoggingApp(BaseApp):
         logger.info(f" <-- {message:t}")
 
         return message
+
+
+class PipelineTerminationApp(BaseApp):
+    """
+    Terminates the pipeline and encourages garbage collection of the message.
+    """
+
+    name = "pipeline_termination"
+
+    @unsync
+    async def on_receive(self, message: FIXMessage) -> None:
+        del message

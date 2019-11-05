@@ -14,6 +14,9 @@ This changelog is used to track all major changes to WTFIX.
     - The FIX protocol and version can now be configured for individual CONNECTIONS. This lays the foundation for
       supporting various different protocols and versions in the future. FIX 4.4 is currently the default.
 
+- Add `PipelineTerminationApp` and use `del` to encourage the Python interpreter to garbage collect a message once it
+  has reached either end of the pipeline.
+
 
 ## v0.12.4 (2019-09-02)
 

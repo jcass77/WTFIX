@@ -242,3 +242,5 @@ class ClientSessionApp(SessionApp):
         """
         self.writer.write(message)
         await self.writer.drain()
+
+        del message  # Encourage garbage collection of message once it has been sent
