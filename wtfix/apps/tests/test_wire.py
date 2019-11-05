@@ -9,9 +9,6 @@ from wtfix.message.message import generic_message_factory
 from wtfix.core import utils
 
 
-protocol = settings.active_protocol
-
-
 class TestEncoderApp:
     def test_encode_message(self, logon_message, encoder_app):
         # Skip timestamp, which will always change.
@@ -115,11 +112,11 @@ class TestDecoderApp:
     ):
         with pytest.raises(ParsingError):
             m = generic_message_factory(
-                (protocol.Tag.MsgType, protocol.MsgType.TestRequest),
-                (protocol.Tag.MsgSeqNum, 1),
-                (protocol.Tag.TestReqID, "a"),
+                (settings.protocol.Tag.MsgType, settings.protocol.MsgType.TestRequest),
+                (settings.protocol.Tag.MsgSeqNum, 1),
+                (settings.protocol.Tag.TestReqID, "a"),
                 (
-                    protocol.Tag.SendingTime,
+                    settings.protocol.Tag.SendingTime,
                     datetime.utcnow().strftime(settings.DATETIME_FORMAT)[:-3],
                 ),
             )

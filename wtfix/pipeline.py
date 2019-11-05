@@ -202,7 +202,7 @@ class BasePipeline:
             raise e
 
         except Exception as e:
-            protocol = self.settings.active_protocol
+            protocol = self.settings.protocol
             if (
                 isinstance(Exception, ConnectionError)
                 and message.type == protocol.MsgType.Logout

@@ -26,9 +26,6 @@ from wtfix.core.exceptions import ParsingError
 from wtfix.core import utils
 
 
-protocol = settings.active_protocol
-
-
 class Field(collections.abc.MutableSequence):
     """
     A FIX field representation for use in FieldMaps and Messages.
@@ -110,7 +107,7 @@ class Field(collections.abc.MutableSequence):
         or 'Unknown' otherwise.
         """
         try:
-            return protocol.Tag.get_name(self.tag)
+            return settings.protocol.Tag.get_name(self.tag)
         except exceptions.UnknownTag:
             return self.UNKNOWN_TAG
 

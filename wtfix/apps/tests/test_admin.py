@@ -21,8 +21,6 @@ from wtfix.message.admin import TestRequestMessage, HeartbeatMessage
 from wtfix.message.message import OptimizedGenericMessage
 from wtfix.pipeline import BasePipeline
 
-protocol = settings.active_protocol
-
 
 class TestAuthenticationApp:
     @pytest.mark.asyncio
@@ -201,7 +199,7 @@ class TestHeartbeatApp:
         self, unsync_event_loop, zero_heartbeat_app
     ):
         test_request = OptimizedGenericMessage(
-            (protocol.Tag.MsgType, protocol.MsgType.TestRequest)
+            (settings.protocol.Tag.MsgType, settings.protocol.MsgType.TestRequest)
         )
 
         assert await zero_heartbeat_app.on_heartbeat(test_request) == test_request

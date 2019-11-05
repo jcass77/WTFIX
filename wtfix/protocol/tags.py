@@ -29,13 +29,13 @@ class _BaseTag(AttributeValueMappingsMixin):
     MsgType = 35
 
     @classmethod
-    def get_name(cls, tag_name):
+    def get_name(cls, value):
         """Wrapper for backwards compatibility"""
         try:
-            return super().get_name(tag_name)
+            return super().get_name(value)
         except KeyError as e:
             # Not a known tag
-            raise UnknownTag(tag_name) from e
+            raise UnknownTag(value) from e
 
     @classmethod
     def get_tag(cls, tag_name):

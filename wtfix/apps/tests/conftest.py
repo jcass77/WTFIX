@@ -16,9 +16,6 @@ from wtfix.message.message import generic_message_factory
 from wtfix.pipeline import BasePipeline
 
 
-protocol = settings.active_protocol
-
-
 @pytest.fixture
 def base_pipeline():
     """
@@ -113,16 +110,16 @@ def user_notification_message():
     faker = Faker()
 
     return generic_message_factory(
-        (protocol.Tag.MsgType, protocol.MsgType.UserNotification),
-        (protocol.Tag.MsgSeqNum, 1),
-        (protocol.Tag.SenderCompID, settings.default_connection.SENDER),
-        (protocol.Tag.SendingTime, "20181206-10:24:27.018"),
-        (protocol.Tag.TargetCompID, settings.default_connection.TARGET),
-        (protocol.Tag.NoLinesOfText, 1),
-        (protocol.Tag.Text, "abc"),
-        (protocol.Tag.EmailType, 0),
-        (protocol.Tag.Subject, "Test message"),
-        (protocol.Tag.EmailThreadID, faker.pyint()),
+        (settings.protocol.Tag.MsgType, settings.protocol.MsgType.UserNotification),
+        (settings.protocol.Tag.MsgSeqNum, 1),
+        (settings.protocol.Tag.SenderCompID, settings.default_connection.SENDER),
+        (settings.protocol.Tag.SendingTime, "20181206-10:24:27.018"),
+        (settings.protocol.Tag.TargetCompID, settings.default_connection.TARGET),
+        (settings.protocol.Tag.NoLinesOfText, 1),
+        (settings.protocol.Tag.Text, "abc"),
+        (settings.protocol.Tag.EmailType, 0),
+        (settings.protocol.Tag.Subject, "Test message"),
+        (settings.protocol.Tag.EmailThreadID, faker.pyint()),
     )
 
 

@@ -24,8 +24,6 @@ from wtfix.core.exceptions import ParsingError, MessageProcessingError, TagNotFo
 from wtfix.message.message import RawMessage, FIXMessage
 from wtfix.core import utils
 
-protocol = settings.active_protocol
-
 
 class EncoderApp(BaseApp):
     """
@@ -36,14 +34,14 @@ class EncoderApp(BaseApp):
 
     # These tags will all be generated dynamically each time as part of the encoding process.
     DYNAMIC_TAGS = {
-        protocol.Tag.BeginString,
-        protocol.Tag.BodyLength,
-        protocol.Tag.MsgType,
-        protocol.Tag.MsgSeqNum,
-        protocol.Tag.SenderCompID,
-        protocol.Tag.TargetCompID,
-        protocol.Tag.SendingTime,
-        protocol.Tag.DeliverToCompID,
+        settings.protocol.Tag.BeginString,
+        settings.protocol.Tag.BodyLength,
+        settings.protocol.Tag.MsgType,
+        settings.protocol.Tag.MsgSeqNum,
+        settings.protocol.Tag.SenderCompID,
+        settings.protocol.Tag.TargetCompID,
+        settings.protocol.Tag.SendingTime,
+        settings.protocol.Tag.DeliverToCompID,
     }
 
     @unsync
@@ -72,19 +70,19 @@ class EncoderApp(BaseApp):
             message.target_id = self.pipeline.apps[ClientSessionApp.name].target
 
         body = (
-            utils.encode(f"{protocol.Tag.MsgType}=")
+            utils.encode(f"{settings.protocol.Tag.MsgType}=")
             + utils.encode(message.type)
             + settings.SOH
-            + utils.encode(f"{protocol.Tag.MsgSeqNum}=")
+            + utils.encode(f"{settings.protocol.Tag.MsgSeqNum}=")
             + utils.encode(message.seq_num)
             + settings.SOH
-            + utils.encode(f"{protocol.Tag.SenderCompID}=")
+            + utils.encode(f"{settings.protocol.Tag.SenderCompID}=")
             + utils.encode(message.sender_id)
             + settings.SOH
-            + utils.encode(f"{protocol.Tag.SendingTime}=")
+            + utils.encode(f"{settings.protocol.Tag.SendingTime}=")
             + utils.encode(str(message.SendingTime))
             + settings.SOH
-            + utils.encode(f"{protocol.Tag.TargetCompID}=")
+            + utils.encode(f"{settings.protocol.Tag.TargetCompID}=")
             + utils.encode(message.target_id)
             + settings.SOH
         )
@@ -95,16 +93,16 @@ class EncoderApp(BaseApp):
             body += bytes(field)
 
         header = (
-            utils.encode(f"{protocol.Tag.BeginString}=")
+            utils.encode(f"{settings.protocol.Tag.BeginString}=")
             + utils.encode(settings.BEGIN_STRING)
             + settings.SOH
-            + utils.encode(f"{protocol.Tag.BodyLength}=")
+            + utils.encode(f"{settings.protocol.Tag.BodyLength}=")
             + utils.encode(len(body))
             + settings.SOH
         )
 
         trailer = (
-            utils.encode(f"{protocol.Tag.CheckSum}=")
+            utils.encode(f"{settings.protocol.Tag.CheckSum}=")
             + utils.encode(f"{utils.calculate_checksum(header + body):03}")
             + settings.SOH
         )
@@ -256,12 +254,12 @@ class DecoderApp(BaseApp):
 
         # MsgType must be the third field in the message
         msg_type, _, msg_type_end_tag = utils.index_tag(
-            protocol.Tag.MsgType, data, body_length_tag_end
+            settings.protocol.Tag.MsgType, data, body_length_tag_end
         )
 
         # MsgSeqNum must be the fourth field in the message
         msg_seq_num, _, msg_seq_num_end_tag = utils.index_tag(
-            protocol.Tag.MsgSeqNum, data, msg_type_end_tag
+            settings.protocol.Tag.MsgSeqNum, data, msg_type_end_tag
         )
 
         checksum, _ = cls.check_checksum(

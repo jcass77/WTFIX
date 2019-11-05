@@ -11,8 +11,6 @@ from wtfix.message.field import Field
 from ..collections import FieldDict, Group, FieldList
 from wtfix.core.exceptions import TagNotFound, DuplicateTags, ParsingError
 
-protocol = settings.active_protocol
-
 
 class TestFieldMap:
     """Base class to test all implementations of 'FieldMap' interface."""
@@ -139,14 +137,14 @@ class TestFieldMap:
         )  # Confirm position in FieldMap is maintained
 
     def test_setitem_replace_by_tag_name(self, fieldmap_class):
-        fm = fieldmap_class((1, "a"), (protocol.Tag.MsgType, "b"))
+        fm = fieldmap_class((1, "a"), (settings.protocol.Tag.MsgType, "b"))
         fm.MsgSeqNum = 1
 
         fm.MsgType = "aa"
         assert fm.MsgType == "aa"
         assert len(fm) == 3
         assert (
-            list(fm.values())[1].tag == protocol.Tag.MsgType
+            list(fm.values())[1].tag == settings.protocol.Tag.MsgType
         )  # Confirm position in FieldMap is maintained
 
     def test_setitem_group(self, fieldmap_class, routing_id_group):
@@ -160,13 +158,13 @@ class TestFieldMap:
         fm = fieldmap_class((1, "a"), (2, "bb"))
 
         short_group = Group(
-            (protocol.Tag.NoMDEntryTypes, "1"),
-            (protocol.Tag.MDEntryType, "a"),
-            template=[protocol.Tag.MDEntryType],
+            (settings.protocol.Tag.NoMDEntryTypes, "1"),
+            (settings.protocol.Tag.MDEntryType, "a"),
+            template=[settings.protocol.Tag.MDEntryType],
         )
         fm[short_group.tag] = short_group
 
-        assert fm[protocol.Tag.NoMDEntryTypes] == short_group
+        assert fm[settings.protocol.Tag.NoMDEntryTypes] == short_group
 
     def test_getitem(self, fieldmap_impl_abc_123):
         assert fieldmap_impl_abc_123[1] == "abc"
@@ -219,15 +217,17 @@ class TestFieldMap:
 
     def test_setattr(self, fieldmap_class):
         fm = fieldmap_class()
-        fm.MsgType = protocol.MsgType.Logon
+        fm.MsgType = settings.protocol.MsgType.Logon
 
-        assert fm.MsgType == protocol.MsgType.Logon
+        assert fm.MsgType == settings.protocol.MsgType.Logon
 
     def test_delattr(self, fieldmap_class):
         fm = fieldmap_class()
-        fm.MsgType = protocol.MsgType.Logon
+        fm.MsgType = settings.protocol.MsgType.Logon
 
-        assert list(fm.values()) == [(protocol.Tag.MsgType, protocol.MsgType.Logon)]
+        assert list(fm.values()) == [
+            (settings.protocol.Tag.MsgType, settings.protocol.MsgType.Logon)
+        ]
 
         del fm.MsgType
         assert len(list(fm.values())) == 0
@@ -407,7 +407,7 @@ class TestFieldList:
     def test_delitem_duplicate_raises_exception(self, nested_parties_group):
         with pytest.raises(DuplicateTags):
             fm = FieldList(*nested_parties_group.values())
-            del fm[protocol.Tag.NestedPartyID]
+            del fm[settings.protocol.Tag.NestedPartyID]
 
     def test_repr_list_output(self):
         fm = FieldList()
@@ -452,21 +452,24 @@ class TestFieldDict:
             *routing_id_group.values(),
             (3, "e"),
             group_templates={
-                protocol.Tag.NoRoutingIDs: {
-                    "*": [protocol.Tag.RoutingType, protocol.Tag.RoutingID]
+                settings.protocol.Tag.NoRoutingIDs: {
+                    "*": [
+                        settings.protocol.Tag.RoutingType,
+                        settings.protocol.Tag.RoutingID,
+                    ]
                 }
             },
         )
 
-        assert protocol.Tag.NoRoutingIDs in fm
+        assert settings.protocol.Tag.NoRoutingIDs in fm
         assert fm[1] == "b"
 
-        group = fm[protocol.Tag.NoRoutingIDs]
+        group = fm[settings.protocol.Tag.NoRoutingIDs]
         assert group.size == 2
 
         assert len(group[0]) == 2
-        assert group[0][protocol.Tag.RoutingType] == "a"
-        assert group[0][protocol.Tag.RoutingID] == "b"
+        assert group[0][settings.protocol.Tag.RoutingType] == "a"
+        assert group[0][settings.protocol.Tag.RoutingID] == "b"
 
         assert len(group[1]) == 2
         assert group[1].RoutingType == "c"
@@ -479,15 +482,18 @@ class TestFieldDict:
             (35, "a"),
             (1, "b"),
             (2, "c"),
-            (protocol.Tag.NoRoutingIDs, 2),
-            (protocol.Tag.RoutingType, "a"),
+            (settings.protocol.Tag.NoRoutingIDs, 2),
+            (settings.protocol.Tag.RoutingType, "a"),
             # (217, "b"),  <-- Simulated one instance not containing all template fields
-            (protocol.Tag.RoutingType, "c"),
-            (protocol.Tag.RoutingID, "d"),
+            (settings.protocol.Tag.RoutingType, "c"),
+            (settings.protocol.Tag.RoutingID, "d"),
             (3, "e"),
             group_templates={
-                protocol.Tag.NoRoutingIDs: {
-                    "*": [protocol.Tag.RoutingType, protocol.Tag.RoutingID]
+                settings.protocol.Tag.NoRoutingIDs: {
+                    "*": [
+                        settings.protocol.Tag.RoutingType,
+                        settings.protocol.Tag.RoutingID,
+                    ]
                 }
             },
         )
@@ -640,22 +646,25 @@ class TestFieldDict:
         Regression where repeating group fields for market data request messages (type V) were not extracted correctly
         """
         mdr_message = generic_message_factory(
-            (protocol.Tag.MsgType, protocol.MsgType.MarketDataRequest),
-            (protocol.Tag.MDReqID, uuid.uuid4().hex),
-            (protocol.Tag.SubscriptionRequestType, "h"),  # Historical request
-            (protocol.Tag.MarketDepth, 0),
+            (
+                settings.protocol.Tag.MsgType,
+                settings.protocol.MsgType.MarketDataRequest,
+            ),
+            (settings.protocol.Tag.MDReqID, uuid.uuid4().hex),
+            (settings.protocol.Tag.SubscriptionRequestType, "h"),  # Historical request
+            (settings.protocol.Tag.MarketDepth, 0),
         )
 
-        mdr_message[protocol.Tag.NoRelatedSym] = Group(
-            (protocol.Tag.NoRelatedSym, 1),
-            (protocol.Tag.SecurityID, "test123"),
-            template=[protocol.Tag.SecurityID],
+        mdr_message[settings.protocol.Tag.NoRelatedSym] = Group(
+            (settings.protocol.Tag.NoRelatedSym, 1),
+            (settings.protocol.Tag.SecurityID, "test123"),
+            template=[settings.protocol.Tag.SecurityID],
         )
 
-        mdr_message[protocol.Tag.NoMDEntryTypes] = Group(
-            (protocol.Tag.NoMDEntryTypes, 1),
-            (protocol.Tag.MDEntryType, "h"),
-            template=[protocol.Tag.MDEntryType],
+        mdr_message[settings.protocol.Tag.NoMDEntryTypes] = Group(
+            (settings.protocol.Tag.NoMDEntryTypes, 1),
+            (settings.protocol.Tag.MDEntryType, "h"),
+            template=[settings.protocol.Tag.MDEntryType],
         )
 
         mdr_message[9956] = 1
@@ -690,14 +699,17 @@ class TestFieldDict:
 class TestGroup:
     def test_parse_fields(self):
         g = Group(
-            (protocol.Tag.NoMDEntryTypes, 3),
-            (protocol.Tag.MDEntryType, "a"),
-            (protocol.Tag.MDEntryPx, "abc"),
-            (protocol.Tag.MDEntryType, "b"),
-            (protocol.Tag.MDEntryPx, "abc"),
-            (protocol.Tag.MDEntryType, "c"),
-            (protocol.Tag.MDEntryPx, "abc"),
-            template=[protocol.Tag.MDEntryType, protocol.Tag.MDEntryPx],
+            (settings.protocol.Tag.NoMDEntryTypes, 3),
+            (settings.protocol.Tag.MDEntryType, "a"),
+            (settings.protocol.Tag.MDEntryPx, "abc"),
+            (settings.protocol.Tag.MDEntryType, "b"),
+            (settings.protocol.Tag.MDEntryPx, "abc"),
+            (settings.protocol.Tag.MDEntryType, "c"),
+            (settings.protocol.Tag.MDEntryPx, "abc"),
+            template=[
+                settings.protocol.Tag.MDEntryType,
+                settings.protocol.Tag.MDEntryPx,
+            ],
         )
 
         assert g[0] == [(269, "a"), (270, "abc")]
@@ -707,32 +719,41 @@ class TestGroup:
     def test_parse_fields_template_violation_raises_exception(self):
         with pytest.raises(ParsingError):
             Group(
-                (protocol.Tag.NoMDEntryTypes, 3),
-                (protocol.Tag.MDEntryType, "a"),
-                (protocol.Tag.MDEntryPx, "abc"),
-                (protocol.Tag.MDEntryType, "b"),
-                (protocol.Tag.MDEntryPx, "abc"),
+                (settings.protocol.Tag.NoMDEntryTypes, 3),
+                (settings.protocol.Tag.MDEntryType, "a"),
+                (settings.protocol.Tag.MDEntryPx, "abc"),
+                (settings.protocol.Tag.MDEntryType, "b"),
+                (settings.protocol.Tag.MDEntryPx, "abc"),
                 (999, "c"),  # <-- Invalid tag
-                (protocol.Tag.MDEntryPx, "abc"),
-                template=[protocol.Tag.MDEntryType, protocol.Tag.MDEntryPx],
+                (settings.protocol.Tag.MDEntryPx, "abc"),
+                template=[
+                    settings.protocol.Tag.MDEntryType,
+                    settings.protocol.Tag.MDEntryPx,
+                ],
             )
 
     def test_parse_fields_wrong_size_raises_exception(self):
         with pytest.raises(ParsingError):
             Group(
-                (protocol.Tag.NoMDEntryTypes, 3),  # <-- Only two instances provided
-                (protocol.Tag.MDEntryType, "a"),
-                (protocol.Tag.MDEntryPx, "abc"),
-                (protocol.Tag.MDEntryType, "b"),
-                (protocol.Tag.MDEntryPx, "abc"),
-                template=[protocol.Tag.MDEntryType, protocol.Tag.MDEntryPx],
+                (
+                    settings.protocol.Tag.NoMDEntryTypes,
+                    3,
+                ),  # <-- Only two instances provided
+                (settings.protocol.Tag.MDEntryType, "a"),
+                (settings.protocol.Tag.MDEntryPx, "abc"),
+                (settings.protocol.Tag.MDEntryType, "b"),
+                (settings.protocol.Tag.MDEntryPx, "abc"),
+                template=[
+                    settings.protocol.Tag.MDEntryType,
+                    settings.protocol.Tag.MDEntryPx,
+                ],
             )
 
     def test_defaults_to_using_templates_configured_in_settings_if_safe(self):
         g = Group(
-            (protocol.Tag.NoRoutingIDs, 1),
-            (protocol.Tag.RoutingID, "a"),
-            (protocol.Tag.RoutingType, "b"),
+            (settings.protocol.Tag.NoRoutingIDs, 1),
+            (settings.protocol.Tag.RoutingID, "a"),
+            (settings.protocol.Tag.RoutingType, "b"),
         )
 
         assert g[0].RoutingID == "a"
@@ -744,13 +765,16 @@ class TestGroup:
     def test_invalid_group(self):
         with pytest.raises(ParsingError):
             Group(
-                (protocol.Tag.NoRoutingIDs, "2"),
-                (protocol.Tag.RoutingID, "b"),
-                (protocol.Tag.RoutingType, "c"),
+                (settings.protocol.Tag.NoRoutingIDs, "2"),
+                (settings.protocol.Tag.RoutingID, "b"),
+                (settings.protocol.Tag.RoutingType, "c"),
             )
 
     def test_empty_group(self):
-        g = Group((protocol.Tag.NoMDEntries, 0), template=[protocol.Tag.MDEntryType])
+        g = Group(
+            (settings.protocol.Tag.NoMDEntries, 0),
+            template=[settings.protocol.Tag.MDEntryType],
+        )
 
         assert g.size == 0
         assert len(g) == 1  # Should consist only of the identifier field.
@@ -765,12 +789,15 @@ class TestGroup:
 
     def test_add_group(self, routing_id_group):
         other = Group(
-            (protocol.Tag.NoRoutingIDs, 2),
-            (protocol.Tag.RoutingType, "e"),
-            (protocol.Tag.RoutingID, "f"),
-            (protocol.Tag.RoutingType, "g"),
-            (protocol.Tag.RoutingID, "h"),
-            template=[protocol.Tag.RoutingType, protocol.Tag.RoutingID],
+            (settings.protocol.Tag.NoRoutingIDs, 2),
+            (settings.protocol.Tag.RoutingType, "e"),
+            (settings.protocol.Tag.RoutingID, "f"),
+            (settings.protocol.Tag.RoutingType, "g"),
+            (settings.protocol.Tag.RoutingID, "h"),
+            template=[
+                settings.protocol.Tag.RoutingType,
+                settings.protocol.Tag.RoutingID,
+            ],
         )
 
         g = routing_id_group + other
@@ -782,7 +809,8 @@ class TestGroup:
 
     def test_add_fieldmap(self, fieldmap_class, routing_id_group):
         other = fieldmap_class(
-            (protocol.Tag.RoutingType, "e"), (protocol.Tag.RoutingID, "f")
+            (settings.protocol.Tag.RoutingType, "e"),
+            (settings.protocol.Tag.RoutingID, "f"),
         )
 
         g = routing_id_group + other
@@ -800,8 +828,8 @@ class TestGroup:
 
     def test_add_sequence_of_fields(self, routing_id_group):
         other = (
-            Field(protocol.Tag.RoutingType, "e"),
-            Field(protocol.Tag.RoutingID, "f"),
+            Field(settings.protocol.Tag.RoutingType, "e"),
+            Field(settings.protocol.Tag.RoutingID, "f"),
         )
 
         g = routing_id_group + other
@@ -818,7 +846,10 @@ class TestGroup:
         )
 
     def test_add_sequence_of_tuples(self, routing_id_group):
-        other = ((protocol.Tag.RoutingType, "e"), (protocol.Tag.RoutingID, "f"))
+        other = (
+            (settings.protocol.Tag.RoutingType, "e"),
+            (settings.protocol.Tag.RoutingID, "f"),
+        )
 
         g = routing_id_group + other
         assert (
@@ -842,12 +873,15 @@ class TestGroup:
     def test_eq_fieldmap(self, fieldmap_class):
         group = Group(
             (
-                protocol.Tag.NoRoutingIDs,
+                settings.protocol.Tag.NoRoutingIDs,
                 1,
             ),  # Can only contain one instance to be comparable to FieldDict
-            (protocol.Tag.RoutingType, "a"),
-            (protocol.Tag.RoutingID, "b"),
-            template=[protocol.Tag.RoutingType, protocol.Tag.RoutingID],
+            (settings.protocol.Tag.RoutingType, "a"),
+            (settings.protocol.Tag.RoutingID, "b"),
+            template=[
+                settings.protocol.Tag.RoutingType,
+                settings.protocol.Tag.RoutingID,
+            ],
         )
 
         assert group == fieldmap_class((215, 1), (216, "a"), (217, "b"))
@@ -892,50 +926,51 @@ class TestGroup:
 
     def test_setitem_fieldmap(self, fieldmap_class, routing_id_group):
         routing_id_group[1] = fieldmap_class(
-            (protocol.Tag.RoutingType, "c"), (protocol.Tag.RoutingID, "d")
+            (settings.protocol.Tag.RoutingType, "c"),
+            (settings.protocol.Tag.RoutingID, "d"),
         )
 
         assert routing_id_group.size == 2
         assert routing_id_group[1] == [
-            (protocol.Tag.RoutingType, "c"),
-            (protocol.Tag.RoutingID, "d"),
+            (settings.protocol.Tag.RoutingType, "c"),
+            (settings.protocol.Tag.RoutingID, "d"),
         ]
 
     def test_setitem_sequence_of_fields(self, routing_id_group):
         routing_id_group[1] = (
-            Field(protocol.Tag.RoutingType, "c"),
-            Field(protocol.Tag.RoutingID, "d"),
+            Field(settings.protocol.Tag.RoutingType, "c"),
+            Field(settings.protocol.Tag.RoutingID, "d"),
         )
 
         assert routing_id_group.size == 2
         assert routing_id_group[1] == [
-            (protocol.Tag.RoutingType, "c"),
-            (protocol.Tag.RoutingID, "d"),
+            (settings.protocol.Tag.RoutingType, "c"),
+            (settings.protocol.Tag.RoutingID, "d"),
         ]
 
     def test_setitem_sequence_of_tuples(self, routing_id_group):
         routing_id_group[1] = [
-            (protocol.Tag.RoutingType, "c"),
-            (protocol.Tag.RoutingID, "d"),
+            (settings.protocol.Tag.RoutingType, "c"),
+            (settings.protocol.Tag.RoutingID, "d"),
         ]
 
         assert routing_id_group.size == 2
         assert routing_id_group[1] == [
-            (protocol.Tag.RoutingType, "c"),
-            (protocol.Tag.RoutingID, "d"),
+            (settings.protocol.Tag.RoutingType, "c"),
+            (settings.protocol.Tag.RoutingID, "d"),
         ]
 
     def test_setitem_partial_instance(self, routing_id_group):
-        routing_id_group[1] = [(protocol.Tag.RoutingType, "d")]
+        routing_id_group[1] = [(settings.protocol.Tag.RoutingType, "d")]
 
         assert routing_id_group.size == 2
-        assert routing_id_group[1] == [(protocol.Tag.RoutingType, "d")]
+        assert routing_id_group[1] == [(settings.protocol.Tag.RoutingType, "d")]
 
     def test_setitem_index_out_of_range_raises_exception(self, routing_id_group):
         with pytest.raises(IndexError):
             routing_id_group[2] = [
-                (protocol.Tag.RoutingType, "c"),
-                (protocol.Tag.RoutingID, "d"),
+                (settings.protocol.Tag.RoutingType, "c"),
+                (settings.protocol.Tag.RoutingID, "d"),
             ]
 
     def test_setitem_not_compatible_with_template_raises_exception(
@@ -955,11 +990,11 @@ class TestGroup:
         fields = list(routing_id_group.values())
         assert len(fields) == 5
         assert fields == [
-            (protocol.Tag.NoRoutingIDs, "2"),
-            (protocol.Tag.RoutingType, "a"),
-            (protocol.Tag.RoutingID, "b"),
-            (protocol.Tag.RoutingType, "c"),
-            (protocol.Tag.RoutingID, "d"),
+            (settings.protocol.Tag.NoRoutingIDs, "2"),
+            (settings.protocol.Tag.RoutingType, "a"),
+            (settings.protocol.Tag.RoutingID, "b"),
+            (settings.protocol.Tag.RoutingType, "c"),
+            (settings.protocol.Tag.RoutingID, "d"),
         ]
 
     def test_values_nested(self, nested_parties_group):
@@ -1049,9 +1084,9 @@ class TestGroup:
 
     def test_clear(self):
         g = Group(
-            (protocol.Tag.NoRoutingIDs, 1),
-            (protocol.Tag.RoutingID, "a"),
-            (protocol.Tag.RoutingType, "b"),
+            (settings.protocol.Tag.NoRoutingIDs, 1),
+            (settings.protocol.Tag.RoutingID, "a"),
+            (settings.protocol.Tag.RoutingType, "b"),
         )
 
         assert len(g) == 3

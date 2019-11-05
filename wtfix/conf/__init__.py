@@ -77,7 +77,7 @@ class Settings:
                 setattr(self, setting, setting_value)
                 self._explicit_settings.add(setting)
 
-        self._active_protocol = None
+        self._protocol = None
 
     @property
     def has_safe_defaults(self):
@@ -98,19 +98,19 @@ class Settings:
         return SessionSettings(self.default_connection_name)
 
     @property
-    def active_protocol(self):
-        if self._active_protocol is None:
+    def protocol(self):
+        if self._protocol is None:
             mod_name, class_name = self.default_connection.PROTOCOL.rsplit(".", 1)
             module = importlib.import_module(mod_name)
             protocol_class = getattr(module, class_name)
 
-            self._active_protocol = protocol_class
+            self._protocol = protocol_class
 
-        return self._active_protocol
+        return self._protocol
 
-    @active_protocol.setter
-    def active_protocol(self, protocol_class: Type):
-        self._active_protocol = protocol_class
+    @protocol.setter
+    def protocol(self, protocol_class: Type):
+        self._protocol = protocol_class
 
     @property
     def logger(self):
@@ -174,6 +174,6 @@ class SessionSettings:
                 module = importlib.import_module(mod_name)
                 protocol_class = getattr(module, class_name)
 
-                settings.active_protocol = protocol_class
+                settings.protocol = protocol_class
 
             setattr(self, setting, setting_value)
