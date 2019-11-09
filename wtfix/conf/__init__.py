@@ -175,5 +175,6 @@ class SessionSettings:
                 protocol_class = getattr(module, class_name)
 
                 settings.protocol = protocol_class
+                setattr(self, "protocol", protocol_class)
 
             setattr(self, setting, setting_value)
