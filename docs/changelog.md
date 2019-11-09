@@ -16,6 +16,7 @@ This changelog is used to track all major changes to WTFIX.
 
 - Add `PipelineTerminationApp` and use `del` to encourage the Python interpreter to garbage collect a message once it
   has reached either end of the pipeline.
+- Upgrade aioredis dependency to version 1.3
 
 
 ## v0.12.4 (2019-09-02)
