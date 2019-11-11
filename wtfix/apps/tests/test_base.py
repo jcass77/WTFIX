@@ -3,7 +3,6 @@ from unittest import mock
 from collections import Counter
 
 import pytest
-from unsync import unsync
 
 from wtfix.apps.base import BaseApp
 from wtfix.core.exceptions import ValidationError, MessageProcessingError
@@ -38,19 +37,16 @@ class MockApp(MessageTypeHandlerApp):
 
         self.counter = Counter()
 
-    @unsync
     @on("a")
     async def on_a(self, message):
         self.counter["a"] += 1
 
         return message
 
-    @unsync
     @on("z")
     async def on_z(self, message):
         pass
 
-    @unsync
     async def on_unhandled(self, message):
 
         self.counter["unhandled"] += 1
@@ -60,27 +56,27 @@ class MockApp(MessageTypeHandlerApp):
 
 class TestMessageTypeHandlerApp:
     @pytest.mark.asyncio
-    async def test_on_receive_handler(self, unsync_event_loop):
+    async def test_on_receive_handler(self):
 
         app = MockApp("mock_app")
 
         await app.on_receive(generic_message_factory((35, "a")))
         await app.on_receive(generic_message_factory((35, "b")))
 
-        await asyncio.sleep(
-            0.1
-        )  # Nothing to await. Sleep to give processes time to complete.
+        # Wait for tasks to complete
+        tasks = asyncio.all_tasks()
+        await asyncio.wait(tasks, timeout=0.1)
 
         assert app.counter["a"] == 1
         assert app.counter["b"] == 0
         assert app.counter["unhandled"] == 1
 
     @pytest.mark.asyncio
-    async def test_on_receive_handler_raises_exception_if_message_not_returned(
-        self, unsync_event_loop
-    ):
+    async def test_on_receive_handler_raises_exception_if_message_not_returned(self):
         with pytest.raises(MessageProcessingError):
             app = MockApp("mock_app")
             await app.on_receive(generic_message_factory((35, "z")))
 
-            await asyncio.sleep(0.1)
+            # Wait for separate tasks to complete
+            tasks = asyncio.all_tasks()
+            await asyncio.wait(tasks, timeout=0.1)

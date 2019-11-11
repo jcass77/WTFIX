@@ -22,8 +22,6 @@ from datetime import datetime, timedelta
 from enum import Enum, auto
 from typing import Callable
 
-from unsync import unsync
-
 from wtfix.apps.base import MessageTypeHandlerApp, on
 from wtfix.apps.sessions import ClientSessionApp
 from wtfix.apps.store import MessageStoreApp
@@ -62,7 +60,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
 
         self._received_monitor = None
         self._sent_monitor = None
-        self._server_not_responding = asyncio.Event(loop=unsync.loop)
+        self._server_not_responding = asyncio.Event()
 
     @property
     def heartbeat_interval(self):
@@ -109,7 +107,6 @@ class HeartbeatApp(MessageTypeHandlerApp):
         """
         return self._test_request_id is not None
 
-    @unsync
     async def start(self, *args, **kwargs):
         """
         Start the heartbeat monitor.
@@ -117,18 +114,17 @@ class HeartbeatApp(MessageTypeHandlerApp):
         await super().start(*args, **kwargs)
 
         # Keep a reference to running monitors, so that we can cancel them if needed.
-        self._received_monitor = self.heartbeat_monitor(
-            HeartbeatTimers.RECEIVE, self.send_test_request
+        self._received_monitor = asyncio.create_task(
+            self.heartbeat_monitor(HeartbeatTimers.RECEIVE, self.send_test_request)
         )
-        self._sent_monitor = self.heartbeat_monitor(
-            HeartbeatTimers.SEND, self.send_heartbeat
+        self._sent_monitor = asyncio.create_task(
+            self.heartbeat_monitor(HeartbeatTimers.SEND, self.send_heartbeat)
         )
 
         logger.info(
             f"{self.name}: Started heartbeat monitor with {self.heartbeat_interval} second interval."
         )
 
-    @unsync
     async def stop(self, *args, **kwargs):
         """
         Cancel the heartbeat monitor on the next iteration of the event loop.
@@ -136,12 +132,11 @@ class HeartbeatApp(MessageTypeHandlerApp):
         await super().stop(*args, **kwargs)
         # Stop heartbeat monitors
         if self._received_monitor is not None:
-            self._received_monitor.future.cancel()
+            self._received_monitor.cancel()
 
         if self._sent_monitor is not None:
-            self._sent_monitor.future.cancel()
+            self._sent_monitor.cancel()
 
-    @unsync
     async def heartbeat_monitor(
         self, timer: HeartbeatTimers, interval_exceeded_response: Callable
     ):
@@ -166,9 +161,8 @@ class HeartbeatApp(MessageTypeHandlerApp):
             f"{self.name}: No response received for test request '{self._test_request_id}', "
             f"initiating shutdown..."
         )
-        self.pipeline.stop()
+        asyncio.create_task(self.pipeline.stop())
 
-    @unsync
     async def send_test_request(self):
         """
         Checks if the server is responding to TestRequest messages.
@@ -179,7 +173,9 @@ class HeartbeatApp(MessageTypeHandlerApp):
             f"{self.name}: Heartbeat exceeded, sending test request '{self._test_request_id}'..."
         )
         # Don't need to block while request is sent
-        self.send(admin.TestRequestMessage(utils.encode(self._test_request_id)))
+        asyncio.create_task(
+            self.send(admin.TestRequestMessage(utils.encode(self._test_request_id)))
+        )
 
         # Sleep while we wait for a response on the test request
         await asyncio.sleep(self.test_request_response_delay)
@@ -187,7 +183,6 @@ class HeartbeatApp(MessageTypeHandlerApp):
         if self.is_waiting():
             self._server_not_responding.set()
 
-    @unsync
     async def send_heartbeat(self):
         """
         Send our own heartbeat to indicate that the pipeline is still responding.
@@ -197,11 +192,10 @@ class HeartbeatApp(MessageTypeHandlerApp):
         # Update timer immediately to avoid flooding the target with heartbeats.
         HeartbeatTimers.SEND.timestamp = datetime.utcnow()
 
-        self.send(
-            admin.HeartbeatMessage()
+        asyncio.create_task(
+            self.send(admin.HeartbeatMessage())
         )  # Don't need to block while heartbeat is sent
 
-    @unsync
     @on(settings.protocol.MsgType.Logon)
     async def on_logon(self, message: FIXMessage) -> FIXMessage:
         """
@@ -214,7 +208,6 @@ class HeartbeatApp(MessageTypeHandlerApp):
 
         return message
 
-    @unsync
     @on(settings.protocol.MsgType.TestRequest)
     async def on_test_request(self, message: FIXMessage) -> FIXMessage:
         """
@@ -226,11 +219,10 @@ class HeartbeatApp(MessageTypeHandlerApp):
             f"{self.name}: Sending heartbeat in response to request {message.TestReqID}."
         )
         # Don't need to block while heartbeat is sent
-        self.send(admin.HeartbeatMessage(str(message.TestReqID)))
+        asyncio.create_task(self.send(admin.HeartbeatMessage(str(message.TestReqID))))
 
         return message
 
-    @unsync
     @on(settings.protocol.MsgType.Heartbeat)
     async def on_heartbeat(self, message: FIXMessage) -> FIXMessage:
         """
@@ -248,7 +240,6 @@ class HeartbeatApp(MessageTypeHandlerApp):
 
         return message
 
-    @unsync
     async def on_send(self, message: FIXMessage) -> FIXMessage:
         """
         Update the send timer whenever any message is sent.
@@ -259,7 +250,6 @@ class HeartbeatApp(MessageTypeHandlerApp):
 
         return await super().on_send(message)
 
-    @unsync
     async def on_receive(self, message: FIXMessage) -> FIXMessage:
         """
         Update the receive timer whenever any message is received.
@@ -308,22 +298,19 @@ class AuthenticationApp(MessageTypeHandlerApp):
         self.reset_seq_nums = reset_seq_nums
         self.test_mode = test_mode
 
-        self.logged_in_event = asyncio.Event(loop=unsync.loop)
-        self.logged_out_event = asyncio.Event(loop=unsync.loop)
+        self.logged_in_event = asyncio.Event()
+        self.logged_out_event = asyncio.Event()
 
-    @unsync
     async def start(self, *args, **kwargs):
         await super().start(*args, **kwargs)
 
         await self.logon()
 
-    @unsync
     async def stop(self, *args, **kwargs):
         await super().stop(*args, **kwargs)
 
         await self.logout()
 
-    @unsync
     @on(settings.protocol.MsgType.Logon)
     async def on_logon(self, message):
         """
@@ -364,7 +351,6 @@ class AuthenticationApp(MessageTypeHandlerApp):
 
         return message
 
-    @unsync
     @on(settings.protocol.MsgType.Logout)
     async def on_logout(self, message):
         self.logged_out_event.set()  # FIX server has logged us out.
@@ -373,7 +359,6 @@ class AuthenticationApp(MessageTypeHandlerApp):
 
         return message
 
-    @unsync
     async def on_receive(self, message: FIXMessage) -> FIXMessage:
 
         # Block non-authentication messages until we've logged in successfully
@@ -388,7 +373,6 @@ class AuthenticationApp(MessageTypeHandlerApp):
 
         return await super().on_receive(message)
 
-    @unsync
     async def on_send(self, message: FIXMessage) -> FIXMessage:
 
         # Block non-authentication messages until we've logged in successfully
@@ -403,7 +387,6 @@ class AuthenticationApp(MessageTypeHandlerApp):
 
         return message
 
-    @unsync
     async def logon(self):
         """
         Log on to the FIX server using the provided credentials.
@@ -423,13 +406,12 @@ class AuthenticationApp(MessageTypeHandlerApp):
 
         logger.info(f"{self.name}: Logging in with: {logon_msg:t}...")
         # Don't need to block while we send logon message
-        self.send(logon_msg)
+        asyncio.create_task(self.send(logon_msg))
 
         await self.logged_in_event.wait()
 
         logger.info(f"Successfully logged on!")
 
-    @unsync
     async def logout(self):
         """
         Log out of the FIX server.
@@ -439,7 +421,7 @@ class AuthenticationApp(MessageTypeHandlerApp):
             logger.info(f"{self.name}: Logging out...")
             logout_msg = admin.LogoutMessage()
             # Fire and forget logout
-            self.send(logout_msg)
+            asyncio.create_task(self.send(logout_msg))
 
             await self.logged_out_event.wait()
 
@@ -477,11 +459,11 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
         self.receive_buffer = collections.deque()
 
-        self.resend_request_handled_event = asyncio.Event(loop=unsync.loop)
+        self.resend_request_handled_event = asyncio.Event()
         self.resend_request_handled_event.set()  # Detect if a resend request has been responded to
 
-        self.waited_for_resend_request_event = asyncio.Event(
-            loop=unsync.loop
+        self.waited_for_resend_request_event = (
+            asyncio.Event()
         )  # Wait for resend requests from target
 
         super().__init__(pipeline, *args, **kwargs)
@@ -506,7 +488,6 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
     def expected_seq_num(self):
         return self.receive_seq_num + 1
 
-    @unsync
     async def start(self, *args, **kwargs):
         await super().start(*args, **kwargs)
 
@@ -540,7 +521,6 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
         self.startup_time = datetime.utcnow()
 
-    @unsync
     async def _check_sequence_number(self, message):
 
         if int(message.seq_num) < self.expected_seq_num:
@@ -620,7 +600,6 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
         raise SessionError(error_msg)
 
-    @unsync
     async def _handle_sequence_number_too_high(self, message):
 
         # We've missed some incoming messages
@@ -643,8 +622,8 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             # Start buffering out-of-sequence messages
             self.receive_buffer.append(message)
 
-            self._send_resend_request(
-                missing_seq_nums
+            asyncio.create_task(
+                self._send_resend_request(missing_seq_nums)
             )  # Separate task - don't block while waiting for send!
 
         else:
@@ -669,7 +648,6 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             f"(waiting for #{self.expected_seq_num})..."
         )
 
-    @unsync
     async def _send_resend_request(self, missing_seq_nums):
         # Wait for opportunity to send resend request. Must:
         #
@@ -692,9 +670,13 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
         # Don't send our own resend requests if we are busy handling one received from the target
         await self.resend_request_handled_event.wait()
 
-        self.send(admin.ResendRequestMessage(missing_seq_nums[0], missing_seq_nums[-1]))
+        # Separate task
+        asyncio.create_task(
+            self.send(
+                admin.ResendRequestMessage(missing_seq_nums[0], missing_seq_nums[-1])
+            )
+        )
 
-    @unsync
     async def _handle_resend_request(self, message):
 
         # Set event marker to block our own gap fill requests until we've responded to this request.
@@ -727,8 +709,10 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
             if len(admin_seq_nums) > 0:
                 # Admin messages were found, submit SequenceReset
-                self.send(
-                    admin.SequenceResetMessage(next_seq_num, admin_seq_nums[-1] + 1)
+                asyncio.create_task(
+                    self.send(
+                        admin.SequenceResetMessage(next_seq_num, admin_seq_nums[-1] + 1)
+                    )
                 )
                 next_seq_num = admin_seq_nums[-1] + 1
                 admin_seq_nums.clear()
@@ -741,15 +725,17 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             resend_msg.PossDupFlag = "Y"
             resend_msg.OrigSendingTime = str(resend_msg.SendingTime)
 
-            self.send(resend_msg)
+            asyncio.create_task(self.send(resend_msg))
             next_seq_num += 1
 
         else:
             # Handle situation where last message was itself an admin message
             if len(admin_seq_nums) > 0:
                 # Admin messages were found, submit SequenceReset
-                self.send(
-                    admin.SequenceResetMessage(next_seq_num, admin_seq_nums[-1] + 1)
+                asyncio.create_task(
+                    self.send(
+                        admin.SequenceResetMessage(next_seq_num, admin_seq_nums[-1] + 1)
+                    )
                 )
                 admin_seq_nums.clear()
 
@@ -771,7 +757,6 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
         return message
 
-    @unsync
     async def on_receive(self, message: FIXMessage) -> FIXMessage:
         """
         Check the sequence number for every message received
@@ -786,7 +771,6 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
         return await super().on_receive(message)
 
-    @unsync
     async def on_send(self, message: FIXMessage) -> FIXMessage:
         """
         Inject MsgSeqNum for every message to be sent, except duplicates.

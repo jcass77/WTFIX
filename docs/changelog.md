@@ -17,6 +17,9 @@ This changelog is used to track all major changes to WTFIX.
 - Add `PipelineTerminationApp` and use `del` to encourage the Python interpreter to garbage collect a message once it
   has reached either end of the pipeline.
 - Upgrade aioredis dependency to version 1.3
+- Remove dependency on 'unsync' which has become largely redundant with the new async features released as part
+  of Python 3.7.
+- Now requires Python >= 3.7.
 
 
 ## v0.12.4 (2019-09-02)

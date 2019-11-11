@@ -1,5 +1,4 @@
 import pytest
-from unsync import unsync
 
 from config.settings import base
 from wtfix.conf import settings
@@ -24,24 +23,6 @@ def pytest_runtest_setup():
     #
     # See: https://github.com/miketheman/pytest-socket for details.
     socket_allow_hosts(allowed=["localhost", "127.0.0.1", "::1"])
-
-
-@pytest.fixture
-def unsync_event_loop(event_loop):
-    # Force unsync to use the same event loop as pytest-asyncio
-    # See: https://github.com/pytest-dev/pytest-asyncio#event_loop
-
-    # Stop the current unsync loop
-    current_loop = unsync.loop
-    if current_loop != event_loop:
-        try:
-            current_loop.call_soon_threadsafe(current_loop.stop)
-        except RuntimeError:
-            # Loop already closed.
-            pass
-
-    # Use pytest-asyncio's event loop instead
-    unsync.loop = event_loop
 
 
 # Add future implementations of FieldMap to this list to include in tests.

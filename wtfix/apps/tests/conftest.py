@@ -1,3 +1,4 @@
+import asyncio
 import os
 from asyncio import Future
 from unittest import mock
@@ -14,6 +15,11 @@ from wtfix.conf import settings
 from wtfix.message.admin import HeartbeatMessage
 from wtfix.message.message import generic_message_factory
 from wtfix.pipeline import BasePipeline
+
+
+@asyncio.coroutine
+def mock_stop():
+    return None
 
 
 @pytest.fixture
@@ -39,6 +45,9 @@ def base_pipeline():
 
     pipeline.send = mock_future_message
     pipeline.receive = mock_future_message
+
+    # Simulate the pipeline shutting down
+    pipeline.stop = MagicMock(return_value=mock_stop())
 
     yield pipeline
 
@@ -88,9 +97,9 @@ def zero_heartbeat_app(base_pipeline):
 
 
 @pytest.fixture
-def failing_server_heartbeat_app():
+def failing_server_heartbeat_app(base_pipeline):
     """Simulates the server failing after responding to three test requests."""
-    app = ZeroDelayHeartbeatTestApp(MagicMock(BasePipeline))
+    app = ZeroDelayHeartbeatTestApp(base_pipeline)
     num_responses = 0
 
     async def simulate_heartbeat_response(message):

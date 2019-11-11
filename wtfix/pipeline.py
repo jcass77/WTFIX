@@ -19,8 +19,6 @@ import asyncio
 from asyncio import futures
 from collections import OrderedDict
 
-from unsync import unsync
-
 from wtfix.core.klass import get_class_from_module_string
 from wtfix.conf import SessionSettings
 from wtfix.conf import settings
@@ -52,9 +50,9 @@ class BasePipeline:
             f"Created new WTFIX application pipeline: {list(self.apps.keys())}."
         )
 
-        self.stop_lock = asyncio.Lock(loop=unsync.loop)
-        self.stopping_event = asyncio.Event(loop=unsync.loop)
-        self.stopped_event = asyncio.Event(loop=unsync.loop)
+        self.stop_lock = asyncio.Lock()
+        self.stopping_event = asyncio.Event()
+        self.stopped_event = asyncio.Event()
 
     @property
     def apps(self):
@@ -84,7 +82,6 @@ class BasePipeline:
 
         return loaded_apps
 
-    @unsync
     async def initialize(self):
         """
         Initialize all applications that have been configured for this pipeline.
@@ -98,7 +95,6 @@ class BasePipeline:
 
         logger.info("All apps initialized!")
 
-    @unsync
     async def start(self):
         """
         Starts each of the applications in turn.
@@ -129,7 +125,6 @@ class BasePipeline:
         # Block until the pipeline has been stopped again.
         await self.stopped_event.wait()
 
-    @unsync
     async def stop(self):
         """
         Tries to shut down the pipeline in an orderly fashion.
@@ -156,7 +151,7 @@ class BasePipeline:
                     f"Timeout waiting for app '{app}' to stop, cancelling all outstanding tasks..."
                 )
                 # Stop all asyncio tasks
-                for task in asyncio.Task.all_tasks(unsync.loop):
+                for task in asyncio.all_tasks():
                     task.cancel()
 
     def _setup_message_handling(self, direction):
@@ -170,7 +165,6 @@ class BasePipeline:
             f"Unknown application chain processing direction '{direction}'."
         )
 
-    @unsync
     async def _process_message(self, message, direction):
         """
         Process a message by passing it on to the various apps in the pipeline.
@@ -225,12 +219,10 @@ class BasePipeline:
 
         return message
 
-    @unsync
     async def receive(self, message):
         """Receives a new message to be processed"""
         return await self._process_message(message, BasePipeline.INBOUND_PROCESSING)
 
-    @unsync
     async def send(self, message):
         """Processes a new message to be sent"""
         return await self._process_message(message, BasePipeline.OUTBOUND_PROCESSING)

@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from wtfix.apps.store import BaseStore, MemoryStore, RedisStore, MessageStoreApp
@@ -12,9 +14,7 @@ class TestBaseStore:
 
     @pytest.mark.parametrize("store_class", [MemoryStore, RedisStore])
     @pytest.mark.asyncio
-    async def test_get_returns_message(
-        self, unsync_event_loop, store_class, user_notification_message
-    ):
+    async def test_get_returns_message(self, store_class, user_notification_message):
         store = store_class()
         await store.initialize()
 
@@ -32,7 +32,7 @@ class TestBaseStore:
 
     @pytest.mark.parametrize("store_class", [MemoryStore, RedisStore])
     @pytest.mark.asyncio
-    async def test_get_not_found_returns_none(self, unsync_event_loop, store_class):
+    async def test_get_not_found_returns_none(self, store_class):
         store = store_class()
         await store.initialize()
 
@@ -42,11 +42,13 @@ class TestBaseStore:
 
         assert await store.get(uuid.uuid4().hex, "TRADER", 123) is None
 
+        # Wait for separate tasks to complete
+        tasks = asyncio.all_tasks()
+        await asyncio.wait(tasks, timeout=0.1)
+
     @pytest.mark.parametrize("store_class", [MemoryStore, RedisStore])
     @pytest.mark.asyncio
-    async def test_delete(
-        self, unsync_event_loop, store_class, user_notification_message
-    ):
+    async def test_delete(self, store_class, user_notification_message):
         store = store_class()
         await store.initialize()
 
@@ -66,9 +68,7 @@ class TestBaseStore:
 
     @pytest.mark.parametrize("store_class", [MemoryStore, RedisStore])
     @pytest.mark.asyncio
-    async def test_filter_all(
-        self, unsync_event_loop, store_class, user_notification_message
-    ):
+    async def test_filter_all(self, store_class, user_notification_message):
         store = store_class()
         await store.initialize()
 
@@ -90,9 +90,7 @@ class TestBaseStore:
 
     @pytest.mark.parametrize("store_class", [MemoryStore, RedisStore])
     @pytest.mark.asyncio
-    async def test_filter_by_session_id(
-        self, unsync_event_loop, store_class, user_notification_message
-    ):
+    async def test_filter_by_session_id(self, store_class, user_notification_message):
         store = store_class()
         await store.initialize()
 
@@ -117,7 +115,7 @@ class TestBaseStore:
     @pytest.mark.parametrize("store_class", [MemoryStore, RedisStore])
     @pytest.mark.asyncio
     async def test_filter_by_originator_id(
-        self, unsync_event_loop, store_class, user_notification_message
+        self, store_class, user_notification_message
     ):
         store = store_class()
         await store.initialize()
@@ -142,7 +140,7 @@ class TestBaseStore:
     @pytest.mark.parametrize("store_class", [MemoryStore, RedisStore])
     @pytest.mark.asyncio
     async def test_filter_by_session_and_originator_id(
-        self, unsync_event_loop, store_class, user_notification_message
+        self, store_class, user_notification_message
     ):
         store = store_class()
         await store.initialize()
@@ -168,7 +166,7 @@ class TestBaseStore:
 
 class TestMemoryStore:
     @pytest.mark.asyncio
-    async def test_set(self, unsync_event_loop, user_notification_message):
+    async def test_set(self, user_notification_message):
         store = MemoryStore()
         await store.initialize()
 
@@ -184,16 +182,14 @@ class TestMemoryStore:
 
 class TestRedisStore:
     @pytest.mark.asyncio
-    async def test_initialize_creates_pool(
-        self, unsync_event_loop, user_notification_message
-    ):
+    async def test_initialize_creates_pool(self, user_notification_message):
         store = RedisStore()
         await store.initialize()
 
         assert await store.redis_pool is not None
 
     @pytest.mark.asyncio
-    async def test_set(self, unsync_event_loop, user_notification_message):
+    async def test_set(self, user_notification_message):
         store = RedisStore()
         await store.initialize()
 
@@ -207,9 +203,7 @@ class TestRedisStore:
 
 class TestMessageStoreApp:
     @pytest.mark.asyncio
-    async def test_on_receive_adds_message_to_store(
-        self, unsync_event_loop, messages, base_pipeline
-    ):
+    async def test_on_receive_adds_message_to_store(self, messages, base_pipeline):
         store_app = MessageStoreApp(base_pipeline, store=MemoryStore)
         await store_app.initialize()
 
@@ -220,9 +214,7 @@ class TestMessageStoreApp:
             assert await store_app.get_received(next_message.seq_num) == next_message
 
     @pytest.mark.asyncio
-    async def test_on_send_adds_message_to_store(
-        self, unsync_event_loop, messages, base_pipeline
-    ):
+    async def test_on_send_adds_message_to_store(self, messages, base_pipeline):
         store_app = MessageStoreApp(base_pipeline, store=MemoryStore)
         await store_app.initialize()
 

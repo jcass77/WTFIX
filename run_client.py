@@ -16,15 +16,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import argparse
-import functools
+import asyncio
 import logging
 import os
 import sys
 import signal
 from asyncio import futures
-
-# Import unsync to set event loop and start ambient unsync thread
-from unsync import unsync  # noqa
 
 from wtfix.conf import settings
 from wtfix.core.exceptions import ImproperlyConfigured
@@ -53,41 +50,42 @@ parser.add_argument(
 )
 
 
-@unsync
 async def graceful_shutdown(sig_name_, pipeline):
     logger.info(f"Received signal {sig_name_}! Initiating shutdown...")
 
     try:
-        task = pipeline.stop()
-        await task
-        task.cancel()  # Terminate the task once we're done
+        await pipeline.stop()
 
     except futures.CancelledError as e:
         logger.error(f"Cancelled: connection terminated abnormally! ({e})")
         sys.exit(os.EX_UNAVAILABLE)
 
 
-if __name__ == "__main__":
+async def main():
     logging.basicConfig(
         level=settings.LOGGING_LEVEL,
         format="%(asctime)s - %(threadName)s - %(module)s - %(levelname)s - %(message)s",
     )
 
     args = parser.parse_args()
+
     fix_pipeline = BasePipeline(
         connection_name=args.connection, new_session=args.new_session
     )
 
     try:
         # Graceful shutdown on termination signals.
-        # See: https://docs.python.org/3.6/library/asyncio-eventloop.html#set-signal-handlers-for-sigint-and-sigterm
+        # See: https://docs.python.org/3.7/library/asyncio-eventloop.html#set-signal-handlers-for-sigint-and-sigterm
+        loop = asyncio.get_running_loop()
         for sig_name in {"SIGINT", "SIGTERM"}:
-            unsync.loop.add_signal_handler(
+            loop.add_signal_handler(
                 getattr(signal, sig_name),
-                functools.partial(graceful_shutdown, sig_name, fix_pipeline),
+                lambda: asyncio.ensure_future(
+                    graceful_shutdown(sig_name, fix_pipeline)
+                ),
             )
 
-        fix_pipeline.start().result()
+        await fix_pipeline.start()
 
     except futures.TimeoutError as e:
         logger.error(e)
@@ -111,7 +109,11 @@ if __name__ == "__main__":
 
     finally:
         try:
-            fix_pipeline.stop().result()
+            await fix_pipeline.stop()
         except futures.CancelledError as e:
             logger.error(f"Cancelled: connection terminated abnormally! ({e})")
             sys.exit(os.EX_UNAVAILABLE)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

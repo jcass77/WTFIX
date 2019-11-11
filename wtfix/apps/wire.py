@@ -15,8 +15,6 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from unsync import unsync
-
 from wtfix.apps.base import BaseApp
 from wtfix.apps.sessions import ClientSessionApp
 from wtfix.conf import settings
@@ -44,7 +42,6 @@ class EncoderApp(BaseApp):
         settings.protocol.Tag.DeliverToCompID,
     }
 
-    @unsync
     async def on_send(self, message: FIXMessage) -> bytes:
         return self.encode_message(message)
 
@@ -119,7 +116,6 @@ class DecoderApp(BaseApp):
 
     name = "decoder_app"
 
-    @unsync
     async def on_receive(self, data: bytes) -> FIXMessage:
         try:
             return self.decode_message(data)

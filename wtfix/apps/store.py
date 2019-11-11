@@ -22,7 +22,6 @@ from typing import Union, List, Type
 
 import aioredis
 import abc
-from unsync import unsync
 
 from wtfix.core.decoders import JSONMessageDecoder
 from wtfix.core.encoders import JSONMessageEncoder
@@ -47,21 +46,18 @@ class BaseStore(abc.ABC):
     Base class for storing messages as part of a cache, queue, persistent database, etc.
     """
 
-    @unsync
     async def initialize(self, *args, **kwargs):
         """
         Initialize the memory store.
         """
         pass
 
-    @unsync
     async def finalize(self, *args, **kwargs):
         """
         Perform any cleanup or finalization of the memory store before the pipeline is stopped.
         """
         pass
 
-    @unsync
     @abc.abstractmethod
     async def set(self, session_id: str, originator: str, message: FIXMessage):
         """
@@ -72,7 +68,6 @@ class BaseStore(abc.ABC):
         :param message: The message to store.
         """
 
-    @unsync
     @abc.abstractmethod
     async def get(
         self, session_id: str, originator: str, seq_num: Union[str, int]
@@ -86,7 +81,6 @@ class BaseStore(abc.ABC):
         :return: a FIXMessage object
         """
 
-    @unsync
     @abc.abstractmethod
     async def delete(
         self, session_id: str, originator: str, seq_num: Union[str, int]
@@ -100,7 +94,6 @@ class BaseStore(abc.ABC):
         :return: the number of messages that were deleted
         """
 
-    @unsync
     @abc.abstractmethod
     async def filter(
         self, *, session_id: str = None, originator: str = None
@@ -129,11 +122,9 @@ class MemoryStore(BaseStore):
         super().__init__(encoder=encoder, decoder=decoder)
         self._store = OrderedDict()
 
-    @unsync
     async def set(self, session_id: str, originator: str, message: FIXMessage):
         self._store[self.get_key(session_id, originator, message.seq_num)] = message
 
-    @unsync
     async def get(
         self, session_id: str, originator: str, seq_num: Union[str, int]
     ) -> Union[FIXMessage, None]:
@@ -142,7 +133,6 @@ class MemoryStore(BaseStore):
         except KeyError:
             return None
 
-    @unsync
     async def delete(
         self, session_id: str, originator: str, seq_num: Union[str, int]
     ) -> int:
@@ -153,7 +143,6 @@ class MemoryStore(BaseStore):
             # No key found to delete
             return 0
 
-    @unsync
     async def filter(
         self, *, session_id: str = None, originator: str = None
     ) -> List[numbers.Integral]:
@@ -182,22 +171,17 @@ class RedisStore(BaseStore):
         super().__init__(encoder=encoder, decoder=decoder)
         self.redis_pool = None
 
-    @unsync
     async def initialize(self, *args, **kwargs):
         await super().initialize(*args, **kwargs)
 
-        self.redis_pool = await aioredis.create_redis_pool(
-            settings.REDIS_URI, loop=unsync.loop
-        )
+        self.redis_pool = await aioredis.create_redis_pool(settings.REDIS_URI)
 
-    @unsync
     async def finalize(self, *args, **kwargs):
         await super().finalize(*args, **kwargs)
 
         self.redis_pool.close()
         await self.redis_pool.wait_closed()  # Closing all open connections
 
-    @unsync
     async def set(self, session_id: str, originator: str, message: FIXMessage):
         with await self.redis_pool as conn:
             return await conn.execute(
@@ -206,7 +190,6 @@ class RedisStore(BaseStore):
                 json.dumps(message, cls=self.encoder),
             )
 
-    @unsync
     async def get(
         self, session_id: str, originator: str, seq_num: Union[str, int]
     ) -> Union[FIXMessage, None]:
@@ -220,7 +203,6 @@ class RedisStore(BaseStore):
                 return json.loads(json_message, cls=self.decoder)
             return json_message
 
-    @unsync
     async def delete(
         self, session_id: str, originator: str, seq_num: Union[str, int]
     ) -> int:
@@ -229,7 +211,6 @@ class RedisStore(BaseStore):
                 "del", self.get_key(session_id, originator, seq_num)
             )
 
-    @unsync
     async def filter(
         self, *, session_id: str = "*", originator: str = "*"
     ) -> List[numbers.Integral]:
@@ -286,7 +267,6 @@ class MessageStoreApp(BaseApp):
     def store(self):
         return self._store
 
-    @unsync
     async def initialize(self, *args, **kwargs):
         self._session_app = self.pipeline.apps[
             ClientSessionApp.name
@@ -294,41 +274,34 @@ class MessageStoreApp(BaseApp):
 
         await self.store.initialize(*args, **kwargs)
 
-    @unsync
     async def stop(self, *args, **kwargs):
         await self.store.finalize(*args, **kwargs)
 
-    @unsync
     async def get_sent(self, seq_num: Union[str, int]) -> Union[FIXMessage, None]:
         return await self.store.get(
             self._session_app.session_id, self._session_app.sender, seq_num
         )
 
-    @unsync
     async def set_sent(self, message: FIXMessage):
         return await self.store.set(
             self._session_app.session_id, self._session_app.sender, message
         )
 
-    @unsync
     async def get_received(self, seq_num: Union[str, int]) -> Union[FIXMessage, None]:
         return await self.store.get(
             self._session_app.session_id, self._session_app.target, seq_num
         )
 
-    @unsync
     async def set_received(self, message: FIXMessage):
         return await self.store.set(
             self._session_app.session_id, self._session_app.target, message
         )
 
-    @unsync
     async def on_receive(self, message: FIXMessage) -> FIXMessage:
         await self.set_received(message)
 
         return message
 
-    @unsync
     async def on_send(self, message: FIXMessage) -> FIXMessage:
         await self.set_sent(message)
 
