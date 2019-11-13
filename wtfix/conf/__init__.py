@@ -90,7 +90,7 @@ class Settings:
 
         raise ImproperlyConfigured(
             f"Cannot fall back to using session defaults as more than one session has been configured "
-            f"using the 'SESSIONS' parameter. You MUST specify which sessions' configuration settings to use."
+            f"using the 'CONNECTIONS' parameter. You MUST specify which sessions' configuration settings to use."
         )
 
     @property
