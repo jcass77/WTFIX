@@ -17,8 +17,13 @@
 
 import abc
 
+from wtfix.protocol.fix._44.message_types import MsgType
+from wtfix.protocol.fix._44.tags import Tag
 from wtfix.protocol.spec import BaseProtocol
 
 
 class FIXProtocol(BaseProtocol, abc.ABCMeta):
     name = "FIX"
+    version = "4.4"
+    _msg_types = MsgType
+    _tags = Tag
