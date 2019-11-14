@@ -111,7 +111,7 @@ class TestHeartbeatApp:
                     ),
                     0.1,
                 )
-            except asyncio.futures.TimeoutError:
+            except asyncio.TimeoutError:
                 pass
 
             assert check.call_count == 0
@@ -132,7 +132,7 @@ class TestHeartbeatApp:
                     ),
                     0.1,
                 )
-            except asyncio.futures.TimeoutError:
+            except asyncio.TimeoutError:
                 pass
 
             assert check.call_count > 1
@@ -153,7 +153,7 @@ class TestHeartbeatApp:
                 ),
                 0.1,
             )
-        except asyncio.futures.TimeoutError:
+        except asyncio.TimeoutError:
             pass
 
         assert not zero_heartbeat_app._server_not_responding.is_set()
