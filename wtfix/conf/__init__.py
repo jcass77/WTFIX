@@ -127,11 +127,9 @@ class ConnectionSettings:
     """
 
     def __init__(self, connection_name):
-        self.connection_name = connection_name
+        self._name = connection_name
         for setting, setting_value in settings.CONNECTIONS[connection_name].items():
             setattr(self, setting, setting_value)
 
     def get_group_templates(self, identifiers=None):
-        return settings.get_group_templates(
-            self.connection_name, identifiers=identifiers
-        )
+        return settings.get_group_templates(self._name, identifiers=identifiers)
