@@ -18,6 +18,7 @@ from contextlib import contextmanager
 
 from wtfix.conf import settings
 from wtfix.core.klass import get_class_from_module_string
+from wtfix.protocol.spec import ProtocolStub
 
 
 class Singleton(type):
@@ -53,9 +54,14 @@ class ConnectionContext(metaclass=Singleton):
     @property
     def protocol(self):
         if self._protocol is None:
-            self._protocol = get_class_from_module_string(
-                settings.CONNECTIONS[self._name]["PROTOCOL"]
-            )
+            try:
+                self._protocol = get_class_from_module_string(
+                    settings.CONNECTIONS[self._name]["PROTOCOL"]
+                )
+            except KeyError:
+                return (
+                    ProtocolStub
+                )  # Return a stub so long, in the hope that the connection will eventually be set.
 
         return self._protocol
 

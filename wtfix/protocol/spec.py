@@ -48,6 +48,31 @@ class BaseProtocol(metaclass=MetaProtocol):
     _tags = None
 
 
+class NoneAttribute:
+    """
+    An attribute stub that always returns 'None'.
+
+    Its main purpose is to replace the 'MsgType' and 'Tag' attributes of stubbed-out protocols at import time.
+    """
+
+    def __getattr__(self, item):
+        return None
+
+
+class ProtocolStub:
+    """
+    The ProtocolStub returns 'None' for any MsgType or Tag lookups.
+
+    It is not of any practical use apart from allowing Python files that contain dynamic protocol references like
+    the '@on(settings.protocol.MsgType)' decorator to be imported even if no protocol has been configured.
+    """
+
+    name = "Stub"
+    version = "none"
+    MsgType = NoneAttribute()
+    Tag = NoneAttribute()
+
+
 class AttributeValueMappingsMixin:
     """
     Utility class for doing quick lookups based on class attribute values. This can be used to look up tags or
