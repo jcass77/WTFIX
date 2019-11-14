@@ -87,7 +87,7 @@ async def main():
 
         await fix_pipeline.start()
 
-    except futures.TimeoutError as e:
+    except asyncio.TimeoutError as e:
         logger.error(e)
         sys.exit(os.EX_UNAVAILABLE)
 

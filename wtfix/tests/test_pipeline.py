@@ -119,7 +119,7 @@ class TestBasePipeline:
     async def test_start_raises_exception_on_initialize_timeout(
         self, three_level_app_chain
     ):
-        with pytest.raises(futures.TimeoutError):
+        with pytest.raises(asyncio.TimeoutError):
             pipeline = BasePipeline(installed_apps=three_level_app_chain)
 
             settings.INIT_TIMEOUT = 0.1
@@ -137,7 +137,7 @@ class TestBasePipeline:
 
     @pytest.mark.asyncio
     async def test_start_raises_exception_on_start_timeout(self, three_level_app_chain):
-        with pytest.raises(futures.TimeoutError):
+        with pytest.raises(asyncio.TimeoutError):
             pipeline = BasePipeline(installed_apps=three_level_app_chain)
 
             settings.STARTUP_TIMEOUT = 0.1

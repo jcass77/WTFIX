@@ -16,7 +16,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import asyncio
-from asyncio import futures
 from collections import OrderedDict
 
 from wtfix.core.klass import get_class_from_module_string
@@ -107,7 +106,7 @@ class BasePipeline:
             # Initialize all apps first
             await asyncio.wait_for(self.initialize(), settings.INIT_TIMEOUT)
 
-        except futures.TimeoutError as e:
+        except asyncio.TimeoutError as e:
             logger.error(f"Timeout waiting for apps to initialize!")
             raise e
 
@@ -116,7 +115,7 @@ class BasePipeline:
 
             try:
                 await asyncio.wait_for(app.start(), settings.STARTUP_TIMEOUT)
-            except futures.TimeoutError as e:
+            except asyncio.TimeoutError as e:
                 logger.error(f"Timeout waiting for app '{app}' to start!")
                 raise e
 
@@ -146,7 +145,7 @@ class BasePipeline:
 
                 logger.info("Pipeline stopped.")
                 self.stopped_event.set()
-            except futures.TimeoutError:
+            except asyncio.TimeoutError:
                 logger.error(
                     f"Timeout waiting for app '{app}' to stop, cancelling all outstanding tasks..."
                 )
