@@ -12,7 +12,7 @@ from pytest_socket import socket_allow_hosts
 @pytest.fixture(autouse=True, params=[base.CONNECTIONS])
 def connection_setup(request):
     # Example of running test suite for each connection (and different protocols) individually
-    base.CONNECTIONS = {"test_connection": request.param["default"]}
+    base.CONNECTIONS = {"test": request.param["default"]}
 
 
 # https://github.com/miketheman/pytest-socket#usage

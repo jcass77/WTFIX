@@ -23,6 +23,3 @@ CONNECTIONS["default"]["GROUP_TEMPLATES"] = {
     # Routing IDs
     protocol.Tag.NoRoutingIDs: {"*": [protocol.Tag.RoutingType, protocol.Tag.RoutingID]}
 }
-
-# Example of resetting connections so that we can enable them one by one with test fixture parameters in conftest.py
-# CONNECTIONS = {"default": CONNECTIONS["default"]}

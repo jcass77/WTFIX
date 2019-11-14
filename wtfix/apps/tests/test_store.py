@@ -30,6 +30,8 @@ class TestBaseStore:
             == user_notification_message
         )
 
+        await store.finalize()
+
     @pytest.mark.parametrize("store_class", [MemoryStore, RedisStore])
     @pytest.mark.asyncio
     async def test_get_not_found_returns_none(self, store_class):
@@ -45,6 +47,8 @@ class TestBaseStore:
         # Wait for separate tasks to complete
         tasks = asyncio.all_tasks()
         await asyncio.wait(tasks, timeout=0.1)
+
+        await store.finalize()
 
     @pytest.mark.parametrize("store_class", [MemoryStore, RedisStore])
     @pytest.mark.asyncio
@@ -65,6 +69,8 @@ class TestBaseStore:
 
         assert await store.delete(session_id, "TRADER", 3) == 1
         assert await store.delete(session_id, "TRADER", 99) == 0  # Does not exist
+
+        await store.finalize()
 
     @pytest.mark.parametrize("store_class", [MemoryStore, RedisStore])
     @pytest.mark.asyncio
@@ -87,6 +93,8 @@ class TestBaseStore:
 
         assert len(seq_nums) == 5
         assert all(seq_num in seq_nums for seq_num in range(1, 6))
+
+        await store.finalize()
 
     @pytest.mark.parametrize("store_class", [MemoryStore, RedisStore])
     @pytest.mark.asyncio
@@ -112,6 +120,8 @@ class TestBaseStore:
         assert len(seq_nums) == 5
         assert all(seq_num in seq_nums for seq_num in range(1, 6))
 
+        await store.finalize()
+
     @pytest.mark.parametrize("store_class", [MemoryStore, RedisStore])
     @pytest.mark.asyncio
     async def test_filter_by_originator_id(
@@ -136,6 +146,8 @@ class TestBaseStore:
 
         assert len(seq_nums) == 5
         assert all(seq_num in seq_nums for seq_num in range(1, 6))
+
+        await store.finalize()
 
     @pytest.mark.parametrize("store_class", [MemoryStore, RedisStore])
     @pytest.mark.asyncio
@@ -163,6 +175,8 @@ class TestBaseStore:
         assert len(seq_nums) == 5
         assert all(seq_num in seq_nums for seq_num in range(1, 6))
 
+        await store.finalize()
+
 
 class TestMemoryStore:
     @pytest.mark.asyncio
@@ -179,6 +193,8 @@ class TestMemoryStore:
             == user_notification_message
         )
 
+        await store.finalize()
+
 
 class TestRedisStore:
     @pytest.mark.asyncio
@@ -187,6 +203,8 @@ class TestRedisStore:
         await store.initialize()
 
         assert await store.redis_pool is not None
+
+        await store.finalize()
 
     @pytest.mark.asyncio
     async def test_set(self, user_notification_message):
@@ -199,6 +217,8 @@ class TestRedisStore:
         assert await store.redis_pool.exists(
             f"{session_id}:TRADER:{user_notification_message.seq_num}"
         )
+
+        await store.finalize()
 
 
 class TestMessageStoreApp:
@@ -213,6 +233,8 @@ class TestMessageStoreApp:
         for next_message in messages:
             assert await store_app.get_received(next_message.seq_num) == next_message
 
+        await store_app.stop()
+
     @pytest.mark.asyncio
     async def test_on_send_adds_message_to_store(self, messages, base_pipeline):
         store_app = MessageStoreApp(base_pipeline, store=MemoryStore)
@@ -223,3 +245,5 @@ class TestMessageStoreApp:
 
         for next_message in messages:
             assert await store_app.get_sent(next_message.seq_num) == next_message
+
+        await store_app.stop()
