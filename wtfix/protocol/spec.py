@@ -64,7 +64,7 @@ class ProtocolStub:
     The ProtocolStub returns 'None' for any MsgType or Tag lookups.
 
     It is not of any practical use apart from allowing Python files that contain dynamic protocol references like
-    the '@on(settings.protocol.MsgType)' decorator to be imported even if no protocol has been configured.
+    the '@on(connection.protocol.MsgType)' decorator to be imported even if no protocol has been configured.
     """
 
     name = "Stub"
