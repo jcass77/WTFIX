@@ -109,7 +109,7 @@ class Settings:
                 mod_name, class_name = self.default_connection.PROTOCOL.rsplit(".", 1)
             except ImproperlyConfigured:
                 # No protocol defined - stub out references
-                mod_name, class_name = ProtocolStub.__class__.name.rsplit(".", 1)
+                mod_name, class_name = ProtocolStub.__module__, ProtocolStub.__name__
 
             module = importlib.import_module(mod_name)
             protocol_class = getattr(module, class_name)
