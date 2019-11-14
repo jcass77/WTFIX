@@ -2,6 +2,7 @@ import pytest
 
 from wtfix.conf import settings
 from wtfix.core.exceptions import UnknownType, UnknownTag
+from wtfix.protocol.spec import ProtocolStub
 
 
 class TestMsgType:
@@ -34,3 +35,19 @@ class TestTag:
     def test_get_tag_unknown_raises_exception(self):
         with pytest.raises(UnknownTag):
             settings.protocol.Tag.get_tag("abcdefghijk")
+
+
+class TestProtocolStub:
+    def test_tag_always_returns_none(self):
+        protocol = ProtocolStub()
+
+        assert protocol.Tag.MsgType is None
+        assert protocol.Tag.SeqNum is None
+        assert protocol.Tag.SomeArbitratyDummyTag is None
+
+    def test_msgtype_always_returns_none(self):
+        protocol = ProtocolStub()
+
+        assert protocol.MsgType.Logon is None
+        assert protocol.MsgType.Heartbeat is None
+        assert protocol.MsgType.SomeArbitratyDummyMsgType is None

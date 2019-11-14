@@ -172,6 +172,7 @@ class ClientSessionApp(SessionApp):
         begin_string = utils.encode(
             f"{settings.protocol.Tag.BeginString}="
         ) + utils.encode(settings.BEGIN_STRING)
+
         checksum_start = settings.SOH + utils.encode(
             f"{settings.protocol.Tag.CheckSum}="
         )

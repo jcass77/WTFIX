@@ -33,8 +33,11 @@ from dotenv import load_dotenv
 
 from pathlib import Path  # python3 only
 
+from wtfix.protocol.spec import ProtocolStub
+
 env_path = Path(".") / ".env"
 load_dotenv(dotenv_path=env_path)
+
 
 ENVIRONMENT_VARIABLE = "WTFIX_SETTINGS_MODULE"
 
@@ -89,8 +92,10 @@ class Settings:
             return next(iter(self.CONNECTIONS))
 
         raise ImproperlyConfigured(
-            f"Cannot fall back to using session defaults as more than one session has been configured "
-            f"using the 'CONNECTIONS' parameter. You MUST specify which sessions' configuration settings to use."
+            f"Could not determine which WTFIX configuration to use as more than one 'CONNECTION' has been "
+            f"configured in the settings file. You should probably set `settings.protocol` explicitly "
+            f"somewhere in your project implementation (e.g. by initializing the pipeline with the --connection"
+            f"parameter."
         )
 
     @property
@@ -100,7 +105,12 @@ class Settings:
     @property
     def protocol(self):
         if self._protocol is None:
-            mod_name, class_name = self.default_connection.PROTOCOL.rsplit(".", 1)
+            try:
+                mod_name, class_name = self.default_connection.PROTOCOL.rsplit(".", 1)
+            except ImproperlyConfigured:
+                # No protocol defined - stub out references
+                mod_name, class_name = ProtocolStub.__class__.name.rsplit(".", 1)
+
             module = importlib.import_module(mod_name)
             protocol_class = getattr(module, class_name)
 

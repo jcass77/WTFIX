@@ -282,7 +282,7 @@ class AuthenticationApp(MessageTypeHandlerApp):
         super().__init__(pipeline, *args, **kwargs)
 
         if heartbeat_int is None:
-            heartbeat_int = settings.default_connection.HEARTBEAT_INT
+            heartbeat_int = self.pipeline.settings.HEARTBEAT_INT
 
         self.heartbeat_int = heartbeat_int
 

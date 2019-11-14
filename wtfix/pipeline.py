@@ -76,7 +76,7 @@ class BasePipeline:
 
         for app in installed_apps:
             class_ = get_class_from_module_string(app)
-            instance = class_(self)
+            instance = class_(self, **kwargs)
 
             loaded_apps[instance.name] = instance
 
