@@ -15,12 +15,6 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""
-Settings and configuration for wtfix.
-
-Read values from the module specified by the WTFIX_SETTINGS_MODULE environment variable
-"""
-
 import importlib
 import os
 import logging
@@ -43,6 +37,12 @@ ENVIRONMENT_VARIABLE = "WTFIX_SETTINGS_MODULE"
 
 
 class Settings:
+    """
+    Settings and configuration for wtfix.
+
+    Read values from the module specified by the WTFIX_SETTINGS_MODULE environment variable
+    """
+
     def __init__(self, settings_module=None):
 
         self._logger = None
