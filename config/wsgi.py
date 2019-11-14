@@ -20,10 +20,6 @@ import logging
 
 from flask import Flask
 
-from unsync import (
-    unsync,
-)  # Import unsync to set event loop and start ambient unsync thread
-
 from wtfix.apps.api.rest import RESTfulServiceApp
 from wtfix.conf import settings
 from wtfix.pipeline import BasePipeline

@@ -14,9 +14,9 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import asyncio
 
 import aioredis
-from unsync import unsync
 
 from wtfix.apps.base import BaseApp
 from wtfix.conf import settings
@@ -39,7 +39,6 @@ class RedisPubSubApp(BaseApp):
 
         self.redis_pool = None
 
-    @unsync
     async def _send_channel_reader(self):
         try:
             with await self.redis_pool as conn:
@@ -50,27 +49,24 @@ class RedisPubSubApp(BaseApp):
                 while await send_channel.wait_message():
                     message = await send_channel.get()
                     message = decoders.from_json(utils.decode(message))
-                    self.send(message)  # Pass message on to pipeline
+                    asyncio.create_task(
+                        self.send(message)
+                    )  # Pass message on to pipeline
 
         except aioredis.ChannelClosedError:
             # Shutting down...
             logger.info(f"{self.name}: Unsubscribed from {send_channel.name}.")
 
-    @unsync
     async def initialize(self, *args, **kwargs):
         await super().initialize(*args, **kwargs)
 
-        self.redis_pool = await aioredis.create_redis_pool(
-            settings.REDIS_URI, loop=unsync.loop
-        )
+        self.redis_pool = await aioredis.create_redis_pool(settings.REDIS_URI)
 
-    @unsync
     async def start(self, *args, **kwargs):
         await super().start(*args, **kwargs)
 
-        self._send_channel_reader()
+        asyncio.create_task(self._send_channel_reader())
 
-    @unsync
     async def stop(self, *args, **kwargs):
         await super().stop(*args, **kwargs)
 

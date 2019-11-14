@@ -1,6 +1,5 @@
 python-dotenv~=0.10.3  # https://github.com/theskumar/python-dotenv
-unsync~=1.2  # https://github.com/alex-sherman/unsync
 flask-restful~=0.3.7  # https://github.com/flask-restful/flask-restful
 requests~=2.22.0  # https://github.com/kennethreitz/requests
 gunicorn~=19.9.0  # https://gunicorn.org
-aioredis~=1.2  # https://github.com/aio-libs/aioredis
+aioredis~=1.3  # https://github.com/aio-libs/aioredis

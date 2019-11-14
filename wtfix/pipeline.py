@@ -16,13 +16,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import asyncio
-import importlib
 from asyncio import futures
 from collections import OrderedDict
 
-from unsync import unsync
-
-from wtfix.protocol.common import MsgType
+from wtfix.core.klass import get_class_from_module_string
 from wtfix.conf import SessionSettings
 from wtfix.conf import settings
 from wtfix.core.exceptions import (
@@ -49,11 +46,13 @@ class BasePipeline:
 
         self.settings = SessionSettings(connection_name)
         self._installed_apps = self._load_apps(installed_apps=installed_apps, **kwargs)
-        logger.info(f"Created new FIX application pipeline: {list(self.apps.keys())}.")
+        logger.info(
+            f"Created new WTFIX application pipeline: {list(self.apps.keys())}."
+        )
 
-        self.stop_lock = asyncio.Lock(loop=unsync.loop)
-        self.stopping_event = asyncio.Event(loop=unsync.loop)
-        self.stopped_event = asyncio.Event(loop=unsync.loop)
+        self.stop_lock = asyncio.Lock()
+        self.stopping_event = asyncio.Event()
+        self.stopped_event = asyncio.Event()
 
     @property
     def apps(self):
@@ -75,23 +74,14 @@ class BasePipeline:
                 f"At least one application needs to be added to the pipeline by using the PIPELINE_APPS setting."
             )
 
-        settings_kwargs = {
-            **kwargs,
-            **{key.lower(): value for key, value in self.settings.__dict__.items()},
-        }
-
         for app in installed_apps:
-            mod_name, class_name = app.rsplit(".", 1)
-            module = importlib.import_module(mod_name)
-
-            class_ = getattr(module, class_name)
-            instance = class_(self, **settings_kwargs)
+            class_ = get_class_from_module_string(app)
+            instance = class_(self, **kwargs)
 
             loaded_apps[instance.name] = instance
 
         return loaded_apps
 
-    @unsync
     async def initialize(self):
         """
         Initialize all applications that have been configured for this pipeline.
@@ -105,7 +95,6 @@ class BasePipeline:
 
         logger.info("All apps initialized!")
 
-    @unsync
     async def start(self):
         """
         Starts each of the applications in turn.
@@ -136,7 +125,6 @@ class BasePipeline:
         # Block until the pipeline has been stopped again.
         await self.stopped_event.wait()
 
-    @unsync
     async def stop(self):
         """
         Tries to shut down the pipeline in an orderly fashion.
@@ -163,7 +151,7 @@ class BasePipeline:
                     f"Timeout waiting for app '{app}' to stop, cancelling all outstanding tasks..."
                 )
                 # Stop all asyncio tasks
-                for task in asyncio.Task.all_tasks(unsync.loop):
+                for task in asyncio.all_tasks():
                     task.cancel()
 
     def _setup_message_handling(self, direction):
@@ -177,7 +165,6 @@ class BasePipeline:
             f"Unknown application chain processing direction '{direction}'."
         )
 
-    @unsync
     async def _process_message(self, message, direction):
         """
         Process a message by passing it on to the various apps in the pipeline.
@@ -209,9 +196,10 @@ class BasePipeline:
             raise e
 
         except Exception as e:
+            protocol = self.settings.protocol
             if (
                 isinstance(Exception, ConnectionError)
-                and message.type == MsgType.Logout
+                and message.type == protocol.MsgType.Logout
                 and self.stopping_event.is_set()
             ):
                 # Mute connection errors that occur while we are trying to shut down / log out - connection issues
@@ -231,12 +219,10 @@ class BasePipeline:
 
         return message
 
-    @unsync
     async def receive(self, message):
         """Receives a new message to be processed"""
         return await self._process_message(message, BasePipeline.INBOUND_PROCESSING)
 
-    @unsync
     async def send(self, message):
         """Processes a new message to be sent"""
         return await self._process_message(message, BasePipeline.OUTBOUND_PROCESSING)

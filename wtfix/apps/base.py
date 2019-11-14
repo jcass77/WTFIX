@@ -16,8 +16,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from functools import wraps
 
-from unsync import unsync
-
 from wtfix.core.exceptions import ValidationError, MessageProcessingError
 from wtfix.message.message import FIXMessage
 
@@ -44,7 +42,6 @@ class BaseApp:
     def __str__(self):
         return self.name
 
-    @unsync
     async def initialize(self, *args, **kwargs):
         """
         Initialization that needs to be performed when the app is first loaded as part of an application processing
@@ -55,7 +52,6 @@ class BaseApp:
         """
         pass
 
-    @unsync
     async def start(self, *args, **kwargs):
         """
         Override this method for any app-specific routines that should be performed when the application
@@ -69,7 +65,6 @@ class BaseApp:
         """
         pass
 
-    @unsync
     async def stop(self, *args, **kwargs):
         """
         Override this method for any app-specific routines that should be performed when the application
@@ -80,7 +75,6 @@ class BaseApp:
         """
         pass
 
-    @unsync
     async def on_receive(self, message: FIXMessage) -> FIXMessage:
         """
         Override this method in order to define what to do when a message is received.
@@ -92,7 +86,6 @@ class BaseApp:
         """
         return message
 
-    @unsync
     async def on_resend(self, message: FIXMessage) -> FIXMessage:
         """
         Override this message in order to define what to do when a message was not received successfully
@@ -105,7 +98,6 @@ class BaseApp:
         """
         return message
 
-    @unsync
     async def on_send(self, message: FIXMessage) -> FIXMessage:
         """
         Override this method in order to define what to do with a message needs to be transmitted.
@@ -116,7 +108,6 @@ class BaseApp:
         """
         return message
 
-    @unsync
     async def send(self, message: FIXMessage):
         """
         Send a message.
@@ -176,7 +167,6 @@ class MessageTypeHandlerApp(BaseApp):
                 # Method is not a message type pipeline, ignore
                 pass
 
-    @unsync
     async def on_receive(self, message: FIXMessage) -> FIXMessage:
         """
         Calls the relevant on_<message_type> handler for this type of message, or 'on_unhandled' if no
@@ -198,7 +188,6 @@ class MessageTypeHandlerApp(BaseApp):
 
         return message
 
-    @unsync
     async def on_unhandled(self, message: FIXMessage) -> FIXMessage:
         """
         Default message handler. Will process any messages that are not handled by a type-specific

@@ -14,12 +14,13 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import asyncio
 import uuid
+from multiprocessing import Process
 
 import requests
 from flask import Flask, request
 from flask_restful import Api, Resource, reqparse
-from unsync import unsync
 
 from wtfix.apps.api.utils import JsonResultResponse
 from wtfix.apps.base import BaseApp
@@ -58,7 +59,8 @@ class Send(Resource):
         args = self.parser.parse_args()
         message = decoders.from_json(args["message"])
 
-        self.app.send(message)
+        loop = asyncio.get_event_loop()
+        asyncio.ensure_future(self.app.send(message), loop=loop)
 
         return JsonResultResponse(
             True,
@@ -69,7 +71,7 @@ class Send(Resource):
 
 class Shutdown(Resource):
     """
-    Shut down the Flask server (without having to start a dedicated thread outside of the unsync thread pool)
+    Shut down the Flask server.
     """
 
     def __init__(self, app):
@@ -109,6 +111,7 @@ class RESTfulServiceApp(BaseApp):
         super().__init__(pipeline, *args, **kwargs)
 
         self._flask_app = None
+        self._flask_process = None
         self.secret_key = (
             uuid.uuid4().hex
         )  # Secret key used internally by restricted APIs that should only be callable by this app itself.
@@ -124,7 +127,10 @@ class RESTfulServiceApp(BaseApp):
                 )
 
                 self._flask_app = Flask(__name__)
-                self._run_flask_dev_server(self._flask_app)
+                self._flask_process = Process(
+                    target=self._run_flask_dev_server, args=(self._flask_app,)
+                )
+                self._flask_process.start()
             else:
                 # Must be running as a WSGI application
                 from config.wsgi import app
@@ -133,7 +139,6 @@ class RESTfulServiceApp(BaseApp):
 
         return self._flask_app
 
-    @unsync
     async def initialize(self, *args, **kwargs):
         await super().initialize(*args, **kwargs)
 
@@ -142,17 +147,20 @@ class RESTfulServiceApp(BaseApp):
         api.add_resource(Send, "/send", resource_class_args=[self])
         api.add_resource(Shutdown, "/shutdown", resource_class_args=[self])
 
-    @unsync
     def _run_flask_dev_server(self, flask_app):
         # Start Flask in a separate thread
         flask_app.run(
             debug=False
         )  # debug=False: disable automatic restarting of the Flask server
 
-    @unsync
     async def stop(self, *args, **kwargs):
         await super().stop(*args, **kwargs)
 
-        return requests.post(
+        result = requests.post(
             "http://127.0.0.1:5000/shutdown", data={"token": self.secret_key}
         )
+
+        if self._flask_process is not None:
+            self._flask_process.kill()
+
+        return result

@@ -1,12 +1,18 @@
 import pytest
-from unsync import unsync
 
+from config.settings import base
+from wtfix.conf import settings
 from wtfix.message import admin
-from wtfix.protocol.common import MsgType, Tag
 from wtfix.message.message import GenericMessage, OptimizedGenericMessage
 from wtfix.message.collections import Group, FieldDict, FieldList
 
 from pytest_socket import socket_allow_hosts
+
+
+@pytest.fixture(autouse=True, params=[base.CONNECTIONS])
+def connection_setup(request):
+    # Example of running test suite for each connection (and different protocols) individually
+    base.CONNECTIONS = {"test": request.param["default"]}
 
 
 # https://github.com/miketheman/pytest-socket#usage
@@ -19,24 +25,6 @@ def pytest_runtest_setup():
     socket_allow_hosts(allowed=["localhost", "127.0.0.1", "::1"])
 
 
-@pytest.fixture
-def unsync_event_loop(event_loop):
-    # Force unsync to use the same event loop as pytest-asyncio
-    # See: https://github.com/pytest-dev/pytest-asyncio#event_loop
-
-    # Stop the current unsync loop
-    current_loop = unsync.loop
-    if current_loop != event_loop:
-        try:
-            current_loop.call_soon_threadsafe(current_loop.stop)
-        except RuntimeError:
-            # Loop already closed.
-            pass
-
-    # Use pytest-asyncio's event loop instead
-    unsync.loop = event_loop
-
-
 # Add future implementations of FieldMap to this list to include in tests.
 @pytest.fixture(params=[FieldDict, FieldList])
 def fieldmap_class(request):
@@ -47,12 +35,12 @@ def fieldmap_class(request):
 def routing_id_group():
     """Example of a RoutingID repeating group"""
     return Group(
-        (Tag.NoRoutingIDs, "2"),
-        (Tag.RoutingType, "a"),
-        (Tag.RoutingID, "b"),
-        (Tag.RoutingType, "c"),
-        (Tag.RoutingID, "d"),
-        template=[Tag.RoutingType, Tag.RoutingID],
+        (settings.protocol.Tag.NoRoutingIDs, "2"),
+        (settings.protocol.Tag.RoutingType, "a"),
+        (settings.protocol.Tag.RoutingID, "b"),
+        (settings.protocol.Tag.RoutingType, "c"),
+        (settings.protocol.Tag.RoutingID, "d"),
+        template=[settings.protocol.Tag.RoutingType, settings.protocol.Tag.RoutingID],
     )
 
 
@@ -105,15 +93,21 @@ def logon_message():
 def sdr_message_fields():
     """Sample of a security definition request message fields"""
     return [
-        (Tag.MsgType, MsgType.SecurityDefinitionRequest),
-        (Tag.MsgSeqNum, "1"),  # MsgSeqNum: 1
-        (Tag.SenderCompID, "SENDER"),  # SenderCompID
-        (Tag.SendingTime, "20181127-11:33:31.505"),  # SendingTime
-        (Tag.TargetCompID, "TARGET"),  # TargetCompID
-        (Tag.Symbol, "^.*$"),  # Symbol
-        (Tag.SecurityType, "CS"),  # SecurityType: CommonStock
-        (Tag.SecurityReqID, "37a0b5c8afb543ec8f29eca2a44be2ec"),  # SecurityReqID
-        (Tag.SecurityRequestType, "3"),  # SecurityRequestType: all
+        (
+            settings.protocol.Tag.MsgType,
+            settings.protocol.MsgType.SecurityDefinitionRequest,
+        ),
+        (settings.protocol.Tag.MsgSeqNum, "1"),  # MsgSeqNum: 1
+        (settings.protocol.Tag.SenderCompID, "SENDER"),  # SenderCompID
+        (settings.protocol.Tag.SendingTime, "20181127-11:33:31.505"),  # SendingTime
+        (settings.protocol.Tag.TargetCompID, "TARGET"),  # TargetCompID
+        (settings.protocol.Tag.Symbol, "^.*$"),  # Symbol
+        (settings.protocol.Tag.SecurityType, "CS"),  # SecurityType: CommonStock
+        (
+            settings.protocol.Tag.SecurityReqID,
+            "37a0b5c8afb543ec8f29eca2a44be2ec",
+        ),  # SecurityReqID
+        (settings.protocol.Tag.SecurityRequestType, "3"),  # SecurityRequestType: all
     ]
 
 

@@ -50,9 +50,7 @@ class TestSessionApp:
         assert session_app.is_resumed is False
 
     @pytest.mark.asyncio
-    async def test_stop_file_does_not_exist_handled_gracefully(
-        self, unsync_event_loop, base_pipeline
-    ):
+    async def test_stop_file_does_not_exist_handled_gracefully(self, base_pipeline):
         session_app = SessionApp(base_pipeline)
 
         await session_app.stop()
@@ -60,9 +58,7 @@ class TestSessionApp:
 
 class TestClientSessionApp:
     @pytest.mark.asyncio
-    async def test_listen_reads_a_complete_message(
-        self, unsync_event_loop, base_pipeline, encoder_app
-    ):
+    async def test_listen_reads_a_complete_message(self, base_pipeline, encoder_app):
         session_app = ClientSessionApp(base_pipeline)
         session_app.reader = asyncio.StreamReader()
 
@@ -78,7 +74,7 @@ class TestClientSessionApp:
 
         encoded_msg = encoder_app.encode_message(msg)
 
-        session_app.listen()
+        asyncio.create_task(session_app.listen())
         session_app.reader.feed_data(encoded_msg[:-1])  # Feed first part of message
 
         await asyncio.sleep(0.1)

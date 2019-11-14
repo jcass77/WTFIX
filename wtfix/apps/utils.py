@@ -14,8 +14,6 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from unsync import unsync
-
 from wtfix.apps.base import BaseApp
 from wtfix.conf import settings
 from wtfix.message.message import FIXMessage
@@ -30,7 +28,6 @@ class OutboundLoggingApp(BaseApp):
 
     name = "outbound_logger"
 
-    @unsync
     async def on_send(self, message: FIXMessage) -> FIXMessage:
         logger.info(f" --> {message:t}")
 
@@ -44,8 +41,18 @@ class InboundLoggingApp(BaseApp):
 
     name = "inbound_logger"
 
-    @unsync
     async def on_receive(self, message: FIXMessage) -> FIXMessage:
         logger.info(f" <-- {message:t}")
 
         return message
+
+
+class PipelineTerminationApp(BaseApp):
+    """
+    Terminates the pipeline and encourages garbage collection of the message.
+    """
+
+    name = "pipeline_termination"
+
+    async def on_receive(self, message: FIXMessage) -> None:
+        del message

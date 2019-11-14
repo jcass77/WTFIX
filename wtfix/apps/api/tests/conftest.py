@@ -8,7 +8,7 @@ from wtfix.pipeline import BasePipeline
 
 
 @pytest.fixture
-async def api_app(unsync_event_loop):
+async def api_app():
     pipeline_mock = MagicMock(BasePipeline)
     api_app = RESTfulServiceApp(pipeline_mock)
 

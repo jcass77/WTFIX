@@ -62,31 +62,3 @@ STOP_TIMEOUT = 5
 
 # Default formatting for datetime objects.
 DATETIME_FORMAT = "%Y%m%d-%H:%M:%S.%f"
-
-SESSIONS = {
-    "default": {
-        "HEARTBEAT_INT": 30,
-        # List of strings representing installed apps.
-        "PIPELINE_APPS": [
-            "wtfix.apps.admin.HeartbeatApp",
-            "wtfix.apps.admin.AuthenticationApp",
-            "wtfix.apps.admin.SeqNumManagerApp",
-            "wtfix.apps.parsers.RawMessageParserApp",
-            "wtfix.apps.wire.WireCommsApp",
-            "wtfix.apps.sessions.ClientSessionApp",
-        ],
-        # Dictionary of repeating group templates.
-        # The format is:
-        #
-        #   {
-        #       <identifier_tag_number>: [
-        #             <tag_1>,
-        #             <tag_2>,
-        #            ...,
-        #             <tag_n>
-        #         ]
-        #   }
-        #
-        "GROUP_TEMPLATES": {},
-    }
-}

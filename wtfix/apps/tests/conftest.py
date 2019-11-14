@@ -1,3 +1,4 @@
+import asyncio
 import os
 from asyncio import Future
 from unittest import mock
@@ -14,7 +15,11 @@ from wtfix.conf import settings
 from wtfix.message.admin import HeartbeatMessage
 from wtfix.message.message import generic_message_factory
 from wtfix.pipeline import BasePipeline
-from wtfix.protocol.common import Tag, MsgType
+
+
+@asyncio.coroutine
+def mock_stop():
+    return None
 
 
 @pytest.fixture
@@ -40,6 +45,9 @@ def base_pipeline():
 
     pipeline.send = mock_future_message
     pipeline.receive = mock_future_message
+
+    # Simulate the pipeline shutting down
+    pipeline.stop = MagicMock(return_value=mock_stop())
 
     yield pipeline
 
@@ -89,9 +97,9 @@ def zero_heartbeat_app(base_pipeline):
 
 
 @pytest.fixture
-def failing_server_heartbeat_app():
+def failing_server_heartbeat_app(base_pipeline):
     """Simulates the server failing after responding to three test requests."""
-    app = ZeroDelayHeartbeatTestApp(MagicMock(BasePipeline))
+    app = ZeroDelayHeartbeatTestApp(base_pipeline)
     num_responses = 0
 
     async def simulate_heartbeat_response(message):
@@ -111,16 +119,16 @@ def user_notification_message():
     faker = Faker()
 
     return generic_message_factory(
-        (Tag.MsgType, MsgType.UserNotification),
-        (Tag.MsgSeqNum, 1),
-        (Tag.SenderCompID, settings.default_connection.SENDER),
-        (Tag.SendingTime, "20181206-10:24:27.018"),
-        (Tag.TargetCompID, settings.default_connection.TARGET),
-        (Tag.NoLinesOfText, 1),
-        (Tag.Text, "abc"),
-        (Tag.EmailType, 0),
-        (Tag.Subject, "Test message"),
-        (Tag.EmailThreadID, faker.pyint()),
+        (settings.protocol.Tag.MsgType, settings.protocol.MsgType.UserNotification),
+        (settings.protocol.Tag.MsgSeqNum, 1),
+        (settings.protocol.Tag.SenderCompID, settings.default_connection.SENDER),
+        (settings.protocol.Tag.SendingTime, "20181206-10:24:27.018"),
+        (settings.protocol.Tag.TargetCompID, settings.default_connection.TARGET),
+        (settings.protocol.Tag.NoLinesOfText, 1),
+        (settings.protocol.Tag.Text, "abc"),
+        (settings.protocol.Tag.EmailType, 0),
+        (settings.protocol.Tag.Subject, "Test message"),
+        (settings.protocol.Tag.EmailThreadID, faker.pyint()),
     )
 
 

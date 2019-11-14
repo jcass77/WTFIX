@@ -15,30 +15,34 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""
-Settings and configuration for wtfix.
-
-Read values from the module specified by the WTFIX_SETTINGS_MODULE environment variable
-"""
-
 import importlib
 import os
 import logging
+from typing import Type
 
-from . import global_settings
-from ..core.exceptions import ImproperlyConfigured
+from wtfix.conf import global_settings
+from wtfix.core.exceptions import ImproperlyConfigured
 
 from dotenv import load_dotenv
 
 from pathlib import Path  # python3 only
 
+from wtfix.protocol.spec import ProtocolStub
+
 env_path = Path(".") / ".env"
 load_dotenv(dotenv_path=env_path)
+
 
 ENVIRONMENT_VARIABLE = "WTFIX_SETTINGS_MODULE"
 
 
 class Settings:
+    """
+    Settings and configuration for wtfix.
+
+    Read values from the module specified by the WTFIX_SETTINGS_MODULE environment variable
+    """
+
     def __init__(self, settings_module=None):
 
         self._logger = None
@@ -76,6 +80,8 @@ class Settings:
                 setattr(self, setting, setting_value)
                 self._explicit_settings.add(setting)
 
+        self._protocol = None
+
     @property
     def has_safe_defaults(self):
         return len(self.CONNECTIONS) == 1
@@ -86,13 +92,35 @@ class Settings:
             return next(iter(self.CONNECTIONS))
 
         raise ImproperlyConfigured(
-            f"Cannot fall back to using session defaults as more than one session has been configured "
-            f"using the 'SESSIONS' parameter. You MUST specify which sessions' configuration settings to use."
+            f"Could not determine which WTFIX configuration to use as more than one 'CONNECTION' has been "
+            f"configured in the settings file. You should probably set `settings.protocol` explicitly "
+            f"somewhere in your project implementation (e.g. by initializing the pipeline with the --connection"
+            f"parameter."
         )
 
     @property
     def default_connection(self):
         return SessionSettings(self.default_connection_name)
+
+    @property
+    def protocol(self):
+        if self._protocol is None:
+            try:
+                mod_name, class_name = self.default_connection.PROTOCOL.rsplit(".", 1)
+            except ImproperlyConfigured:
+                # No protocol defined - stub out references
+                mod_name, class_name = ProtocolStub.__module__, ProtocolStub.__name__
+
+            module = importlib.import_module(mod_name)
+            protocol_class = getattr(module, class_name)
+
+            self._protocol = protocol_class
+
+        return self._protocol
+
+    @protocol.setter
+    def protocol(self, protocol_class: Type):
+        self._protocol = protocol_class
 
     @property
     def logger(self):
@@ -151,4 +179,12 @@ class SessionSettings:
             connection_name = settings.default_connection[0]
 
         for setting, setting_value in settings.CONNECTIONS[connection_name].items():
+            if setting == "PROTOCOL":
+                mod_name, class_name = setting_value.rsplit(".", 1)
+                module = importlib.import_module(mod_name)
+                protocol_class = getattr(module, class_name)
+
+                settings.protocol = protocol_class
+                setattr(self, "protocol", protocol_class)
+
             setattr(self, setting, setting_value)

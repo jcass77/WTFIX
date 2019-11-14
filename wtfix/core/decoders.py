@@ -52,7 +52,7 @@ class JSONMessageDecoder(JSONDecoder):
         return fields
 
     def decode(self, s, _w=WHITESPACE.match):
-        decoded = json.loads(s)
+        decoded = super().decode(s, _w=_w)
 
         if isinstance(decoded, list):
             return GenericMessage(*decoded)

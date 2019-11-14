@@ -1,4 +1,4 @@
-from wtfix.protocol.common import Tag
+from wtfix.core.klass import get_class_from_module_string
 from .local import *  # noqa
 
 # GENERAL
@@ -17,7 +17,9 @@ CONNECTIONS["default"]["USERNAME"] = "TEST_USER"
 CONNECTIONS["default"]["PASSWORD"] = "TEST_PASSWORD"
 
 # REPEATING GROUPS
+# Get protocol Type so that we can configure repeating groups  on a per-protocol basis
+protocol = get_class_from_module_string(CONNECTIONS["default"]["PROTOCOL"])
 CONNECTIONS["default"]["GROUP_TEMPLATES"] = {
     # Routing IDs
-    Tag.NoRoutingIDs: {"*": [Tag.RoutingType, Tag.RoutingID]}
+    protocol.Tag.NoRoutingIDs: {"*": [protocol.Tag.RoutingType, protocol.Tag.RoutingID]}
 }

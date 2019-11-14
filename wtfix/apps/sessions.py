@@ -21,12 +21,9 @@ import uuid
 from asyncio import IncompleteReadError, LimitOverrunError
 from pathlib import Path
 
-from unsync import unsync
-
 from wtfix.apps.base import BaseApp
 from wtfix.conf import settings
 from wtfix.core import utils
-from wtfix.protocol.common import MsgType, Tag
 
 
 logger = settings.logger
@@ -89,7 +86,6 @@ class SessionApp(BaseApp):
                 f"{self.name}: Starting a new session with ID: {self._session_id}."
             )
 
-    @unsync
     async def initialize(self, *args, **kwargs):
         await super().initialize(*args, **kwargs)
 
@@ -124,7 +120,6 @@ class ClientSessionApp(SessionApp):
 
         self.target = target
 
-    @unsync
     async def initialize(self, *args, **kwargs):
         """
         Establish a connection to the FIX server and start listening for messages.
@@ -132,7 +127,6 @@ class ClientSessionApp(SessionApp):
         await super().initialize(*args, **kwargs)
         await self._open_connection()  # Block until connection is established
 
-    @unsync
     async def _open_connection(self):
         """
         Connect to the FIX server, obtaining StreamReader and StreamWriter instances for receiving messages
@@ -148,20 +142,18 @@ class ClientSessionApp(SessionApp):
         )
         logger.info(f"{self.name}: Connected!")
 
-    @unsync
     async def start(self, *args, **kwargs):
         """
         Start listening for messages and log on to the server.
         """
         await super().start(*args, **kwargs)
 
-        self.listen()  # Start the listener in separate task
+        asyncio.create_task(self.listen())  # Start the listener in separate task
 
         # Wait for connection to stabilize to make sure that we are listening
         # and that we do not miss any rejection messages.
         await asyncio.sleep(1)
 
-    @unsync
     async def stop(self, *args, **kwargs):
         """
         Close the writer.
@@ -173,15 +165,19 @@ class ClientSessionApp(SessionApp):
             self.writer.close()
             logger.info(f"{self.name}: Session closed!")
 
-    @unsync
     async def listen(self):
         """
         Listen for new messages that are sent by the server.
         """
-        begin_string = utils.encode(f"{Tag.BeginString}=") + utils.encode(
-            settings.BEGIN_STRING
+        begin_string = utils.encode(
+            f"{settings.protocol.Tag.BeginString}="
+        ) + utils.encode(settings.BEGIN_STRING)
+
+        checksum_start = settings.SOH + utils.encode(
+            f"{settings.protocol.Tag.CheckSum}="
         )
-        checksum_start = settings.SOH + utils.encode(f"{Tag.CheckSum}=")
+
+        data = []
 
         while not self.writer.transport.is_closing():  # Listen forever for new messages
             try:
@@ -203,7 +199,10 @@ class ClientSessionApp(SessionApp):
             except IncompleteReadError as e:
                 # Connection was closed before a complete message could be received.
                 if (
-                    utils.encode(f"{Tag.MsgType}={MsgType.Logout}") + settings.SOH
+                    utils.encode(
+                        f"{settings.protocol.Tag.MsgType}={settings.protocol.MsgType.Logout}"
+                    )
+                    + settings.SOH
                     in data
                 ):
                     await self.pipeline.receive(
@@ -211,11 +210,11 @@ class ClientSessionApp(SessionApp):
                     )  # Process logout message in the pipeline as per normal
 
                 else:
-                    logger.exception(
+                    logger.error(
                         f"{self.name}: Unexpected EOF waiting for next chunk of partial data "
                         f"'{utils.decode(e.partial)}'. Initiating shutdown..."
                     )
-                    self.pipeline.stop()
+                    asyncio.create_task(self.pipeline.stop())
 
                 return
 
@@ -225,11 +224,10 @@ class ClientSessionApp(SessionApp):
                     f"{self.name}: Stream reader buffer limit exceeded! Initiating shutdown..."
                 )
 
-                self.pipeline.stop()
+                asyncio.create_task(self.pipeline.stop())
 
                 return  # Stop trying to listen for more messages.
 
-    @unsync
     async def on_send(self, message):
         """
         Writes an encoded message to the StreamWriter.
@@ -238,3 +236,5 @@ class ClientSessionApp(SessionApp):
         """
         self.writer.write(message)
         await self.writer.drain()
+
+        del message  # Encourage garbage collection of message once it has been sent

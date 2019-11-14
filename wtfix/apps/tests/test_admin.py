@@ -4,7 +4,6 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 import pytest
-from unsync import Unfuture
 
 from wtfix.apps.admin import (
     HeartbeatApp,
@@ -20,13 +19,12 @@ from wtfix.message import admin
 from wtfix.message.admin import TestRequestMessage, HeartbeatMessage
 from wtfix.message.message import OptimizedGenericMessage
 from wtfix.pipeline import BasePipeline
-from wtfix.protocol.common import MsgType, Tag
 
 
 class TestAuthenticationApp:
     @pytest.mark.asyncio
     async def test_on_logon_raises_exception_on_wrong_heartbeat_response(
-        self, unsync_event_loop, base_pipeline
+        self, base_pipeline
     ):
         with pytest.raises(SessionError):
             logon_msg = admin.LogonMessage("", "", heartbeat_int=60)
@@ -37,7 +35,7 @@ class TestAuthenticationApp:
 
     @pytest.mark.asyncio
     async def test_on_logon_sets_default_test_message_indicator_to_false(
-        self, unsync_event_loop, base_pipeline
+        self, base_pipeline
     ):
         logon_msg = admin.LogonMessage("", "")
         logon_msg.ResetSeqNumFlag = True
@@ -49,7 +47,7 @@ class TestAuthenticationApp:
 
     @pytest.mark.asyncio
     async def test_on_logon_raises_exception_on_wrong_test_indicator_response(
-        self, unsync_event_loop, base_pipeline
+        self, base_pipeline
     ):
         with pytest.raises(SessionError):
             logon_msg = admin.LogonMessage("", "")
@@ -61,7 +59,7 @@ class TestAuthenticationApp:
 
     @pytest.mark.asyncio
     async def test_on_logon_raises_exception_on_wrong_reset_sequence_number_response(
-        self, unsync_event_loop, base_pipeline
+        self, base_pipeline
     ):
         with pytest.raises(SessionError):
             logon_msg = admin.LogonMessage("", "")
@@ -81,23 +79,28 @@ class TestHeartbeatApp:
 
     @pytest.mark.asyncio
     async def test_server_stops_responding_after_three_test_requests(
-        self, unsync_event_loop, failing_server_heartbeat_app
+        self, failing_server_heartbeat_app
     ):
         await failing_server_heartbeat_app.heartbeat_monitor(
             HeartbeatTimers.RECEIVE, failing_server_heartbeat_app.send_test_request
         )
 
-        await asyncio.sleep(0.1)
+        # Wait for separate 'send' tasks to complete
+        tasks = asyncio.all_tasks()
+        await asyncio.wait(tasks, timeout=0.1)
+
         assert failing_server_heartbeat_app.pipeline.send.call_count == 4
         assert failing_server_heartbeat_app.pipeline.stop.called
 
     @pytest.mark.asyncio
     async def test_monitor_heartbeat_test_request_not_necessary(
-        self, unsync_event_loop, zero_heartbeat_app
+        self, zero_heartbeat_app
     ):
         """Simulate normal heartbeat_interval rhythm - message just received"""
+        future_mock = asyncio.Future()
+        future_mock.set_result(None)
         with mock.patch.object(
-            HeartbeatApp, "send_test_request", return_value=Unfuture.from_value(None)
+            HeartbeatApp, "send_test_request", return_value=future_mock
         ) as check:
 
             zero_heartbeat_app.seconds_to_next_check.return_value = 1
@@ -114,12 +117,12 @@ class TestHeartbeatApp:
             assert check.call_count == 0
 
     @pytest.mark.asyncio
-    async def test_monitor_heartbeat_heartbeat_exceeded(
-        self, unsync_event_loop, zero_heartbeat_app
-    ):
+    async def test_monitor_heartbeat_heartbeat_exceeded(self, zero_heartbeat_app):
         """Simulate normal heartbeat_interval rhythm - heartbeat_interval exceeded since last message was received"""
+        future_mock = asyncio.Future()
+        future_mock.set_result(None)
         with mock.patch.object(
-            HeartbeatApp, "send_test_request", return_value=Unfuture.from_value(None)
+            HeartbeatApp, "send_test_request", return_value=future_mock
         ) as check:
 
             try:
@@ -135,7 +138,7 @@ class TestHeartbeatApp:
             assert check.call_count > 1
 
     @pytest.mark.asyncio
-    async def test_send_test_request(self, unsync_event_loop, zero_heartbeat_app):
+    async def test_send_test_request(self, zero_heartbeat_app):
         async def simulate_heartbeat_response(message):
             await zero_heartbeat_app.on_heartbeat(
                 HeartbeatMessage(str(message.TestReqID))
@@ -156,16 +159,12 @@ class TestHeartbeatApp:
         assert not zero_heartbeat_app._server_not_responding.is_set()
 
     @pytest.mark.asyncio
-    async def test_send_test_request_no_response(
-        self, unsync_event_loop, zero_heartbeat_app
-    ):
+    async def test_send_test_request_no_response(self, zero_heartbeat_app):
         await zero_heartbeat_app.send_test_request()
         assert zero_heartbeat_app._server_not_responding.is_set()
 
     @pytest.mark.asyncio
-    async def test_logon_sets_heartbeat_increment(
-        self, unsync_event_loop, logon_message, base_pipeline
-    ):
+    async def test_logon_sets_heartbeat_increment(self, logon_message, base_pipeline):
         heartbeat_app = HeartbeatApp(base_pipeline)
 
         logon_message.HeartBtInt = 45
@@ -174,20 +173,20 @@ class TestHeartbeatApp:
         assert heartbeat_app.heartbeat_interval == 45
 
     @pytest.mark.asyncio
-    async def test_sends_heartbeat_on_test_request(
-        self, unsync_event_loop, zero_heartbeat_app
-    ):
+    async def test_sends_heartbeat_on_test_request(self, zero_heartbeat_app):
         request_message = TestRequestMessage("test123")
         await zero_heartbeat_app.on_test_request(request_message)
+
+        # Wait for separate 'send' tasks to complete
+        tasks = asyncio.all_tasks()
+        await asyncio.wait(tasks, timeout=0.1)
 
         zero_heartbeat_app.pipeline.send.assert_called_with(
             admin.HeartbeatMessage("test123")
         )
 
     @pytest.mark.asyncio
-    async def test_resets_request_id_when_heartbeat_received(
-        self, unsync_event_loop, zero_heartbeat_app
-    ):
+    async def test_resets_request_id_when_heartbeat_received(self, zero_heartbeat_app):
         heartbeat_message = HeartbeatMessage("test123")
         zero_heartbeat_app._test_request_id = "test123"
 
@@ -196,17 +195,15 @@ class TestHeartbeatApp:
         assert zero_heartbeat_app._test_request_id is None
 
     @pytest.mark.asyncio
-    async def test_on_heartbeat_handles_empty_request_id(
-        self, unsync_event_loop, zero_heartbeat_app
-    ):
-        test_request = OptimizedGenericMessage((Tag.MsgType, MsgType.TestRequest))
+    async def test_on_heartbeat_handles_empty_request_id(self, zero_heartbeat_app):
+        test_request = OptimizedGenericMessage(
+            (settings.protocol.Tag.MsgType, settings.protocol.MsgType.TestRequest)
+        )
 
         assert await zero_heartbeat_app.on_heartbeat(test_request) == test_request
 
     @pytest.mark.asyncio
-    async def test_on_receive_updated_timestamp(
-        self, unsync_event_loop, zero_heartbeat_app
-    ):
+    async def test_on_receive_updated_timestamp(self, zero_heartbeat_app):
         prev_timestamp = HeartbeatTimers.RECEIVE.timestamp
 
         await zero_heartbeat_app.on_receive(TestRequestMessage("test123"))
@@ -215,9 +212,8 @@ class TestHeartbeatApp:
 
 class TestSeqNumManagerApp:
     @pytest.fixture
-    @pytest.mark.asyncio
-    async def pipeline_with_messages(self, unsync_event_loop, base_pipeline, messages):
-        message_store_app = MessageStoreApp(base_pipeline, store=MemoryStore())
+    async def pipeline_with_messages(self, base_pipeline, messages):
+        message_store_app = MessageStoreApp(base_pipeline, store=MemoryStore)
         await message_store_app.initialize()
 
         base_pipeline.apps[MessageStoreApp.name] = message_store_app
@@ -234,9 +230,7 @@ class TestSeqNumManagerApp:
         return base_pipeline
 
     @pytest.mark.asyncio
-    async def test_start_resumes_sequence_numbers(
-        self, unsync_event_loop, pipeline_with_messages
-    ):
+    async def test_start_resumes_sequence_numbers(self, pipeline_with_messages):
 
         pipeline_with_messages.apps[ClientSessionApp.name]._new_session = False
         seq_num_app = SeqNumManagerApp(pipeline_with_messages)
@@ -247,7 +241,7 @@ class TestSeqNumManagerApp:
 
     @pytest.mark.asyncio
     async def test_start_resets_sequence_numbers_for_new_session(
-        self, unsync_event_loop, pipeline_with_messages
+        self, pipeline_with_messages
     ):
 
         pipeline_with_messages.apps[ClientSessionApp.name]._new_session = True
@@ -284,7 +278,7 @@ class TestSeqNumManagerApp:
 
     @pytest.mark.asyncio
     async def test_handle_seq_num_too_high_starts_buffer_and_sends_resend_request(
-        self, unsync_event_loop, pipeline_with_messages, user_notification_message
+        self, pipeline_with_messages, user_notification_message
     ):
         with pytest.raises(StopMessageProcessing):
             seq_num_app = SeqNumManagerApp(pipeline_with_messages)
@@ -297,14 +291,17 @@ class TestSeqNumManagerApp:
                 user_notification_message
             )
 
-        await asyncio.sleep(0.1)
+        # Wait for separate 'send' tasks to complete
+        tasks = asyncio.all_tasks()
+        await asyncio.wait(tasks, timeout=0.1)
+
         assert len(seq_num_app.receive_buffer) == 1
         assert seq_num_app.receive_buffer[0] == user_notification_message
         assert pipeline_with_messages.send.call_count == 1
 
     @pytest.mark.asyncio
     async def test_handle_seq_num_too_high_buffers_messages_received_out_of_order(
-        self, unsync_event_loop, pipeline_with_messages, user_notification_message
+        self, pipeline_with_messages, user_notification_message
     ):
         seq_num_app = SeqNumManagerApp(pipeline_with_messages)
         seq_num_app.startup_time = datetime.utcnow() - timedelta(
@@ -320,13 +317,16 @@ class TestSeqNumManagerApp:
                 # Expected
                 pass
 
-        await asyncio.sleep(0.1)
+        # Wait for separate 'send' tasks to complete
+        tasks = asyncio.all_tasks()
+        await asyncio.wait(tasks, timeout=0.1)
+
         assert len(seq_num_app.receive_buffer) == 5
         assert pipeline_with_messages.send.call_count == 1
 
     @pytest.mark.asyncio
     async def test_send_resend_request_waits_for_target_before_doing_gapfill(
-        self, unsync_event_loop, pipeline_with_messages
+        self, pipeline_with_messages
     ):
 
         seq_num_app = SeqNumManagerApp(pipeline_with_messages)
@@ -341,7 +341,7 @@ class TestSeqNumManagerApp:
 
     @pytest.mark.asyncio
     async def test_send_resend_request_sends_resend_request(
-        self, unsync_event_loop, pipeline_with_messages
+        self, pipeline_with_messages
     ):
         seq_num_app = SeqNumManagerApp(pipeline_with_messages)
         seq_num_app.startup_time = datetime.utcnow() - timedelta(
@@ -350,11 +350,15 @@ class TestSeqNumManagerApp:
 
         await seq_num_app._send_resend_request([1, 2])
 
+        # Wait for separate 'send' tasks to complete
+        tasks = asyncio.all_tasks()
+        await asyncio.wait(tasks, timeout=0.1)
+
         assert pipeline_with_messages.send.call_count == 1
 
     @pytest.mark.asyncio
     async def test_handle_resend_request_sends_resend_request(
-        self, unsync_event_loop, pipeline_with_messages
+        self, pipeline_with_messages
     ):
         seq_num_app = SeqNumManagerApp(pipeline_with_messages)
         seq_num_app.send_seq_num = 3  # 3 messages sent so far
@@ -364,9 +368,9 @@ class TestSeqNumManagerApp:
             admin.ResendRequestMessage(resend_begin_seq_num)
         )
 
-        await asyncio.sleep(
-            0.1
-        )  # Nothing to await. Sleep to give processes time to complete.
+        # Wait for separate 'send' tasks to complete
+        tasks = asyncio.all_tasks()
+        await asyncio.wait(tasks, timeout=0.1)
 
         assert pipeline_with_messages.send.call_count == 2
 
@@ -381,7 +385,7 @@ class TestSeqNumManagerApp:
 
     @pytest.mark.asyncio
     async def test_handle_resend_request_converts_admin_messages_to_sequence_reset_messages(
-        self, unsync_event_loop, logon_message, pipeline_with_messages, messages
+        self, logon_message, pipeline_with_messages, messages
     ):
         seq_num_app = SeqNumManagerApp(pipeline_with_messages)
 
@@ -414,6 +418,10 @@ class TestSeqNumManagerApp:
             admin.ResendRequestMessage(resend_begin_seq_num)
         )
 
+        # Wait for separate 'send' tasks to complete
+        tasks = asyncio.all_tasks()
+        await asyncio.wait(tasks, timeout=0.1)
+
         assert pipeline_with_messages.send.call_count == 6
 
         admin_messages_resend = pipeline_with_messages.send.mock_calls[0][1][0]
@@ -428,7 +436,7 @@ class TestSeqNumManagerApp:
 
     @pytest.mark.asyncio
     async def test_on_receive_handles_gapfill(
-        self, unsync_event_loop, pipeline_with_messages, user_notification_message
+        self, pipeline_with_messages, user_notification_message
     ):
         seq_num_app = SeqNumManagerApp(pipeline_with_messages)
         seq_num_app.startup_time = datetime.utcnow() - timedelta(
@@ -452,7 +460,10 @@ class TestSeqNumManagerApp:
             message.PossDupFlag = True
             await seq_num_app.on_receive(message)
 
-        await asyncio.sleep(0.1)
+        # Wait for separate 'send' tasks to complete
+        tasks = asyncio.all_tasks()
+        await asyncio.wait(tasks, timeout=0.1)
+
         assert (
             pipeline_with_messages.receive.call_count == 2
         )  # Queued messages processed

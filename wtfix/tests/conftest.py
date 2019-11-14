@@ -2,7 +2,6 @@ import asyncio
 from unittest.mock import Mock
 
 import pytest
-from unsync import unsync
 
 from wtfix.apps.base import BaseApp
 from wtfix.core.exceptions import StopMessageProcessing
@@ -26,7 +25,6 @@ def get_mock_async(return_value=None):
     Create a Mock-able async class member
     """
 
-    @unsync
     async def mock_async(*args, **kwargs):
         return return_value
 
@@ -38,7 +36,6 @@ def get_slow_mock_async(sleep_time):
     Simulate an async method that is slow to respond - useful for testing timeouts.
     """
 
-    @unsync
     async def mock_async(*args, **kwargs):
         await asyncio.sleep(sleep_time)
 
@@ -48,13 +45,11 @@ def get_slow_mock_async(sleep_time):
 class Below(BaseApp):
     name = "below"
 
-    @unsync
     async def on_receive(self, message: FIXMessage) -> FIXMessage:
         message.TestReqID = f"{message.TestReqID} r1"
 
         return await super().on_receive(message)
 
-    @unsync
     async def on_send(self, message: FIXMessage) -> FIXMessage:
         message.TestReqID = f"{message.TestReqID} s1"
 
@@ -64,13 +59,11 @@ class Below(BaseApp):
 class Middle(BaseApp):
     name = "middle"
 
-    @unsync
     async def on_receive(self, message: FIXMessage) -> FIXMessage:
         message.TestReqID = f"{message.TestReqID} r2"
 
         return await super().on_receive(message)
 
-    @unsync
     async def on_send(self, message: FIXMessage) -> FIXMessage:
         message.TestReqID = f"{message.TestReqID} s2"
 
@@ -80,11 +73,9 @@ class Middle(BaseApp):
 class MiddleStop(BaseApp):
     name = "middle_stop"
 
-    @unsync
     async def on_receive(self, message: FIXMessage) -> FIXMessage:
         raise StopMessageProcessing()
 
-    @unsync
     async def on_send(self, message: FIXMessage) -> FIXMessage:
         raise StopMessageProcessing()
 
@@ -92,13 +83,11 @@ class MiddleStop(BaseApp):
 class Top(BaseApp):
     name = "top"
 
-    @unsync
     async def on_receive(self, message: FIXMessage) -> FIXMessage:
         message.TestReqID = f"{message.TestReqID} r3"
 
         return await super().on_receive(message)
 
-    @unsync
     async def on_send(self, message: FIXMessage) -> FIXMessage:
         message.TestReqID = f"{message.TestReqID} s3"
 

@@ -28,10 +28,6 @@ USE_TZ = True
 # ------------------------------------------------------------------------------
 REDIS_URI = os.getenv("REDIS_URI", "redis://localhost:6379/0")
 
-# MESSAGE STORE
-# ------------------------------------------------------------------------------
-MESSAGE_STORE = os.getenv("MESSAGE_STORE", "wtfix.apps.store.MemoryStore")
-
 # CONNECTIONS
 # ------------------------------------------------------------------------------
 CONNECTIONS = {
@@ -45,6 +41,7 @@ CONNECTIONS = {
         "PASSWORD": os.getenv("PASSWORD"),
         # APPS
         "PIPELINE_APPS": [
+            "wtfix.apps.utils.PipelineTerminationApp",
             "wtfix.apps.api.rest.RESTfulServiceApp",
             "wtfix.apps.brokers.RedisPubSubApp",
             "wtfix.apps.admin.HeartbeatApp",
@@ -57,6 +54,14 @@ CONNECTIONS = {
             "wtfix.apps.wire.WireCommsApp",
             "wtfix.apps.sessions.ClientSessionApp",
         ],
+        # PROTOCOL
+        "PROTOCOL": "wtfix.protocol.fix._44.spec.FIX44Protocol",
+        # MESSAGE STORE
+        "MESSAGE_STORE": {
+            "CLASS": "wtfix.apps.store.MemoryStore",
+            "ENCODER": "wtfix.core.encoders.JSONMessageEncoder",
+            "DECODER": "wtfix.core.decoders.JSONMessageDecoder",
+        },
         # REPEATING GROUPS
         "GROUP_TEMPLATES": {},
     }
