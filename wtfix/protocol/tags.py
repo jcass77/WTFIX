@@ -26,8 +26,6 @@ class _BaseTag(AttributeValueMappingsMixin):
     It is intended to be accessed dynamically via the pipeline instead of directly.
     """
 
-    MsgType = 35
-
     @classmethod
     def get_name(cls, value):
         """Wrapper for backwards compatibility"""

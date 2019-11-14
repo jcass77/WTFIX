@@ -4,6 +4,7 @@ from wtfix.conf import settings
 from wtfix.core import utils
 from wtfix.core.exceptions import TagNotFound, ValidationError
 from wtfix.core.utils import GroupTemplateMixin
+from wtfix.protocol.contextlib import connection, connection_manager
 
 
 def test_find_tag_start_of_message(simple_encoded_msg):
@@ -113,64 +114,66 @@ def test_is_null_bytearray():
 class TestGroupTemplateMixin:
     def test_group_templates_getter_initializes_with_empty_template_group(self):
         settings.CONNECTIONS["another_session"] = {}
-        assert GroupTemplateMixin().group_templates == {}
+
+        with connection_manager(name="another_session"):
+            assert GroupTemplateMixin().group_templates == {}
 
         del settings.CONNECTIONS["another_session"]
 
     def test_group_templates_getter_initializes_with_defaults_if_safe(self):
         assert (
             GroupTemplateMixin().group_templates
-            == settings.default_connection.GROUP_TEMPLATES
+            == settings.CONNECTIONS[connection.name]["GROUP_TEMPLATES"]
         )
 
     def test_get_group_templates(self):
         gt = GroupTemplateMixin()
 
         gt.group_templates = {
-            settings.protocol.Tag.NoSecurityAltID: {
+            connection.protocol.Tag.NoSecurityAltID: {
                 "a": [
-                    settings.protocol.Tag.SecurityAltID,
-                    settings.protocol.Tag.SecurityAltIDSource,
+                    connection.protocol.Tag.SecurityAltID,
+                    connection.protocol.Tag.SecurityAltIDSource,
                 ]
             },
-            settings.protocol.Tag.NoRoutingIDs: {
+            connection.protocol.Tag.NoRoutingIDs: {
                 "*": [
-                    settings.protocol.Tag.RoutingType,
-                    settings.protocol.Tag.RoutingID,
+                    connection.protocol.Tag.RoutingType,
+                    connection.protocol.Tag.RoutingID,
                 ]
             },
         }
 
         assert gt.get_group_templates(
-            identifier_tag=settings.protocol.Tag.NoSecurityAltID
+            identifier_tag=connection.protocol.Tag.NoSecurityAltID
         ) == [
             [
-                settings.protocol.Tag.SecurityAltID,
-                settings.protocol.Tag.SecurityAltIDSource,
+                connection.protocol.Tag.SecurityAltID,
+                connection.protocol.Tag.SecurityAltIDSource,
             ]
         ]
         assert gt.get_group_templates(
-            identifier_tag=settings.protocol.Tag.NoSecurityAltID, message_type="a"
+            identifier_tag=connection.protocol.Tag.NoSecurityAltID, message_type="a"
         ) == [
             [
-                settings.protocol.Tag.SecurityAltID,
-                settings.protocol.Tag.SecurityAltIDSource,
+                connection.protocol.Tag.SecurityAltID,
+                connection.protocol.Tag.SecurityAltIDSource,
             ]
         ]
 
     def test_get_group_templates_not_found(self):
         gt = GroupTemplateMixin()
         gt.group_templates = {
-            settings.protocol.Tag.NoSecurityAltID: {
+            connection.protocol.Tag.NoSecurityAltID: {
                 "a": [
-                    settings.protocol.Tag.SecurityAltID,
-                    settings.protocol.Tag.SecurityAltIDSource,
+                    connection.protocol.Tag.SecurityAltID,
+                    connection.protocol.Tag.SecurityAltIDSource,
                 ]
             },
-            settings.protocol.Tag.NoRoutingIDs: {
+            connection.protocol.Tag.NoRoutingIDs: {
                 "*": [
-                    settings.protocol.Tag.RoutingType,
-                    settings.protocol.Tag.RoutingID,
+                    connection.protocol.Tag.RoutingType,
+                    connection.protocol.Tag.RoutingID,
                 ]
             },
         }
@@ -181,43 +184,43 @@ class TestGroupTemplateMixin:
     def test_get_group_templates_falls_back_to_wildcard(self):
         gt = GroupTemplateMixin()
         gt.group_templates = {
-            settings.protocol.Tag.NoSecurityAltID: {
+            connection.protocol.Tag.NoSecurityAltID: {
                 "a": [
-                    settings.protocol.Tag.SecurityAltID,
-                    settings.protocol.Tag.SecurityAltIDSource,
+                    connection.protocol.Tag.SecurityAltID,
+                    connection.protocol.Tag.SecurityAltIDSource,
                 ]
             },
-            settings.protocol.Tag.NoRoutingIDs: {
+            connection.protocol.Tag.NoRoutingIDs: {
                 "*": [
-                    settings.protocol.Tag.RoutingType,
-                    settings.protocol.Tag.RoutingID,
+                    connection.protocol.Tag.RoutingType,
+                    connection.protocol.Tag.RoutingID,
                 ]
             },
         }
 
         assert gt.get_group_templates(
-            identifier_tag=settings.protocol.Tag.NoRoutingIDs, message_type="a"
-        ) == [[settings.protocol.Tag.RoutingType, settings.protocol.Tag.RoutingID]]
+            identifier_tag=connection.protocol.Tag.NoRoutingIDs, message_type="a"
+        ) == [[connection.protocol.Tag.RoutingType, connection.protocol.Tag.RoutingID]]
 
     def test_add_group_templates(self):
         gt = GroupTemplateMixin()
         gt.add_group_templates(
             {
-                settings.protocol.Tag.NoSecurityAltID: {
+                connection.protocol.Tag.NoSecurityAltID: {
                     "*": [
-                        settings.protocol.Tag.SecurityAltID,
-                        settings.protocol.Tag.SecurityAltIDSource,
+                        connection.protocol.Tag.SecurityAltID,
+                        connection.protocol.Tag.SecurityAltIDSource,
                     ]
                 }
             }
         )
 
-        assert settings.protocol.Tag.NoRoutingIDs in gt.group_templates
-        assert settings.protocol.Tag.NoSecurityAltID in gt.group_templates
+        assert connection.protocol.Tag.NoRoutingIDs in gt.group_templates
+        assert connection.protocol.Tag.NoSecurityAltID in gt.group_templates
 
-        assert gt.group_templates[settings.protocol.Tag.NoSecurityAltID]["*"] == [
-            settings.protocol.Tag.SecurityAltID,
-            settings.protocol.Tag.SecurityAltIDSource,
+        assert gt.group_templates[connection.protocol.Tag.NoSecurityAltID]["*"] == [
+            connection.protocol.Tag.SecurityAltID,
+            connection.protocol.Tag.SecurityAltIDSource,
         ]
 
     def test_add_group_template_empty_raises_exception(self):

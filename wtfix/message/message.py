@@ -27,6 +27,7 @@ from wtfix.core.exceptions import (
     DuplicateTags,
 )
 from wtfix.message.collections import FieldDict, FieldList, FieldMap
+from wtfix.protocol.contextlib import connection
 
 
 @total_ordering
@@ -45,7 +46,7 @@ class FIXMessage(FieldMap, abc.ABC):
         :return: Value of tag 35 or None if no message type has been defined.
         """
         try:
-            return str(self[settings.protocol.Tag.MsgType])
+            return str(self[connection.protocol.Tag.MsgType])
         except TagNotFound:
             return None
 
@@ -56,7 +57,7 @@ class FIXMessage(FieldMap, abc.ABC):
         could not be determined.
         """
         try:
-            return settings.protocol.MsgType.get_name(self.type)
+            return connection.protocol.MsgType.get_name(self.type)
         except UnknownType:
             return self.UNKNOWN_TYPE
 
@@ -66,35 +67,35 @@ class FIXMessage(FieldMap, abc.ABC):
         :return: Message sequence number
         """
         try:
-            return int(self[settings.protocol.Tag.MsgSeqNum])
+            return int(self[connection.protocol.Tag.MsgSeqNum])
         except TagNotFound:
             return None
 
     @seq_num.setter
     def seq_num(self, value):
-        self[settings.protocol.Tag.MsgSeqNum] = value
+        self[connection.protocol.Tag.MsgSeqNum] = value
 
     @property
     def sender_id(self):
         try:
-            return str(self[settings.protocol.Tag.SenderCompID])
+            return str(self[connection.protocol.Tag.SenderCompID])
         except TagNotFound:
             return None
 
     @sender_id.setter
     def sender_id(self, value):
-        self[settings.protocol.Tag.SenderCompID] = value
+        self[connection.protocol.Tag.SenderCompID] = value
 
     @property
     def target_id(self):
         try:
-            return str(self[settings.protocol.Tag.TargetCompID])
+            return str(self[connection.protocol.Tag.TargetCompID])
         except TagNotFound:
             return None
 
     @target_id.setter
     def target_id(self, value):
-        self[settings.protocol.Tag.TargetCompID] = value
+        self[connection.protocol.Tag.TargetCompID] = value
 
     @property
     def fields(self):
@@ -116,7 +117,7 @@ class FIXMessage(FieldMap, abc.ABC):
         :raises: ValidationError if the message is not valid.
         """
         try:
-            self[settings.protocol.Tag.MsgType]
+            self[connection.protocol.Tag.MsgType]
         except TagNotFound as e:
             raise ValidationError(f"No 'MsgType (35)' specified for {self}.") from e
 
@@ -174,11 +175,11 @@ class RawMessage(FIXMessage, FieldDict):
             checksum = utils.calculate_checksum(encoded_body)
 
         super().__init__(
-            (settings.protocol.Tag.BeginString, begin_string),
-            (settings.protocol.Tag.BodyLength, body_length),
-            (settings.protocol.Tag.MsgType, message_type),
-            (settings.protocol.Tag.MsgSeqNum, message_seq_num),
-            (settings.protocol.Tag.CheckSum, checksum),
+            (connection.protocol.Tag.BeginString, begin_string),
+            (connection.protocol.Tag.BodyLength, body_length),
+            (connection.protocol.Tag.MsgType, message_type),
+            (connection.protocol.Tag.MsgSeqNum, message_seq_num),
+            (connection.protocol.Tag.CheckSum, checksum),
         )
 
     def copy(self):

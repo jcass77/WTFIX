@@ -1,6 +1,7 @@
 import pytest
 
 from wtfix.conf import settings
+from wtfix.protocol.contextlib import connection
 from ..field import Field
 from ..message import (
     GenericMessage,
@@ -15,14 +16,14 @@ from wtfix.core.exceptions import ValidationError
 class TestFixMessageMixin:
     def test_type_getter(self, generic_message_class, sdr_message_fields):
         m = generic_message_class(*sdr_message_fields)
-        assert m.type == settings.protocol.MsgType.SecurityDefinitionRequest
+        assert m.type == connection.protocol.MsgType.SecurityDefinitionRequest
 
     def test_type_getter_none(self, generic_message_class):
         assert generic_message_class().type is None
 
     def test_type_getter_unknown(self, generic_message_class):
         assert (
-            generic_message_class((settings.protocol.Tag.MsgType, "abc123")).type
+            generic_message_class((connection.protocol.Tag.MsgType, "abc123")).type
             == "abc123"
         )
 
@@ -35,7 +36,7 @@ class TestFixMessageMixin:
 
     def test_name_getter_unknown_type(self, generic_message_class):
         assert (
-            generic_message_class((settings.protocol.Tag.MsgType, "abc123")).name
+            generic_message_class((connection.protocol.Tag.MsgType, "abc123")).name
             == generic_message_class.UNKNOWN_TYPE
         )
 
@@ -73,16 +74,16 @@ class TestFixMessageMixin:
             m.validate()
 
     def test_sorting(self):
-        m1 = generic_message_factory((settings.protocol.Tag.MsgSeqNum, 1))
-        m2 = generic_message_factory((settings.protocol.Tag.MsgSeqNum, 2))
-        m3 = generic_message_factory((settings.protocol.Tag.MsgSeqNum, 3))
+        m1 = generic_message_factory((connection.protocol.Tag.MsgSeqNum, 1))
+        m2 = generic_message_factory((connection.protocol.Tag.MsgSeqNum, 2))
+        m3 = generic_message_factory((connection.protocol.Tag.MsgSeqNum, 3))
 
         list_ = [m2, m3, m1]
         assert sorted(list_) == [m1, m2, m3]
 
     def test_sorting_not_implemented(self):
         with pytest.raises(TypeError):
-            m1 = generic_message_factory((settings.protocol.Tag.MsgSeqNum, 1))
+            m1 = generic_message_factory((connection.protocol.Tag.MsgSeqNum, 1))
             m2 = 2
 
             list_ = [m2, m1]
@@ -92,7 +93,7 @@ class TestFixMessageMixin:
 class TestRawMessage:
     def test_copy(self):
         rm = RawMessage(
-            message_type=settings.protocol.MsgType.QuoteStatusRequest,
+            message_type=connection.protocol.MsgType.QuoteStatusRequest,
             message_seq_num=1,
             encoded_body=b"12345" + settings.SOH + b"67890" + settings.SOH,
         )
@@ -102,7 +103,7 @@ class TestRawMessage:
 
     def test_format_pretty_print_tags(self):
         rm = RawMessage(
-            message_type=settings.protocol.MsgType.QuoteStatusRequest,
+            message_type=connection.protocol.MsgType.QuoteStatusRequest,
             message_seq_num=1,
             encoded_body=b"12345" + settings.SOH + b"67890" + settings.SOH,
         )
@@ -115,7 +116,7 @@ class TestRawMessage:
 
     def test_str(self):
         rm = RawMessage(
-            message_type=settings.protocol.MsgType.QuoteStatusRequest,
+            message_type=connection.protocol.MsgType.QuoteStatusRequest,
             message_seq_num=1,
             encoded_body=b"12345" + settings.SOH + b"67890" + settings.SOH,
         )

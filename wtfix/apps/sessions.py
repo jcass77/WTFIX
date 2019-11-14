@@ -24,6 +24,7 @@ from pathlib import Path
 from wtfix.apps.base import BaseApp
 from wtfix.conf import settings
 from wtfix.core import utils
+from wtfix.protocol.contextlib import connection
 
 
 logger = settings.logger
@@ -170,11 +171,11 @@ class ClientSessionApp(SessionApp):
         Listen for new messages that are sent by the server.
         """
         begin_string = utils.encode(
-            f"{settings.protocol.Tag.BeginString}="
+            f"{connection.protocol.Tag.BeginString}="
         ) + utils.encode(settings.BEGIN_STRING)
 
         checksum_start = settings.SOH + utils.encode(
-            f"{settings.protocol.Tag.CheckSum}="
+            f"{connection.protocol.Tag.CheckSum}="
         )
 
         data = []
@@ -200,7 +201,7 @@ class ClientSessionApp(SessionApp):
                 # Connection was closed before a complete message could be received.
                 if (
                     utils.encode(
-                        f"{settings.protocol.Tag.MsgType}={settings.protocol.MsgType.Logout}"
+                        f"{connection.protocol.Tag.MsgType}={connection.protocol.MsgType.Logout}"
                     )
                     + settings.SOH
                     in data

@@ -17,6 +17,7 @@
 
 from wtfix.conf import settings
 from wtfix.message.message import OptimizedGenericMessage
+from wtfix.protocol.contextlib import connection
 
 
 class LogonMessage(OptimizedGenericMessage):
@@ -27,12 +28,12 @@ class LogonMessage(OptimizedGenericMessage):
     ):
 
         if heartbeat_int is None:
-            heartbeat_int = settings.default_connection.HEARTBEAT_INT
+            heartbeat_int = settings.CONNECTIONS[connection.name]["HEARTBEAT_INT"]
 
         super().__init__(
-            (settings.protocol.Tag.MsgType, settings.protocol.MsgType.Logon),
-            (settings.protocol.Tag.EncryptMethod, encryption_method),
-            (settings.protocol.Tag.HeartBtInt, heartbeat_int),
+            (connection.protocol.Tag.MsgType, connection.protocol.MsgType.Logon),
+            (connection.protocol.Tag.EncryptMethod, encryption_method),
+            (connection.protocol.Tag.HeartBtInt, heartbeat_int),
         )
 
         if username is not None:
@@ -47,7 +48,7 @@ class LogoutMessage(OptimizedGenericMessage):
 
     def __init__(self):
         super().__init__(
-            (settings.protocol.Tag.MsgType, settings.protocol.MsgType.Logout)
+            (connection.protocol.Tag.MsgType, connection.protocol.MsgType.Logout)
         )
 
 
@@ -56,7 +57,7 @@ class HeartbeatMessage(OptimizedGenericMessage):
 
     def __init__(self, test_request_id=None):
         super().__init__(
-            (settings.protocol.Tag.MsgType, settings.protocol.MsgType.Heartbeat)
+            (connection.protocol.Tag.MsgType, connection.protocol.MsgType.Heartbeat)
         )
         if test_request_id is not None:
             self.TestReqID = test_request_id
@@ -70,8 +71,8 @@ class TestRequestMessage(OptimizedGenericMessage):
 
     def __init__(self, test_request_id):
         super().__init__(
-            (settings.protocol.Tag.MsgType, settings.protocol.MsgType.TestRequest),
-            (settings.protocol.Tag.TestReqID, test_request_id),
+            (connection.protocol.Tag.MsgType, connection.protocol.MsgType.TestRequest),
+            (connection.protocol.Tag.TestReqID, test_request_id),
         )
 
 
@@ -80,9 +81,12 @@ class ResendRequestMessage(OptimizedGenericMessage):
 
     def __init__(self, from_seq_num, to_seq_num=0):
         super().__init__(
-            (settings.protocol.Tag.MsgType, settings.protocol.MsgType.ResendRequest),
-            (settings.protocol.Tag.BeginSeqNo, from_seq_num),
-            (settings.protocol.Tag.EndSeqNo, to_seq_num),
+            (
+                connection.protocol.Tag.MsgType,
+                connection.protocol.MsgType.ResendRequest,
+            ),
+            (connection.protocol.Tag.BeginSeqNo, from_seq_num),
+            (connection.protocol.Tag.EndSeqNo, to_seq_num),
         )
 
 
@@ -91,8 +95,11 @@ class SequenceResetMessage(OptimizedGenericMessage):
 
     def __init__(self, next_seq_num, new_seq_num):
         super().__init__(
-            (settings.protocol.Tag.MsgType, settings.protocol.MsgType.SequenceReset),
-            (settings.protocol.Tag.MsgSeqNum, next_seq_num),
-            (settings.protocol.Tag.PossDupFlag, "Y"),
-            (settings.protocol.Tag.NewSeqNo, new_seq_num),
+            (
+                connection.protocol.Tag.MsgType,
+                connection.protocol.MsgType.SequenceReset,
+            ),
+            (connection.protocol.Tag.MsgSeqNum, next_seq_num),
+            (connection.protocol.Tag.PossDupFlag, "Y"),
+            (connection.protocol.Tag.NewSeqNo, new_seq_num),
         )

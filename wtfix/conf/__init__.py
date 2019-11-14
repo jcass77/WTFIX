@@ -18,7 +18,6 @@
 import importlib
 import os
 import logging
-from typing import Type
 
 from wtfix.conf import global_settings
 from wtfix.core.exceptions import ImproperlyConfigured
@@ -26,8 +25,6 @@ from wtfix.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 from pathlib import Path  # python3 only
-
-from wtfix.protocol.spec import ProtocolStub
 
 env_path = Path(".") / ".env"
 load_dotenv(dotenv_path=env_path)
@@ -80,48 +77,6 @@ class Settings:
                 setattr(self, setting, setting_value)
                 self._explicit_settings.add(setting)
 
-        self._protocol = None
-
-    @property
-    def has_safe_defaults(self):
-        return len(self.CONNECTIONS) == 1
-
-    @property
-    def default_connection_name(self):
-        if self.has_safe_defaults:
-            return next(iter(self.CONNECTIONS))
-
-        raise ImproperlyConfigured(
-            f"Could not determine which WTFIX configuration to use as more than one 'CONNECTION' has been "
-            f"configured in the settings file. You should probably set `settings.protocol` explicitly "
-            f"somewhere in your project implementation (e.g. by initializing the pipeline with the --connection"
-            f"parameter."
-        )
-
-    @property
-    def default_connection(self):
-        return SessionSettings(self.default_connection_name)
-
-    @property
-    def protocol(self):
-        if self._protocol is None:
-            try:
-                mod_name, class_name = self.default_connection.PROTOCOL.rsplit(".", 1)
-            except ImproperlyConfigured:
-                # No protocol defined - stub out references
-                mod_name, class_name = ProtocolStub.__module__, ProtocolStub.__name__
-
-            module = importlib.import_module(mod_name)
-            protocol_class = getattr(module, class_name)
-
-            self._protocol = protocol_class
-
-        return self._protocol
-
-    @protocol.setter
-    def protocol(self, protocol_class: Type):
-        self._protocol = protocol_class
-
     @property
     def logger(self):
         if self._logger is None:
@@ -133,10 +88,7 @@ class Settings:
     def logger(self, value):
         self._logger = value
 
-    def get_group_templates(self, connection_name=None, identifiers=None):
-        if connection_name is None:
-            connection_name = self.default_connection_name
-
+    def get_group_templates(self, connection_name, identifiers=None):
         session_templates = self.CONNECTIONS[connection_name]["GROUP_TEMPLATES"]
         if identifiers is None:
             # Return all templates that have been defined.
@@ -168,23 +120,18 @@ class Settings:
 settings = Settings()
 
 
-class SessionSettings:
+class ConnectionSettings:
     """
-    Used to promote the settings for a specific session so that it's properties can be accessed
+    Used to promote the settings for a specific connection so that it's properties can be accessed
     in the same way as 'Settings' above.
     """
 
-    def __init__(self, connection_name=None):
-        if connection_name is None:
-            connection_name = settings.default_connection[0]
-
+    def __init__(self, connection_name):
+        self.connection_name = connection_name
         for setting, setting_value in settings.CONNECTIONS[connection_name].items():
-            if setting == "PROTOCOL":
-                mod_name, class_name = setting_value.rsplit(".", 1)
-                module = importlib.import_module(mod_name)
-                protocol_class = getattr(module, class_name)
-
-                settings.protocol = protocol_class
-                setattr(self, "protocol", protocol_class)
-
             setattr(self, setting, setting_value)
+
+    def get_group_templates(self, identifiers=None):
+        return settings.get_group_templates(
+            self.connection_name, identifiers=identifiers
+        )

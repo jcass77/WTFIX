@@ -31,16 +31,10 @@ logger = settings.logger
 
 parser = argparse.ArgumentParser(description="Start a FIX connection")
 
-try:
-    # If only one connection has been configured then we have a safe default to fall back to.
-    default_connection_name = settings.default_connection_name
-except ImproperlyConfigured:
-    default_connection_name = None
-
 parser.add_argument(
     "--connection",
-    default=default_connection_name,
-    help=f"the configuration settings to use for the connection (default: '{default_connection_name}')",
+    default="default",
+    help="the configuration settings to use for the connection (default: 'default')",
 )
 
 parser.add_argument(

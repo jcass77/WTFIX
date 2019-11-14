@@ -54,7 +54,7 @@ a Redis Pub/Sub channel for immediate delivery.
 
     class SecretAlgoTradingRecipe(MessageTypeHandlerApp):
 
-        @on(settings.protocol.MsgType.Logon)  # Only invoked when 'Logon (type A)' messages are received.
+        @on(context.protocol.MsgType.Logon)  # Only invoked when 'Logon (type A)' messages are received.
         def on_logon(self, message):
             self.send_security_definition_request()
             return message
@@ -100,7 +100,7 @@ used message attributes.
     >>> logon_msg[108]  # Using old school tag number
     Field(108, '30')
 
-    >>> logon_msg[settings.protocol.Tag.HeartBtInt]  # Using the tag name as per the FIX specification
+    >>> logon_msg[context.protocol.Tag.HeartBtInt]  # Using the tag name as per the FIX specification
     Field(108, '30')
 
     >>> logon_msg.HeartBtInt  # Using tag name shortcut

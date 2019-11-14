@@ -20,10 +20,10 @@ import collections
 import itertools
 from typing import Union, Sequence, Generator
 
-from wtfix.conf import settings
 from wtfix.core.exceptions import TagNotFound, UnknownTag, DuplicateTags, ParsingError
 from wtfix.core.utils import GroupTemplateMixin
 from wtfix.message.field import Field
+from wtfix.protocol.contextlib import connection
 
 
 class FieldMap(collections.abc.MutableMapping, abc.ABC):
@@ -180,8 +180,8 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
         :param key: The Field's tag name
         :param value: The value to set the Field to
         """
-        if key in settings.protocol.Tag.__dict__.keys():
-            self[settings.protocol.Tag.__dict__[key]] = value
+        if key in connection.protocol.Tag.__dict__.keys():
+            self[connection.protocol.Tag.__dict__[key]] = value
         else:
             super().__setattr__(key, value)
 
@@ -191,8 +191,8 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
 
         :param item: The Field's tag name
         """
-        if item in settings.protocol.Tag.__dict__.keys():
-            del self[settings.protocol.Tag.__dict__[item]]
+        if item in connection.protocol.Tag.__dict__.keys():
+            del self[connection.protocol.Tag.__dict__[item]]
         else:
             super().__delattr__(item)
 
@@ -233,7 +233,7 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
         """
         try:
             # First, try to get the tag number associated with 'name'.
-            tag = settings.protocol.Tag.get_tag(name)
+            tag = connection.protocol.Tag.get_tag(name)
         except UnknownTag as e:
             # Not a known tag, ignore.
             raise AttributeError(
@@ -550,11 +550,11 @@ class FieldDict(FieldMap, GroupTemplateMixin):
             if field.tag in self.group_templates:
                 # Tag denotes the start of a new repeating group.
                 try:
-                    message_type = str(parsed_fields[settings.protocol.Tag.MsgType])
+                    message_type = str(parsed_fields[connection.protocol.Tag.MsgType])
                 except KeyError:
                     # Message type not yet determined!
                     raise ParsingError(
-                        f"Cannot parse repeating group as MsgType tag ({settings.protocol.Tag.MsgType}) has not "
+                        f"Cannot parse repeating group as MsgType tag ({connection.protocol.Tag.MsgType}) has not "
                         "been seen yet!"
                     )
 

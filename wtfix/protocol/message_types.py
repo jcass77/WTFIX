@@ -26,8 +26,6 @@ class _BaseMsgType(AttributeValueMappingsMixin):
     It is intended to be accessed dynamically via the pipeline instead of directly.
     """
 
-    Heartbeat = "0"
-
     @classmethod
     def get_name(cls, value):
         """Wrapper for backwards compatibility"""

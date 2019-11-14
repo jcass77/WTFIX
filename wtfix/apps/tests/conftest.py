@@ -11,10 +11,11 @@ from wtfix.apps.admin import HeartbeatApp
 from wtfix.apps.parsers import RawMessageParserApp
 from wtfix.apps.sessions import ClientSessionApp
 from wtfix.apps.wire import EncoderApp, DecoderApp
-from wtfix.conf import settings
+from wtfix.conf import settings, ConnectionSettings
 from wtfix.message.admin import HeartbeatMessage
 from wtfix.message.message import generic_message_factory
 from wtfix.pipeline import BasePipeline
+from wtfix.protocol.contextlib import connection, connection_manager
 
 
 @asyncio.coroutine
@@ -29,33 +30,34 @@ def base_pipeline():
 
     :return: A pipeline mock with a client session initialized.
     """
-    pipeline = MagicMock(BasePipeline)
-    pipeline.settings = settings.default_connection
+    with connection_manager() as conn:
+        pipeline = MagicMock(BasePipeline)
+        pipeline.settings = ConnectionSettings(conn.name)
 
-    client_session = ClientSessionApp(pipeline, new_session=True)
-    client_session.sender = settings.default_connection.SENDER
-    client_session.target = settings.default_connection.TARGET
+        client_session = ClientSessionApp(pipeline, new_session=True)
+        client_session.sender = pipeline.settings.SENDER
+        client_session.target = pipeline.settings.TARGET
 
-    pipeline.apps = {ClientSessionApp.name: client_session}
+        pipeline.apps = {ClientSessionApp.name: client_session}
 
-    # Mock a future message that will allow us to await pipeline.send and pipeline.receive.
-    # Only useful in situations where we are not interested in the actual message result :(
-    mock_future_message = MagicMock(return_value=Future())
-    mock_future_message.return_value.set_result({})
+        # Mock a future message that will allow us to await pipeline.send and pipeline.receive.
+        # Only useful in situations where we are not interested in the actual message result :(
+        mock_future_message = MagicMock(return_value=Future())
+        mock_future_message.return_value.set_result({})
 
-    pipeline.send = mock_future_message
-    pipeline.receive = mock_future_message
+        pipeline.send = mock_future_message
+        pipeline.receive = mock_future_message
 
-    # Simulate the pipeline shutting down
-    pipeline.stop = MagicMock(return_value=mock_stop())
+        # Simulate the pipeline shutting down
+        pipeline.stop = MagicMock(return_value=mock_stop())
 
-    yield pipeline
+        yield pipeline
 
-    try:
-        os.remove(client_session._sid_path)
-    except FileNotFoundError:
-        # File does not exist - skip deletion
-        pass
+        try:
+            os.remove(client_session._sid_path)
+        except FileNotFoundError:
+            # File does not exist - skip deletion
+            pass
 
 
 @pytest.fixture
@@ -119,16 +121,22 @@ def user_notification_message():
     faker = Faker()
 
     return generic_message_factory(
-        (settings.protocol.Tag.MsgType, settings.protocol.MsgType.UserNotification),
-        (settings.protocol.Tag.MsgSeqNum, 1),
-        (settings.protocol.Tag.SenderCompID, settings.default_connection.SENDER),
-        (settings.protocol.Tag.SendingTime, "20181206-10:24:27.018"),
-        (settings.protocol.Tag.TargetCompID, settings.default_connection.TARGET),
-        (settings.protocol.Tag.NoLinesOfText, 1),
-        (settings.protocol.Tag.Text, "abc"),
-        (settings.protocol.Tag.EmailType, 0),
-        (settings.protocol.Tag.Subject, "Test message"),
-        (settings.protocol.Tag.EmailThreadID, faker.pyint()),
+        (connection.protocol.Tag.MsgType, connection.protocol.MsgType.UserNotification),
+        (connection.protocol.Tag.MsgSeqNum, 1),
+        (
+            connection.protocol.Tag.SenderCompID,
+            settings.CONNECTIONS[connection.name]["SENDER"],
+        ),
+        (connection.protocol.Tag.SendingTime, "20181206-10:24:27.018"),
+        (
+            connection.protocol.Tag.TargetCompID,
+            settings.CONNECTIONS[connection.name]["TARGET"],
+        ),
+        (connection.protocol.Tag.NoLinesOfText, 1),
+        (connection.protocol.Tag.Text, "abc"),
+        (connection.protocol.Tag.EmailType, 0),
+        (connection.protocol.Tag.Subject, "Test message"),
+        (connection.protocol.Tag.EmailThreadID, faker.pyint()),
     )
 
 

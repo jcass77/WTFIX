@@ -19,7 +19,7 @@ import asyncio
 from collections import OrderedDict
 
 from wtfix.core.klass import get_class_from_module_string
-from wtfix.conf import SessionSettings
+from wtfix.conf import ConnectionSettings
 from wtfix.conf import settings
 from wtfix.core.exceptions import (
     MessageProcessingError,
@@ -27,6 +27,7 @@ from wtfix.core.exceptions import (
     ValidationError,
     ImproperlyConfigured,
 )
+from wtfix.protocol.contextlib import connection
 
 logger = settings.logger
 
@@ -39,11 +40,9 @@ class BasePipeline:
     INBOUND_PROCESSING = 0
     OUTBOUND_PROCESSING = 1
 
-    def __init__(self, connection_name=None, installed_apps=None, **kwargs):
-        if connection_name is None:
-            connection_name = settings.default_connection_name
+    def __init__(self, connection_name, installed_apps=None, **kwargs):
+        self.settings = ConnectionSettings(connection_name)
 
-        self.settings = SessionSettings(connection_name)
         self._installed_apps = self._load_apps(installed_apps=installed_apps, **kwargs)
         logger.info(
             f"Created new WTFIX application pipeline: {list(self.apps.keys())}."
@@ -195,10 +194,9 @@ class BasePipeline:
             raise e
 
         except Exception as e:
-            protocol = self.settings.protocol
             if (
                 isinstance(Exception, ConnectionError)
-                and message.type == protocol.MsgType.Logout
+                and message.type == connection.protocol.MsgType.Logout
                 and self.stopping_event.is_set()
             ):
                 # Mute connection errors that occur while we are trying to shut down / log out - connection issues
