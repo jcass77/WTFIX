@@ -16,11 +16,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import asyncio
-from asyncio import futures
 from collections import OrderedDict
 
 from wtfix.core.klass import get_class_from_module_string
-from wtfix.conf import SessionSettings
+from wtfix.conf import ConnectionSettings
 from wtfix.conf import settings
 from wtfix.core.exceptions import (
     MessageProcessingError,
@@ -28,6 +27,7 @@ from wtfix.core.exceptions import (
     ValidationError,
     ImproperlyConfigured,
 )
+from wtfix.protocol.contextlib import connection
 
 logger = settings.logger
 
@@ -40,11 +40,9 @@ class BasePipeline:
     INBOUND_PROCESSING = 0
     OUTBOUND_PROCESSING = 1
 
-    def __init__(self, connection_name=None, installed_apps=None, **kwargs):
-        if connection_name is None:
-            connection_name = settings.default_connection_name
+    def __init__(self, connection_name, installed_apps=None, **kwargs):
+        self.settings = ConnectionSettings(connection_name)
 
-        self.settings = SessionSettings(connection_name)
         self._installed_apps = self._load_apps(installed_apps=installed_apps, **kwargs)
         logger.info(
             f"Created new WTFIX application pipeline: {list(self.apps.keys())}."
@@ -107,16 +105,21 @@ class BasePipeline:
             # Initialize all apps first
             await asyncio.wait_for(self.initialize(), settings.INIT_TIMEOUT)
 
-        except futures.TimeoutError as e:
+        except asyncio.TimeoutError as e:
             logger.error(f"Timeout waiting for apps to initialize!")
             raise e
 
         for app in reversed(self.apps.values()):
+            if self.stopping_event.is_set():
+                # Abort startup
+                logger.info(f"Pipeline shutting down. Aborting startup of '{app}'...")
+                break
+
             logger.info(f"Starting app '{app}'...")
 
             try:
                 await asyncio.wait_for(app.start(), settings.STARTUP_TIMEOUT)
-            except futures.TimeoutError as e:
+            except asyncio.TimeoutError as e:
                 logger.error(f"Timeout waiting for app '{app}' to start!")
                 raise e
 
@@ -146,7 +149,7 @@ class BasePipeline:
 
                 logger.info("Pipeline stopped.")
                 self.stopped_event.set()
-            except futures.TimeoutError:
+            except asyncio.TimeoutError:
                 logger.error(
                     f"Timeout waiting for app '{app}' to stop, cancelling all outstanding tasks..."
                 )
@@ -196,10 +199,9 @@ class BasePipeline:
             raise e
 
         except Exception as e:
-            protocol = self.settings.protocol
             if (
                 isinstance(Exception, ConnectionError)
-                and message.type == protocol.MsgType.Logout
+                and message.type == connection.protocol.MsgType.Logout
                 and self.stopping_event.is_set()
             ):
                 # Mute connection errors that occur while we are trying to shut down / log out - connection issues

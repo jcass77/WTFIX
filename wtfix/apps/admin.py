@@ -30,6 +30,7 @@ from wtfix.core.exceptions import TagNotFound, StopMessageProcessing, SessionErr
 from wtfix.message import admin
 from wtfix.core import utils
 from wtfix.message.message import FIXMessage
+from wtfix.protocol.contextlib import connection
 
 logger = settings.logger
 
@@ -196,7 +197,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
             self.send(admin.HeartbeatMessage())
         )  # Don't need to block while heartbeat is sent
 
-    @on(settings.protocol.MsgType.Logon)
+    @on(connection.protocol.MsgType.Logon)
     async def on_logon(self, message: FIXMessage) -> FIXMessage:
         """
         Start the heartbeat monitor as soon as a logon response is received from the server.
@@ -208,7 +209,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
 
         return message
 
-    @on(settings.protocol.MsgType.TestRequest)
+    @on(connection.protocol.MsgType.TestRequest)
     async def on_test_request(self, message: FIXMessage) -> FIXMessage:
         """
         Send a HeartBeat message in response to a TestRequest received from the server.
@@ -223,7 +224,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
 
         return message
 
-    @on(settings.protocol.MsgType.Heartbeat)
+    @on(connection.protocol.MsgType.Heartbeat)
     async def on_heartbeat(self, message: FIXMessage) -> FIXMessage:
         """
         Handle a TestRequest response from the server.
@@ -311,7 +312,7 @@ class AuthenticationApp(MessageTypeHandlerApp):
 
         await self.logout()
 
-    @on(settings.protocol.MsgType.Logon)
+    @on(connection.protocol.MsgType.Logon)
     async def on_logon(self, message):
         """
         Confirms all of the session parameters that we sent when logging on.
@@ -351,7 +352,7 @@ class AuthenticationApp(MessageTypeHandlerApp):
 
         return message
 
-    @on(settings.protocol.MsgType.Logout)
+    @on(connection.protocol.MsgType.Logout)
     async def on_logout(self, message):
         self.logged_out_event.set()  # FIX server has logged us out.
 
@@ -438,12 +439,12 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
     name = "seq_num_manager"
 
     ADMIN_MESSAGES = [
-        settings.protocol.MsgType.Logon,
-        settings.protocol.MsgType.Logout,
-        settings.protocol.MsgType.ResendRequest,
-        settings.protocol.MsgType.Heartbeat,
-        settings.protocol.MsgType.TestRequest,
-        settings.protocol.MsgType.SequenceReset,
+        connection.protocol.MsgType.Logon,
+        connection.protocol.MsgType.Logout,
+        connection.protocol.MsgType.ResendRequest,
+        connection.protocol.MsgType.Heartbeat,
+        connection.protocol.MsgType.TestRequest,
+        connection.protocol.MsgType.SequenceReset,
     ]
 
     # How long to wait (in seconds) for resend requests from target before sending our own resend requests.
@@ -531,7 +532,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
         else:
             # Message received in correct order.
-            if message.type == settings.protocol.MsgType.SequenceReset:
+            if message.type == connection.protocol.MsgType.SequenceReset:
                 # Special handling for SequenceReset admin message
                 message = self._handle_sequence_reset(message)
             else:
@@ -762,7 +763,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
         Check the sequence number for every message received
         """
         # Special handling for ResendRequest admin message: should be responded to even if received out of order
-        if message.type == settings.protocol.MsgType.ResendRequest:
+        if message.type == connection.protocol.MsgType.ResendRequest:
             message = await self._handle_resend_request(
                 message
             )  # Handle resend request immediately.

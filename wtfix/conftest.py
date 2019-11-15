@@ -1,18 +1,11 @@
 import pytest
 
-from config.settings import base
-from wtfix.conf import settings
 from wtfix.message import admin
 from wtfix.message.message import GenericMessage, OptimizedGenericMessage
 from wtfix.message.collections import Group, FieldDict, FieldList
+from wtfix.protocol.contextlib import connection
 
 from pytest_socket import socket_allow_hosts
-
-
-@pytest.fixture(autouse=True, params=[base.CONNECTIONS])
-def connection_setup(request):
-    # Example of running test suite for each connection (and different protocols) individually
-    base.CONNECTIONS = {"test": request.param["default"]}
 
 
 # https://github.com/miketheman/pytest-socket#usage
@@ -35,12 +28,15 @@ def fieldmap_class(request):
 def routing_id_group():
     """Example of a RoutingID repeating group"""
     return Group(
-        (settings.protocol.Tag.NoRoutingIDs, "2"),
-        (settings.protocol.Tag.RoutingType, "a"),
-        (settings.protocol.Tag.RoutingID, "b"),
-        (settings.protocol.Tag.RoutingType, "c"),
-        (settings.protocol.Tag.RoutingID, "d"),
-        template=[settings.protocol.Tag.RoutingType, settings.protocol.Tag.RoutingID],
+        (connection.protocol.Tag.NoRoutingIDs, "2"),
+        (connection.protocol.Tag.RoutingType, "a"),
+        (connection.protocol.Tag.RoutingID, "b"),
+        (connection.protocol.Tag.RoutingType, "c"),
+        (connection.protocol.Tag.RoutingID, "d"),
+        template=[
+            connection.protocol.Tag.RoutingType,
+            connection.protocol.Tag.RoutingID,
+        ],
     )
 
 
@@ -94,20 +90,20 @@ def sdr_message_fields():
     """Sample of a security definition request message fields"""
     return [
         (
-            settings.protocol.Tag.MsgType,
-            settings.protocol.MsgType.SecurityDefinitionRequest,
+            connection.protocol.Tag.MsgType,
+            connection.protocol.MsgType.SecurityDefinitionRequest,
         ),
-        (settings.protocol.Tag.MsgSeqNum, "1"),  # MsgSeqNum: 1
-        (settings.protocol.Tag.SenderCompID, "SENDER"),  # SenderCompID
-        (settings.protocol.Tag.SendingTime, "20181127-11:33:31.505"),  # SendingTime
-        (settings.protocol.Tag.TargetCompID, "TARGET"),  # TargetCompID
-        (settings.protocol.Tag.Symbol, "^.*$"),  # Symbol
-        (settings.protocol.Tag.SecurityType, "CS"),  # SecurityType: CommonStock
+        (connection.protocol.Tag.MsgSeqNum, "1"),  # MsgSeqNum: 1
+        (connection.protocol.Tag.SenderCompID, "SENDER"),  # SenderCompID
+        (connection.protocol.Tag.SendingTime, "20181127-11:33:31.505"),  # SendingTime
+        (connection.protocol.Tag.TargetCompID, "TARGET"),  # TargetCompID
+        (connection.protocol.Tag.Symbol, "^.*$"),  # Symbol
+        (connection.protocol.Tag.SecurityType, "CS"),  # SecurityType: CommonStock
         (
-            settings.protocol.Tag.SecurityReqID,
+            connection.protocol.Tag.SecurityReqID,
             "37a0b5c8afb543ec8f29eca2a44be2ec",
         ),  # SecurityReqID
-        (settings.protocol.Tag.SecurityRequestType, "3"),  # SecurityRequestType: all
+        (connection.protocol.Tag.SecurityRequestType, "3"),  # SecurityRequestType: all
     ]
 
 

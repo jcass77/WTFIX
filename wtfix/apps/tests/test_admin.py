@@ -19,6 +19,7 @@ from wtfix.message import admin
 from wtfix.message.admin import TestRequestMessage, HeartbeatMessage
 from wtfix.message.message import OptimizedGenericMessage
 from wtfix.pipeline import BasePipeline
+from wtfix.protocol.contextlib import connection
 
 
 class TestAuthenticationApp:
@@ -74,7 +75,7 @@ class TestHeartbeatApp:
         heartbeat_app = HeartbeatApp(base_pipeline)
         assert (
             heartbeat_app.heartbeat_interval
-            == settings.default_connection.HEARTBEAT_INT
+            == settings.CONNECTIONS[connection.name]["HEARTBEAT_INT"]
         )
 
     @pytest.mark.asyncio
@@ -111,7 +112,7 @@ class TestHeartbeatApp:
                     ),
                     0.1,
                 )
-            except asyncio.futures.TimeoutError:
+            except asyncio.TimeoutError:
                 pass
 
             assert check.call_count == 0
@@ -132,7 +133,7 @@ class TestHeartbeatApp:
                     ),
                     0.1,
                 )
-            except asyncio.futures.TimeoutError:
+            except asyncio.TimeoutError:
                 pass
 
             assert check.call_count > 1
@@ -153,7 +154,7 @@ class TestHeartbeatApp:
                 ),
                 0.1,
             )
-        except asyncio.futures.TimeoutError:
+        except asyncio.TimeoutError:
             pass
 
         assert not zero_heartbeat_app._server_not_responding.is_set()
@@ -197,7 +198,7 @@ class TestHeartbeatApp:
     @pytest.mark.asyncio
     async def test_on_heartbeat_handles_empty_request_id(self, zero_heartbeat_app):
         test_request = OptimizedGenericMessage(
-            (settings.protocol.Tag.MsgType, settings.protocol.MsgType.TestRequest)
+            (connection.protocol.Tag.MsgType, connection.protocol.MsgType.TestRequest)
         )
 
         assert await zero_heartbeat_app.on_heartbeat(test_request) == test_request

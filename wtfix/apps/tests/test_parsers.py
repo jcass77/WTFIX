@@ -2,6 +2,7 @@ import pytest
 
 from wtfix.conf import settings
 from wtfix.message.message import RawMessage, OptimizedGenericMessage
+from wtfix.protocol.contextlib import connection
 
 
 class TestRawMessageParser:
@@ -16,7 +17,7 @@ class TestRawMessageParser:
     ):
         assert (
             raw_msg_parser_app.group_templates
-            == settings.default_connection.GROUP_TEMPLATES
+            == settings.CONNECTIONS[connection.name]["GROUP_TEMPLATES"]
         )
 
     @pytest.mark.asyncio

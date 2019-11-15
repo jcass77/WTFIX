@@ -2,6 +2,15 @@
 
 This changelog is used to track all major changes to WTFIX.
 
+
+## v0.14.0 (2019-11-15)
+
+**Enhancements**
+
+- Fix Python 3.8 compatibility issues.
+- Switch to using a context manager for managing the active FIX connection / protocol.
+
+
 ## v0.13.0 (2019-11-14)
 
 **Enhancements**

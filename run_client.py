@@ -26,21 +26,16 @@ from asyncio import futures
 from wtfix.conf import settings
 from wtfix.core.exceptions import ImproperlyConfigured
 from wtfix.pipeline import BasePipeline
+from wtfix.protocol.contextlib import connection_manager
 
 logger = settings.logger
 
 parser = argparse.ArgumentParser(description="Start a FIX connection")
 
-try:
-    # If only one connection has been configured then we have a safe default to fall back to.
-    default_connection_name = settings.default_connection_name
-except ImproperlyConfigured:
-    default_connection_name = None
-
 parser.add_argument(
     "--connection",
-    default=default_connection_name,
-    help=f"the configuration settings to use for the connection (default: '{default_connection_name}')",
+    default="default",
+    help="the configuration settings to use for the connection (default: 'default')",
 )
 
 parser.add_argument(
@@ -69,50 +64,53 @@ async def main():
 
     args = parser.parse_args()
 
-    fix_pipeline = BasePipeline(
-        connection_name=args.connection, new_session=args.new_session
-    )
+    with connection_manager(args.connection) as conn:
+        fix_pipeline = BasePipeline(
+            connection_name=conn.name, new_session=args.new_session
+        )
 
-    try:
-        # Graceful shutdown on termination signals.
-        # See: https://docs.python.org/3.7/library/asyncio-eventloop.html#set-signal-handlers-for-sigint-and-sigterm
-        loop = asyncio.get_running_loop()
-        for sig_name in {"SIGINT", "SIGTERM"}:
-            loop.add_signal_handler(
-                getattr(signal, sig_name),
-                lambda: asyncio.ensure_future(
-                    graceful_shutdown(sig_name, fix_pipeline)
-                ),
-            )
-
-        await fix_pipeline.start()
-
-    except futures.TimeoutError as e:
-        logger.error(e)
-        sys.exit(os.EX_UNAVAILABLE)
-
-    except KeyboardInterrupt:
-        logger.info("Received keyboard interrupt! Initiating shutdown...")
-        sys.exit(os.EX_OK)
-
-    except futures.CancelledError as e:
-        logger.error(f"Cancelled: connection terminated abnormally! ({e})")
-        sys.exit(os.EX_UNAVAILABLE)
-
-    except ImproperlyConfigured as e:
-        logger.error(e)
-        sys.exit(os.EX_OK)  # User needs to fix config issue before restart is attempted
-
-    except Exception as e:
-        logger.exception(e)
-        sys.exit(os.EX_UNAVAILABLE)
-
-    finally:
         try:
-            await fix_pipeline.stop()
+            # Graceful shutdown on termination signals.
+            # See: https://docs.python.org/3.7/library/asyncio-eventloop.html#set-signal-handlers-for-sigint-and-sigterm
+            loop = asyncio.get_running_loop()
+            for sig_name in {"SIGINT", "SIGTERM"}:
+                loop.add_signal_handler(
+                    getattr(signal, sig_name),
+                    lambda: asyncio.ensure_future(
+                        graceful_shutdown(sig_name, fix_pipeline)
+                    ),
+                )
+
+            await fix_pipeline.start()
+
+        except asyncio.TimeoutError as e:
+            logger.error(e)
+            sys.exit(os.EX_UNAVAILABLE)
+
+        except KeyboardInterrupt:
+            logger.info("Received keyboard interrupt! Initiating shutdown...")
+            sys.exit(os.EX_OK)
+
         except futures.CancelledError as e:
             logger.error(f"Cancelled: connection terminated abnormally! ({e})")
             sys.exit(os.EX_UNAVAILABLE)
+
+        except ImproperlyConfigured as e:
+            logger.error(e)
+            sys.exit(
+                os.EX_OK
+            )  # User needs to fix config issue before restart is attempted
+
+        except Exception as e:
+            logger.exception(e)
+            sys.exit(os.EX_UNAVAILABLE)
+
+        finally:
+            try:
+                await fix_pipeline.stop()
+            except futures.CancelledError as e:
+                logger.error(f"Cancelled: connection terminated abnormally! ({e})")
+                sys.exit(os.EX_UNAVAILABLE)
 
 
 if __name__ == "__main__":

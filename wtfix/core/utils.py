@@ -19,6 +19,7 @@ from functools import singledispatch
 
 from wtfix.conf import settings
 from wtfix.core.exceptions import TagNotFound, ValidationError
+from wtfix.protocol.contextlib import connection
 
 null = -2_147_483_648  # FIX representation of 'null' or 'NoneType'
 
@@ -217,10 +218,12 @@ class GroupTemplateMixin:
         self.set_group_templates(value)
 
     def _init_group_templates(self):
-        if settings.has_safe_defaults:
-            self.set_group_templates(settings.default_connection.GROUP_TEMPLATES)
-        else:
-            self._group_templates = {}
+        try:
+            self.set_group_templates(
+                settings.CONNECTIONS[connection.name]["GROUP_TEMPLATES"]
+            )
+        except KeyError:
+            self.group_templates = {}
 
     def get_group_templates(self, identifier_tag, message_type=None):
 
