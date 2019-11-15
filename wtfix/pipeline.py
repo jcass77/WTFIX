@@ -110,13 +110,14 @@ class BasePipeline:
             raise e
 
         for app in reversed(self.apps.values()):
-            logger.info(f"Starting app '{app}'...")
+            while not self.stopping_event.is_set():
+                logger.info(f"Starting app '{app}'...")
 
-            try:
-                await asyncio.wait_for(app.start(), settings.STARTUP_TIMEOUT)
-            except asyncio.TimeoutError as e:
-                logger.error(f"Timeout waiting for app '{app}' to start!")
-                raise e
+                try:
+                    await asyncio.wait_for(app.start(), settings.STARTUP_TIMEOUT)
+                except asyncio.TimeoutError as e:
+                    logger.error(f"Timeout waiting for app '{app}' to start!")
+                    raise e
 
         logger.info("All apps in pipeline have been started!")
 
