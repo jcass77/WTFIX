@@ -3,6 +3,14 @@
 This changelog is used to track all major changes to WTFIX.
 
 
+## v0.14.1 (2019-11-27)
+
+**Fixes**
+
+- Set logging level of 'wtfix' logger to 'LOGGING_LEVEL' when it is first requested.
+- Fix bug in '_replay_buffered_messages' that prevented buffered messages from being received.
+
+
 ## v0.14.0 (2019-11-15)
 
 **Enhancements**

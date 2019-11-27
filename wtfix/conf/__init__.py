@@ -81,6 +81,7 @@ class Settings:
     def logger(self):
         if self._logger is None:
             self._logger = logging.getLogger(settings.LOGGER)
+            self._logger.level = settings.LOGGING_LEVEL
 
         return self._logger
 

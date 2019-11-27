@@ -466,5 +466,5 @@ class TestSeqNumManagerApp:
         await asyncio.wait(tasks, timeout=0.1)
 
         assert (
-            pipeline_with_messages.receive.call_count == 2
-        )  # Queued messages processed
+            pipeline_with_messages.receive.call_count == 1
+        )  # One queued message (with sequence number 8) processed
