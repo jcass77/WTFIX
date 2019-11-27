@@ -570,8 +570,8 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
                         f"{self.name}: Resubmitting queued message #{resubmit_message.seq_num} "
                         f"({resubmit_message})."
                     )
-                    self.pipeline.receive(
-                        bytes(resubmit_message)
+                    asyncio.create_task(
+                        self.pipeline.receive(bytes(resubmit_message))
                     )  # Separate, non-blocking task
 
         except IndexError:

@@ -19,7 +19,7 @@ from wtfix.protocol.contextlib import connection, connection_manager
 
 
 @asyncio.coroutine
-def mock_stop():
+def mock_coroutine():
     return None
 
 
@@ -46,10 +46,10 @@ def base_pipeline():
         mock_future_message.return_value.set_result({})
 
         pipeline.send = mock_future_message
-        pipeline.receive = mock_future_message
+        pipeline.receive = MagicMock(return_value=mock_coroutine())
 
         # Simulate the pipeline shutting down
-        pipeline.stop = MagicMock(return_value=mock_stop())
+        pipeline.stop = MagicMock(return_value=mock_coroutine())
 
         yield pipeline
 
