@@ -3,6 +3,13 @@
 This changelog is used to track all major changes to WTFIX.
 
 
+## v0.14.1 (UNRELEASED)
+
+**Fixes**
+
+- Set logging level of 'wtfix' logger to 'LOGGING_LEVEL' when it is first requested.
+
+
 ## v0.14.0 (2019-11-15)
 
 **Enhancements**
