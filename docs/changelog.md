@@ -2,6 +2,13 @@
 
 This changelog is used to track all major changes to WTFIX.
 
+## v0.14.2 (2019-12-16)
+
+**Fixes**
+
+- Re-raise all exceptions that cause the pipeline to terminate abnormally so that they can be reported and dealt
+  with at the operating system level. Useful if pipeline is being monitored by something like supervisord.
+
 
 ## v0.14.1 (2019-11-27)
 
