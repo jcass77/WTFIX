@@ -200,7 +200,7 @@ class BasePipeline:
 
         except Exception as e:
             if (
-                isinstance(Exception, ConnectionError)
+                isinstance(e, ConnectionError)
                 and message.type == connection.protocol.MsgType.Logout
                 and self.stopping_event.is_set()
             ):
@@ -218,6 +218,7 @@ class BasePipeline:
                     f"Unhandled exception while doing {method_name}: {e} ({message})."
                 )
                 await self.stop()  # Block while we try to stop the pipeline
+                raise e
 
         return message
 
