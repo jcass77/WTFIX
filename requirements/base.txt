@@ -1,5 +1,5 @@
-python-dotenv~=0.10.3  # https://github.com/theskumar/python-dotenv
+python-dotenv~=0.12  # https://github.com/theskumar/python-dotenv
 flask-restful~=0.3.7  # https://github.com/flask-restful/flask-restful
-requests~=2.22.0  # https://github.com/kennethreitz/requests
-gunicorn~=19.9.0  # https://gunicorn.org
+requests~=2.23  # https://github.com/kennethreitz/requests
+gunicorn~=20.0  # https://gunicorn.org
 aioredis~=1.3  # https://github.com/aio-libs/aioredis
