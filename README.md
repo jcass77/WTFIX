@@ -116,6 +116,7 @@ messages mean that you never need to deal with byte sequences directly.
     # Create a new Message from a byte sequence received over the wire
     >>> fields = Field.fields_frombytes(b"35=A\x0198=0\x01108=30\x01553=my_username\x01554=my_password\x01")
     >>> logon_msg = generic_message_factory(*fields)
+
     >>> str(logon_msg)
     'A: {(35, A) | (98, 0) | (108, 30) | (553, my_username) | (554, my_password)}'
 
@@ -134,7 +135,7 @@ messages mean that you never need to deal with byte sequences directly.
     >>> username
     Field(553, 'my_username_123')
     ```
-- Access to the underlying byte sequence when you need it:
+- Access the underlying byte sequence when you need it by casting the message back to `bytes`:
 
     ```python
     >>> bytes(logon_msg)
@@ -147,12 +148,12 @@ messages mean that you never need to deal with byte sequences directly.
     >>> f"{logon_msg:t}"
     'Logon (A): {MsgType (35): A | EncryptMethod (98): 0 | HeartBtInt (108): 30 | Username (553): my_username | Password (554): my_password | PossDupFlag (43): Y}'
 
-    # Most FIX field values can be cast to their corresponding Python built-in type
+    # Most FIX field types can be cast to equivalent Python built-in types to make processing easier
     >>> bool(logon_msg.PossDupFlag) is True
     True
 
     ```
-- A very forgiving approach to repeating groups of message tags:
+- A very forgiving approach to parsing repeating groups of message tags; with or without pre-defined templates:
 
     ```python
     from wtfix.protocol.common import Tag, MsgType
