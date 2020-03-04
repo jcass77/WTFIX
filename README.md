@@ -25,6 +25,7 @@ routines or new application features.
 
     ```python
     PIPELINE_APPS = [
+        "wtfix.apps.utils.PipelineTerminationApp", # Post-processing / cleanup
         "my_app.apps.SecretAlgoTradingRecipe",     # <-- Your application logic
         "wtfix.apps.api.RESTfulServiceApp",        # REST API for sending messages
         "wtfix.apps.brokers.RedisPubSubApp",       # Redis Pub/Sub broker for sending / receiving messages
