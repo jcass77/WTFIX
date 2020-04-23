@@ -2,11 +2,11 @@
 
 # Testing
 # ------------------------------------------------------------------------------
-pytest~=5.0  # https://github.com/pytest-dev/pytest
+pytest==5.3.5  # https://github.com/pytest-dev/pytest
 pytest-sugar~=0.9  # https://github.com/Frozenball/pytest-sugar
 pytest-socket~=0.3  # https://github.com/miketheman/pytest-socket
 pytest-env~=0.6  # https://github.com/MobileDynasty/pytest-env
-pytest-asyncio~=0.9  # https://github.com/pytest-dev/pytest-asyncio
+pytest-asyncio=0.10  # https://github.com/pytest-dev/pytest-asyncio
 faker~=4.0  # https://github.com/joke2k/faker
 
 # Code quality
