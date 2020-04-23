@@ -49,7 +49,7 @@ class StopMessageProcessing(Exception):
     Used to stop a message from propagating further up or down the pipeline.
 
     This should be used to interrupt message processing during normal operation (i.e. as part of an optimization
-    or if the message is not relevant to other applications in the pipeline.
+    or if the message is not relevant to other applications in the pipeline).
     """
 
     pass
