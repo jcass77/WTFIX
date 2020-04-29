@@ -9,7 +9,7 @@ with open(path.join(here, "README.md"), encoding="utf-8") as f:
 
 setup(
     name="wtfix",
-    version="0.14.2",
+    version="0.14.3",
     author="John Cass",
     author_email="john.cass77@gmail.com",
     description="The Pythonic Financial Information eXchange (FIX) client for humans.",
@@ -27,11 +27,11 @@ setup(
     keywords="FIX financial information exchange",
     packages=find_packages(exclude=["contrib", "docs", "tests"]),
     install_requires=[
-        "python-dotenv~=0.10.3",
-        "flask-restful~=0.3.7",
-        "requests~=2.22.0",
-        "gunicorn~=19.9.0",
-        "aioredis~=1.3",
+        "python-dotenv>=0.10.3",
+        "flask-restful>=0.3.7",
+        "requests>=2.22",
+        "gunicorn>=19.9",
+        "aioredis>=1.3",
     ],
     python_requires=">=3.7",
     project_urls={

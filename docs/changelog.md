@@ -2,6 +2,13 @@
 
 This changelog is used to track all major changes to WTFIX.
 
+## v0.14.3 (2020-04-29)
+
+**Enhancements**
+
+- Relax dependency version requirements in setup.py.
+- Update dependencies to latest major versions.
+
 ## v0.14.2 (2019-12-16)
 
 **Fixes**
