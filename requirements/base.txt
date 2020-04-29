@@ -1,4 +1,4 @@
-python-dotenv~=0.12  # https://github.com/theskumar/python-dotenv
+python-dotenv~=0.13  # https://github.com/theskumar/python-dotenv
 flask-restful~=0.3  # https://github.com/flask-restful/flask-restful
 requests~=2.23  # https://github.com/kennethreitz/requests
 gunicorn~=20.0  # https://gunicorn.org
