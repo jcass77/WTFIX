@@ -41,8 +41,8 @@ class HeartbeatTimers(Enum):
     SEND = auto()
     RECEIVE = auto()
 
-    def __init__(self, timestamp: int):
-        self.timestamp = timestamp
+    def __init__(self, *args, **kwargs):
+        self.timestamp = None
 
 
 class HeartbeatApp(MessageTypeHandlerApp):
@@ -57,8 +57,8 @@ class HeartbeatApp(MessageTypeHandlerApp):
 
         self._test_request_id = None  # A waiting TestRequest message for which no response has been received.
 
-        self._received_monitor = None
-        self._sent_monitor = None
+        self._received_monitor_task = None
+        self._sent_monitor_task = None
         self._server_not_responding = asyncio.Event()
 
     @property
@@ -113,11 +113,13 @@ class HeartbeatApp(MessageTypeHandlerApp):
         await super().start(*args, **kwargs)
 
         # Keep a reference to running monitors, so that we can cancel them if needed.
-        self._received_monitor = asyncio.create_task(
-            self.heartbeat_monitor(HeartbeatTimers.RECEIVE, self.send_test_request)
+        self._received_monitor_task = asyncio.create_task(
+            self.heartbeat_monitor(HeartbeatTimers.RECEIVE, self.send_test_request),
+            name=f"Task-{self.name}:receive_monitor",
         )
-        self._sent_monitor = asyncio.create_task(
-            self.heartbeat_monitor(HeartbeatTimers.SEND, self.send_heartbeat)
+        self._sent_monitor_task = asyncio.create_task(
+            self.heartbeat_monitor(HeartbeatTimers.SEND, self.send_heartbeat),
+            name=f"Task-{self.name}:sent_monitor",
         )
 
         logger.info(
@@ -132,12 +134,12 @@ class HeartbeatApp(MessageTypeHandlerApp):
         # Stop heartbeat monitors
         cancel_tasks = [
             task
-            for task in (self._received_monitor, self._sent_monitor)
+            for task in (self._received_monitor_task, self._sent_monitor_task)
             if task is not None
         ]
 
         if cancel_tasks:
-            logger.error(f"Cancelling outstanding {self.name} tasks...")
+            logger.info(f"{self.name}: Cancelling asyncio tasks...")
 
             for task in cancel_tasks:
                 task.cancel()
@@ -145,16 +147,13 @@ class HeartbeatApp(MessageTypeHandlerApp):
             await asyncio.gather(*cancel_tasks, return_exceptions=True)
 
             loop = asyncio.get_running_loop()
-
-            for task in cancel_tasks:
-                if task.cancelled():
-                    continue
-                if task.exception() is not None:
+            for cancel_task in cancel_tasks:
+                if cancel_task.exception() is not None:
                     loop.call_exception_handler(
                         {
-                            "message": f"Unhandled exception while stopping {self.name}!",
-                            "exception": task.exception(),
-                            "future": task,
+                            "message": f"Unhandled exception while cancelling task '{cancel_task.get_name()}'.",
+                            "exception": cancel_task.exception(),
+                            "future": cancel_task,
                         }
                     )
 
@@ -167,22 +166,27 @@ class HeartbeatApp(MessageTypeHandlerApp):
         :timer: The timer to use as reference against the heartbeat interval
         :interval_exceeded_response: The response to take if the interval is exceeded. Must be an awaitable.
         """
-        while not self._server_not_responding.is_set():
-            # Keep sending heartbeats until the server stops responding.
-            await asyncio.sleep(
-                self.seconds_to_next_check(timer)
-            )  # Wait until the next scheduled heartbeat check.
+        try:
+            while not self._server_not_responding.is_set():
+                # Keep sending heartbeats until the server stops responding.
+                await asyncio.sleep(
+                    self.seconds_to_next_check(timer)
+                )  # Wait until the next scheduled heartbeat check.
 
-            if self.seconds_to_next_check(timer) == 0:
-                # Heartbeat exceeded, send response
-                await interval_exceeded_response()
+                if self.seconds_to_next_check(timer) == 0:
+                    # Heartbeat exceeded, send response
+                    await interval_exceeded_response()
 
-        # No response received, force logout!
-        logger.error(
-            f"{self.name}: No response received for test request '{self._test_request_id}', "
-            f"initiating shutdown..."
-        )
-        asyncio.create_task(self.pipeline.stop())
+            # No response received, force logout!
+            logger.error(
+                f"{self.name}: No response received for test request '{self._test_request_id}', "
+                f"initiating shutdown..."
+            )
+            asyncio.create_task(self.pipeline.stop())
+
+        except asyncio.exceptions.CancelledError:
+            # Cancellation request received
+            logger.info(f"{self.name}: {asyncio.current_task().get_name()} cancelled!")
 
     async def send_test_request(self):
         """

@@ -63,8 +63,8 @@ class TestClientSessionApp:
 
         session_app.writer = mock.MagicMock(asyncio.StreamWriter)
         session_app.writer.write = mock.Mock()
-        session_app.writer.transport.is_closing = mock.Mock()
-        session_app.writer.transport.is_closing.return_value = False
+        session_app.writer.is_closing = mock.Mock()
+        session_app.writer.is_closing.return_value = False
 
         msg = admin.TestRequestMessage("Test123")
         msg.SendingTime = datetime.utcnow().strftime(settings.DATETIME_FORMAT)[:-3]
@@ -76,7 +76,7 @@ class TestClientSessionApp:
 
         await asyncio.sleep(0.1)
 
-        session_app.writer.transport.is_closing.return_value = (
+        session_app.writer.is_closing.return_value = (
             True  # Close listener after this message
         )
         session_app.reader.feed_data(encoded_msg[-1:])  # Feed second part of message

@@ -38,6 +38,7 @@ class RedisPubSubApp(BaseApp):
         super().__init__(pipeline, *args, **kwargs)
 
         self.redis_pool = None
+        self._channel_reader_task = None
 
     async def _send_channel_reader(self):
         try:
@@ -53,6 +54,14 @@ class RedisPubSubApp(BaseApp):
                         self.send(message)
                     )  # Pass message on to pipeline
 
+        except asyncio.exceptions.CancelledError:
+            # Cancellation request received - close connections....
+            logger.info(f"{self.name}: {asyncio.current_task().get_name()} cancelled!")
+            await conn.unsubscribe(self.SEND_CHANNEL)
+
+            self.redis_pool.close()
+            await self.redis_pool.wait_closed()  # Closing all open connections
+
         except aioredis.ChannelClosedError:
             # Shutting down...
             logger.info(f"{self.name}: Unsubscribed from {send_channel.name}.")
@@ -65,13 +74,13 @@ class RedisPubSubApp(BaseApp):
     async def start(self, *args, **kwargs):
         await super().start(*args, **kwargs)
 
-        asyncio.create_task(self._send_channel_reader())
+        self._channel_reader_task = asyncio.create_task(
+            self._send_channel_reader(), name=f"Task-{self.name}:channel_reader"
+        )
 
     async def stop(self, *args, **kwargs):
         await super().stop(*args, **kwargs)
 
-        with await self.redis_pool as conn:
-            await conn.unsubscribe(self.SEND_CHANNEL)
-
-        self.redis_pool.close()
-        await self.redis_pool.wait_closed()  # Closing all open connections
+        if self._channel_reader_task is not None:
+            self._channel_reader_task.cancel()
+            await self._channel_reader_task

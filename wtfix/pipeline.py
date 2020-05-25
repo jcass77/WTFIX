@@ -151,37 +151,22 @@ class BasePipeline:
                     logger.error(f"Timeout waiting for app '{app}' to stop!")
                     continue  # Continue trying to stop next app.
 
-            # Stop all asyncio tasks
+            # Report tasks that are still running after shutdown.
             tasks = [
                 task
                 for task in asyncio.all_tasks()
-                if task is not asyncio.current_task()
+                if task is not asyncio.current_task() and not task.cancelled()
             ]
 
             if tasks:
-                logger.error(f"Cancelling all outstanding tasks...")
+                task_output = "\n".join(str(task) for task in tasks)
+                logger.warning(
+                    f"There are still {len(tasks)} tasks running that have not been cancelled:\n"
+                    f"{task_output}."
+                )
 
-                for task in tasks:
-                    task.cancel()
-
-                await asyncio.gather(*tasks, return_exceptions=True)
-
-                loop = asyncio.get_running_loop()
-
-                for task in tasks:
-                    if task.cancelled():
-                        continue
-                    if task.exception() is not None:
-                        loop.call_exception_handler(
-                            {
-                                "message": f"Unhandled exception during pipeline shutdown!",
-                                "exception": task.exception(),
-                                "future": task,
-                            }
-                        )
-
-            logger.info("Pipeline stopped.")
             self.stopped_event.set()
+            logger.info("Pipeline stopped.")
 
     def _setup_message_handling(self, direction):
         if direction is self.INBOUND_PROCESSING:
