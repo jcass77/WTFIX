@@ -1,6 +1,3 @@
-import asyncio
-from unittest.mock import Mock
-
 import pytest
 
 from wtfix.apps.base import BaseApp
@@ -18,28 +15,6 @@ def routing_id_group_pairs(routing_id_group):
         pairs += [(utils.encode(tag), value) for tag, value in instance.values()]
 
     return pairs
-
-
-def get_mock_async(return_value=None):
-    """
-    Create a Mock-able async class member
-    """
-
-    async def mock_async(*args, **kwargs):
-        return return_value
-
-    return Mock(wraps=mock_async)
-
-
-def get_slow_mock_async(sleep_time):
-    """
-    Simulate an async method that is slow to respond - useful for testing timeouts.
-    """
-
-    async def mock_async(*args, **kwargs):
-        await asyncio.sleep(sleep_time)
-
-    return Mock(wraps=mock_async)
 
 
 class Below(BaseApp):

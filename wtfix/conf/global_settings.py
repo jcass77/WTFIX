@@ -47,8 +47,8 @@ USE_TZ = False
 # iso8859-1 are ASCII-compatible. If you want to enforce strict adherence to the FIX protocol, then set this to 'ascii'.
 ENCODING = "ascii"
 ENCODING_ERRORS = (
-    "strict"
-)  # Valid options are 'strict', 'ignore', 'replace', and any other
+    "strict"  # Valid options are 'strict', 'ignore', 'replace', and any other
+)
 
 BEGIN_STRING = b"FIX.4.4"
 

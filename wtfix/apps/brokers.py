@@ -73,5 +73,5 @@ class RedisPubSubApp(BaseApp):
         with await self.redis_pool as conn:
             await conn.unsubscribe(self.SEND_CHANNEL)
 
-            self.redis_pool.close()
-            await self.redis_pool.wait_closed()  # Closing all open connections
+        self.redis_pool.close()
+        await self.redis_pool.wait_closed()  # Closing all open connections

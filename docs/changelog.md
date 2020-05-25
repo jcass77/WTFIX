@@ -2,6 +2,21 @@
 
 This changelog is used to track all major changes to WTFIX.
 
+
+## v0.14.4 (UNRELEASED)
+
+**Enhancements**
+
+- Refactor graceful shutdown of pipeline to cancel all tasks in parallel and log all exceptions.
+- Update exception handling routines to reference the standard asyncio exceptions that were moved to the new
+  `asyncio.exceptions` package in Python 3.8.
+- Now requires Python >= 3.8.
+
+**Fixes**
+
+- `SeqNumManagerApp`: wait until a buffered Message has been completely processed before submitting the next one.
+- `RedisPubSubApp`: Release Redis connection before attempting to close the Redis pool.
+
 ## v0.14.3 (2020-04-29)
 
 **Enhancements**

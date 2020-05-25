@@ -9,7 +9,6 @@ import pytest
 from wtfix.apps.sessions import ClientSessionApp, SessionApp
 from wtfix.conf import settings
 from wtfix.message import admin
-from wtfix.tests.conftest import get_mock_async
 
 
 class TestSessionApp:
@@ -67,8 +66,6 @@ class TestClientSessionApp:
         session_app.writer.transport.is_closing = mock.Mock()
         session_app.writer.transport.is_closing.return_value = False
 
-        session_app.pipeline.receive = get_mock_async()
-
         msg = admin.TestRequestMessage("Test123")
         msg.SendingTime = datetime.utcnow().strftime(settings.DATETIME_FORMAT)[:-3]
 
@@ -80,8 +77,8 @@ class TestClientSessionApp:
         await asyncio.sleep(0.1)
 
         session_app.writer.transport.is_closing.return_value = (
-            True
-        )  # Close listener after this message
+            True  # Close listener after this message
+        )
         session_app.reader.feed_data(encoded_msg[-1:])  # Feed second part of message
 
         await asyncio.sleep(0.1)

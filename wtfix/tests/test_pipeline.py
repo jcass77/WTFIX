@@ -1,5 +1,4 @@
 import asyncio
-from asyncio import futures
 from unittest.mock import MagicMock
 
 import pytest
@@ -9,7 +8,6 @@ from wtfix.core.exceptions import ValidationError, ImproperlyConfigured
 from wtfix.message import admin
 from wtfix.pipeline import BasePipeline
 from wtfix.protocol.contextlib import connection_manager
-from wtfix.tests.conftest import get_mock_async, get_slow_mock_async
 
 
 class TestBasePipeline:
@@ -93,8 +91,6 @@ class TestBasePipeline:
             for key, app in pipeline._installed_apps.items():
                 app_mock = MagicMock(app.__class__)
                 app_mock.name = app.name
-                app_mock.initialize = get_mock_async()
-                app_mock.stop = get_mock_async()
 
                 pipeline._installed_apps[key] = app_mock
 
@@ -119,8 +115,6 @@ class TestBasePipeline:
             for key, app in pipeline._installed_apps.items():
                 app_mock = MagicMock(app.__class__)
                 app_mock.name = app.name
-                app_mock.initialize = get_mock_async()
-                app_mock.start = get_mock_async()
 
                 setattr(mock_parent, app.name, app_mock)
 
@@ -143,50 +137,51 @@ class TestBasePipeline:
 
     @pytest.mark.asyncio
     async def test_start_raises_exception_on_initialize_timeout(
-        self, three_level_app_chain
+        self, three_level_app_chain, create_mock_coro
     ):
-        with pytest.raises(asyncio.TimeoutError):
+
+        mock_, _ = create_mock_coro(
+            runtime=settings.INIT_TIMEOUT + 0.1,
+            to_patch="wtfix.apps.base.BaseApp.initialize",
+        )
+
+        with pytest.raises(asyncio.exceptions.TimeoutError):
             with connection_manager() as conn:
                 pipeline = BasePipeline(
                     connection_name=conn.name, installed_apps=three_level_app_chain
                 )
 
                 settings.INIT_TIMEOUT = 0.1
-                # Mock all of the apps that have been configured for this pipeline.
-                for key, app in pipeline._installed_apps.items():
-                    app_mock = MagicMock(app.__class__)
-                    app_mock.initialize = get_slow_mock_async(
-                        settings.INIT_TIMEOUT + 0.1
-                    )
-                    app_mock.stop = get_mock_async()
-
-                    pipeline._installed_apps[key] = app_mock
-
                 await pipeline.start()
 
             await pipeline.stop()
 
+            assert mock_.call_count == 1
+
     @pytest.mark.asyncio
-    async def test_start_raises_exception_on_start_timeout(self, three_level_app_chain):
-        with pytest.raises(asyncio.TimeoutError):
+    async def test_start_raises_exception_on_start_timeout(
+        self, three_level_app_chain, create_mock_coro
+    ):
+
+        mock_, _ = create_mock_coro(
+            runtime=settings.STARTUP_TIMEOUT + 0.1,
+            to_patch="wtfix.apps.base.BaseApp.start",
+        )
+
+        with pytest.raises(asyncio.exceptions.TimeoutError):
             with connection_manager() as conn:
                 pipeline = BasePipeline(
                     connection_name=conn.name, installed_apps=three_level_app_chain
                 )
 
                 settings.STARTUP_TIMEOUT = 0.1
-                # Mock all of the apps that have been configured for this pipeline.
-                for key, app in pipeline._installed_apps.items():
-                    app_mock = MagicMock(app.__class__)
-                    app_mock.initialize = get_mock_async()
-                    app_mock.start = get_slow_mock_async(settings.STARTUP_TIMEOUT + 0.1)
-                    app_mock.stop = get_mock_async()
-
-                    pipeline._installed_apps[key] = app_mock
-
                 await pipeline.start()
 
             await pipeline.stop()
+
+        assert (
+            mock_.call_count == 1
+        )  # Exception after first invocation of BaseApp.start()
 
     @pytest.mark.asyncio
     async def test_stop_stops_apps_in_top_down_order(self, three_level_app_chain):
@@ -201,7 +196,6 @@ class TestBasePipeline:
             for key, app in pipeline._installed_apps.items():
                 app_mock = MagicMock(app.__class__)
                 app_mock.name = app.name
-                app_mock.stop = get_mock_async()
 
                 setattr(mock_parent, app.name, app_mock)
 
@@ -219,24 +213,41 @@ class TestBasePipeline:
             ]
             assert call_order == list(pipeline.apps.keys())
 
-    @pytest.mark.skip("No longer compatible with Python >= 3.7?")
     @pytest.mark.asyncio
-    async def test_stop_cancels_all_tasks_on_stop_timeout(self, three_level_app_chain):
-        with pytest.raises(futures.CancelledError):
-            with connection_manager() as conn:
-                pipeline = BasePipeline(
-                    connection_name=conn.name, installed_apps=three_level_app_chain
-                )
+    async def test_stop_cancels_all_tasks_on_stop_timeout(
+        self, three_level_app_chain, create_mock_coro
+    ):
 
-                settings.STOP_TIMEOUT = 0.1
-                # Mock all of the apps that have been configured for this pipeline.
-                for key, app in pipeline._installed_apps.items():
-                    app_mock = MagicMock(app.__class__)
-                    app_mock.stop = get_slow_mock_async(settings.STOP_TIMEOUT + 0.1)
+        mock_, _ = create_mock_coro(to_patch="wtfix.apps.base.BaseApp.stop")
 
-                    pipeline._installed_apps[key] = app_mock
+        with connection_manager() as conn:
+            pipeline = BasePipeline(
+                connection_name=conn.name, installed_apps=three_level_app_chain
+            )
 
-                await pipeline.stop()
+            settings.STOP_TIMEOUT = 0.1
+
+            # Spawn a task that we want to be cleaned up as part of pipeline.stop()
+            asyncio.create_task(asyncio.sleep(1_000))
+
+            tasks = [
+                task
+                for task in asyncio.all_tasks()
+                if task is not asyncio.current_task()
+            ]
+
+            assert len(tasks) > 0
+
+            await pipeline.stop()
+
+            tasks = [
+                task
+                for task in asyncio.all_tasks()
+                if task is not asyncio.current_task()
+            ]
+
+            assert len(tasks) == 0
+            assert mock_.call_count == len(pipeline._installed_apps)
 
     @pytest.mark.asyncio
     async def test_stop_allows_only_one_stop_process_to_run_concurrently(
@@ -250,7 +261,6 @@ class TestBasePipeline:
             # Mock all of the apps that have been configured for this pipeline.
             for key, app in pipeline._installed_apps.items():
                 app_mock = MagicMock(app.__class__)
-                app_mock.stop = get_mock_async()
 
                 pipeline._installed_apps[key] = app_mock
 
@@ -260,7 +270,6 @@ class TestBasePipeline:
             await pipeline.stop()
 
             for app in pipeline.apps.values():
-                assert app.stop.called
                 assert app.stop.call_count == 1
 
             # Wait for separate tasks to complete
@@ -277,7 +286,6 @@ class TestBasePipeline:
             # Mock all of the apps that have been configured for this pipeline.
             for key, app in pipeline._installed_apps.items():
                 app_mock = MagicMock(app.__class__)
-                app_mock.stop = get_mock_async()
 
                 pipeline._installed_apps[key] = app_mock
 

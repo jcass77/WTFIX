@@ -105,7 +105,7 @@ class BasePipeline:
             # Initialize all apps first
             await asyncio.wait_for(self.initialize(), settings.INIT_TIMEOUT)
 
-        except asyncio.TimeoutError as e:
+        except asyncio.exceptions.TimeoutError as e:
             logger.error(f"Timeout waiting for apps to initialize!")
             raise e
 
@@ -119,7 +119,7 @@ class BasePipeline:
 
             try:
                 await asyncio.wait_for(app.start(), settings.STARTUP_TIMEOUT)
-            except asyncio.TimeoutError as e:
+            except asyncio.exceptions.TimeoutError as e:
                 logger.error(f"Timeout waiting for app '{app}' to start!")
                 raise e
 
@@ -139,23 +139,49 @@ class BasePipeline:
                 # Pipeline has already been stopped or is in the process of shutting down - nothing more to do.
                 return
 
-            self.stopping_event.set()  # Mark start of shutdown event
+            self.stopping_event.set()  # Mark start of shutdown event.
 
             logger.info("Shutting down pipeline...")
-            try:
-                for app in self.apps.values():
-                    logger.info(f"Stopping app '{app}'...")
+            for app in self.apps.values():
+                # Stop apps in the reverse order that they were initialized.
+                logger.info(f"Stopping app '{app}'...")
+                try:
                     await asyncio.wait_for(app.stop(), settings.STOP_TIMEOUT)
+                except asyncio.exceptions.TimeoutError:
+                    logger.error(f"Timeout waiting for app '{app}' to stop!")
+                    continue  # Continue trying to stop next app.
 
-                logger.info("Pipeline stopped.")
-                self.stopped_event.set()
-            except asyncio.TimeoutError:
-                logger.error(
-                    f"Timeout waiting for app '{app}' to stop, cancelling all outstanding tasks..."
-                )
-                # Stop all asyncio tasks
-                for task in asyncio.all_tasks():
+            # Stop all asyncio tasks
+            tasks = [
+                task
+                for task in asyncio.all_tasks()
+                if task is not asyncio.current_task()
+            ]
+
+            if tasks:
+                logger.error(f"Cancelling all outstanding tasks...")
+
+                for task in tasks:
                     task.cancel()
+
+                await asyncio.gather(*tasks, return_exceptions=True)
+
+                loop = asyncio.get_running_loop()
+
+                for task in tasks:
+                    if task.cancelled():
+                        continue
+                    if task.exception() is not None:
+                        loop.call_exception_handler(
+                            {
+                                "message": f"Unhandled exception during pipeline shutdown!",
+                                "exception": task.exception(),
+                                "future": task,
+                            }
+                        )
+
+            logger.info("Pipeline stopped.")
+            self.stopped_event.set()
 
     def _setup_message_handling(self, direction):
         if direction is self.INBOUND_PROCESSING:
@@ -217,7 +243,9 @@ class BasePipeline:
                 logger.exception(
                     f"Unhandled exception while doing {method_name}: {e} ({message})."
                 )
-                await self.stop()  # Block while we try to stop the pipeline
+                await asyncio.wait_for(
+                    self.stop(), None
+                )  # Block while we try to stop the pipeline
                 raise e
 
         return message

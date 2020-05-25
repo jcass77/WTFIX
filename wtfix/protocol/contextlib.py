@@ -59,9 +59,7 @@ class ConnectionContext(metaclass=Singleton):
                     settings.CONNECTIONS[self._name]["PROTOCOL"]
                 )
             except KeyError:
-                return (
-                    ProtocolStub
-                )  # Return a stub so long, in the hope that the connection will eventually be set.
+                return ProtocolStub  # Return a stub so long, in the hope that the connection will eventually be set.
 
         return self._protocol
 

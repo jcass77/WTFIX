@@ -7,7 +7,7 @@ from wtfix.protocol.contextlib import connection
 
 class TestSettings:
     def test_get_group_templates_returns_templates_for_only_those_identifiers_specified(
-        self
+        self,
     ):
         orig_templates = settings.CONNECTIONS[connection.name]["GROUP_TEMPLATES"]
         new_templates = {
@@ -32,7 +32,7 @@ class TestSettings:
 
 class TestConnectionSettings:
     def test_get_group_templates_returns_templates_for_only_those_identifiers_specified(
-        self
+        self,
     ):
         orig_templates = settings.CONNECTIONS[connection.name]["GROUP_TEMPLATES"]
         new_templates = {
