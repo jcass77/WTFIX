@@ -137,6 +137,11 @@ class HeartbeatApp(MessageTypeHandlerApp):
         ]
 
         if cancel_tasks:
+            logger.error(f"Cancelling outstanding {self.name} tasks...")
+
+            for task in cancel_tasks:
+                task.cancel()
+
             await asyncio.gather(*cancel_tasks, return_exceptions=True)
 
             loop = asyncio.get_running_loop()
