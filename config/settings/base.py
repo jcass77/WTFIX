@@ -26,7 +26,7 @@ USE_TZ = True
 
 # REDIS
 # ------------------------------------------------------------------------------
-REDIS_URI = os.getenv("REDIS_URI", "redis://localhost:6379/0")
+REDIS_WTFIX_URI = os.getenv("REDIS_WTFIX_URI", "redis://localhost:6379/0")
 
 # CONNECTIONS
 # ------------------------------------------------------------------------------

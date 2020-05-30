@@ -174,7 +174,7 @@ class RedisStore(BaseStore):
     async def initialize(self, *args, **kwargs):
         await super().initialize(*args, **kwargs)
 
-        self.redis_pool = await aioredis.create_redis_pool(settings.REDIS_URI)
+        self.redis_pool = await aioredis.create_redis_pool(settings.REDIS_WTFIX_URI)
 
     async def finalize(self, *args, **kwargs):
         await super().finalize(*args, **kwargs)

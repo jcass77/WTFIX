@@ -3,7 +3,7 @@
 This changelog is used to track all major changes to WTFIX.
 
 
-## v0.14.4 (UNRELEASED)
+## v0.15.0 (UNRELEASED)
 
 **Enhancements**
 
@@ -11,6 +11,9 @@ This changelog is used to track all major changes to WTFIX.
 - Update exception handling routines to reference the standard asyncio exceptions that were moved to the new
   `asyncio.exceptions` package in Python 3.8.
 - Now requires Python >= 3.8.
+- **BREAKING CONFIG CHANGES** (please update your `.env` and settings files in `wtfix.config.settings`):
+    - Rename `REDIS_URI` config parameter to `REDIS_WTFIX_URI` so that WTFIX can be incorporated into existing
+      applications without affecting their configuration settings.
 
 **Fixes**
 
