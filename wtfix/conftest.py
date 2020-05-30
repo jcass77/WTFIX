@@ -36,7 +36,13 @@ def create_mock_coro(monkeypatch):
     Based on https://www.roguelynn.com/words/asyncio-testing/
     """
 
-    def _create_mock_coro_pair(runtime=None, to_patch=None):
+    def _create_mock_coro_pair(runtime: int = None, to_patch: str = None):
+        """
+        :param runtime: The number of seconds to simulate the coroutine running for (useful for testing timeouts).
+        :param to_patch: The method to patch. A string similar to what normally be passed to `mock.patch`.
+
+        :return: A tuple consisting of the mock and coroutine.
+        """
         mock_ = mock.Mock()
 
         async def _coro(*args, **kwargs):
