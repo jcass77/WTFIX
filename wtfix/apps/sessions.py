@@ -205,7 +205,8 @@ class ClientSessionApp(SessionApp):
                 except IncompleteReadError as e:
                     # Connection was closed before a complete message could be received.
                     if (
-                        utils.encode(
+                        data
+                        and utils.encode(
                             f"{connection.protocol.Tag.MsgType}={connection.protocol.MsgType.Logout}"
                         )
                         + settings.SOH
