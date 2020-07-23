@@ -216,9 +216,7 @@ class ClientSessionApp(SessionApp):
                             data
                         )  # Process logout message in the pipeline as per normal
 
-                        asyncio.create_task(self.pipeline.stop())
-
-                        return  # Stop trying to listen for more messages.
+                        raise e
 
                     else:
                         logger.error(
@@ -249,6 +247,10 @@ class ClientSessionApp(SessionApp):
                 self.writer.close()
                 await self.writer.wait_closed()
                 logger.info(f"{self.name}: Session closed!")
+
+        except Exception as e:
+            logger.error(f"{self.name}: Unexpected error {e}. Initiating shutdown...")
+            asyncio.create_task(self.pipeline.stop())
 
     async def on_send(self, message):
         """
