@@ -57,7 +57,9 @@ class RedisPubSubApp(BaseApp):
         except asyncio.exceptions.CancelledError:
             # Cancellation request received - close connections....
             logger.info(f"{self.name}: {asyncio.current_task().get_name()} cancelled!")
-            await conn.unsubscribe(self.SEND_CHANNEL)
+
+            with await self.redis_pool as conn:
+                await conn.unsubscribe(self.SEND_CHANNEL)
 
             self.redis_pool.close()
             await self.redis_pool.wait_closed()  # Closing all open connections
