@@ -1,9 +1,17 @@
+import asyncio
+import os
+from unittest import mock
+from unittest.mock import MagicMock
+
 import pytest
 
+from wtfix.apps.sessions import ClientSessionApp
+from wtfix.conf import ConnectionSettings
 from wtfix.message import admin
 from wtfix.message.message import GenericMessage, OptimizedGenericMessage
 from wtfix.message.collections import Group, FieldDict, FieldList
-from wtfix.protocol.contextlib import connection
+from wtfix.pipeline import BasePipeline
+from wtfix.protocol.contextlib import connection, connection_manager
 
 from pytest_socket import socket_allow_hosts
 
@@ -16,6 +24,68 @@ def pytest_runtest_setup():
     #
     # See: https://github.com/miketheman/pytest-socket for details.
     socket_allow_hosts(allowed=["localhost", "127.0.0.1", "::1"])
+
+
+@pytest.fixture
+def create_mock_coro(monkeypatch):
+    """
+    Create a mock-coro pair.
+
+    The coro can be used to patch an async method while the mock can be used to assert calls to the mocked out method.
+
+    Based on https://www.roguelynn.com/words/asyncio-testing/
+    """
+
+    def _create_mock_coro_pair(runtime: int = None, to_patch: str = None):
+        """
+        :param runtime: The number of seconds to simulate the coroutine running for (useful for testing timeouts).
+        :param to_patch: The method to patch. A string similar to what normally be passed to `mock.patch`.
+
+        :return: A tuple consisting of the mock and coroutine.
+        """
+        mock_ = mock.Mock()
+
+        async def _coro(*args, **kwargs):
+            nonlocal runtime
+            result = mock_(*args, **kwargs)
+
+            if runtime is not None:
+                await asyncio.sleep(runtime)
+
+            return result
+
+        if to_patch:
+            monkeypatch.setattr(to_patch, _coro)
+
+        return mock_, _coro
+
+    return _create_mock_coro_pair
+
+
+@pytest.fixture
+def base_pipeline():
+    """
+    Basic mock pipeline that can be used to instantiate new apps in tests.
+
+    :return: A pipeline mock with a client session initialized.
+    """
+    with connection_manager() as conn:
+        pipeline = MagicMock(BasePipeline)
+        pipeline.settings = ConnectionSettings(conn.name)
+
+        client_session = ClientSessionApp(pipeline, new_session=True)
+        client_session.sender = pipeline.settings.SENDER
+        client_session.target = pipeline.settings.TARGET
+
+        pipeline.apps = {ClientSessionApp.name: client_session}
+
+        yield pipeline
+
+        try:
+            os.remove(client_session._sid_path)
+        except FileNotFoundError:
+            # File does not exist - skip deletion
+            pass
 
 
 # Add future implementations of FieldMap to this list to include in tests.

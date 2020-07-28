@@ -1,6 +1,6 @@
 # This file is a part of WTFIX.
 #
-# Copyright (C) 2018,2019 John Cass <john.cass77@gmail.com>
+# Copyright (C) 2018-2020 John Cass <john.cass77@gmail.com>
 #
 # WTFIX is free software; you can redistribute it and/or modify it
 # under the terms of the GNU Lesser General Public License as published by
@@ -47,8 +47,8 @@ USE_TZ = False
 # iso8859-1 are ASCII-compatible. If you want to enforce strict adherence to the FIX protocol, then set this to 'ascii'.
 ENCODING = "ascii"
 ENCODING_ERRORS = (
-    "strict"
-)  # Valid options are 'strict', 'ignore', 'replace', and any other
+    "strict"  # Valid options are 'strict', 'ignore', 'replace', and any other
+)
 
 BEGIN_STRING = b"FIX.4.4"
 

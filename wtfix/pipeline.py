@@ -1,6 +1,6 @@
 # This file is a part of WTFIX.
 #
-# Copyright (C) 2018,2019 John Cass <john.cass77@gmail.com>
+# Copyright (C) 2018-2020 John Cass <john.cass77@gmail.com>
 #
 # WTFIX is free software; you can redistribute it and/or modify it
 # under the terms of the GNU Lesser General Public License as published by
@@ -105,7 +105,7 @@ class BasePipeline:
             # Initialize all apps first
             await asyncio.wait_for(self.initialize(), settings.INIT_TIMEOUT)
 
-        except asyncio.TimeoutError as e:
+        except asyncio.exceptions.TimeoutError as e:
             logger.error(f"Timeout waiting for apps to initialize!")
             raise e
 
@@ -119,7 +119,7 @@ class BasePipeline:
 
             try:
                 await asyncio.wait_for(app.start(), settings.STARTUP_TIMEOUT)
-            except asyncio.TimeoutError as e:
+            except asyncio.exceptions.TimeoutError as e:
                 logger.error(f"Timeout waiting for app '{app}' to start!")
                 raise e
 
@@ -139,22 +139,36 @@ class BasePipeline:
                 # Pipeline has already been stopped or is in the process of shutting down - nothing more to do.
                 return
 
-            self.stopping_event.set()  # Mark start of shutdown event
+            self.stopping_event.set()  # Mark start of shutdown event.
 
             logger.info("Shutting down pipeline...")
-            try:
-                for app in self.apps.values():
-                    logger.info(f"Stopping app '{app}'...")
+            for app in self.apps.values():
+                # Stop apps in the reverse order that they were initialized.
+                logger.info(f"Stopping app '{app}'...")
+                try:
                     await asyncio.wait_for(app.stop(), settings.STOP_TIMEOUT)
+                except asyncio.exceptions.TimeoutError:
+                    logger.error(f"Timeout waiting for app '{app}' to stop!")
+                    continue  # Continue trying to stop next app.
 
-                logger.info("Pipeline stopped.")
-                self.stopped_event.set()
-            except asyncio.TimeoutError:
-                logger.error(
-                    f"Timeout waiting for app '{app}' to stop, cancelling all outstanding tasks..."
+            self.stopped_event.set()
+            logger.info("Pipeline stopped.")
+
+            # Report tasks that are still running after shutdown.
+            tasks = [
+                task
+                for task in asyncio.all_tasks()
+                if task is not asyncio.current_task() and not task.cancelled()
+            ]
+
+            if tasks:
+                task_output = "\n".join(str(task) for task in tasks)
+                logger.warning(
+                    f"There are still {len(tasks)} tasks running that have not been cancelled! Cancelling them now...\n"
+                    f"{task_output}."
                 )
-                # Stop all asyncio tasks
-                for task in asyncio.all_tasks():
+
+                for task in tasks:
                     task.cancel()
 
     def _setup_message_handling(self, direction):
@@ -217,7 +231,9 @@ class BasePipeline:
                 logger.exception(
                     f"Unhandled exception while doing {method_name}: {e} ({message})."
                 )
-                await self.stop()  # Block while we try to stop the pipeline
+                await asyncio.wait_for(
+                    self.stop(), None
+                )  # Block while we try to stop the pipeline
                 raise e
 
         return message

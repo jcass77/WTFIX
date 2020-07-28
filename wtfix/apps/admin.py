@@ -1,6 +1,6 @@
 # This file is a part of WTFIX.
 #
-# Copyright (C) 2018,2019 John Cass <john.cass77@gmail.com>
+# Copyright (C) 2018-2020 John Cass <john.cass77@gmail.com>
 #
 # WTFIX is free software; you can redistribute it and/or modify it
 # under the terms of the GNU Lesser General Public License as published by
@@ -41,8 +41,8 @@ class HeartbeatTimers(Enum):
     SEND = auto()
     RECEIVE = auto()
 
-    def __init__(self, timestamp: int):
-        self.timestamp = timestamp
+    def __init__(self, *args, **kwargs):
+        self.timestamp = None
 
 
 class HeartbeatApp(MessageTypeHandlerApp):
@@ -55,12 +55,10 @@ class HeartbeatApp(MessageTypeHandlerApp):
     def __init__(self, pipeline, *args, **kwargs):
         super().__init__(pipeline, *args, **kwargs)
 
-        self._test_request_id = (
-            None
-        )  # A waiting TestRequest message for which no response has been received.
+        self._test_request_id = None  # A waiting TestRequest message for which no response has been received.
 
-        self._received_monitor = None
-        self._sent_monitor = None
+        self._received_monitor_task = None
+        self._sent_monitor_task = None
         self._server_not_responding = asyncio.Event()
 
     @property
@@ -115,11 +113,13 @@ class HeartbeatApp(MessageTypeHandlerApp):
         await super().start(*args, **kwargs)
 
         # Keep a reference to running monitors, so that we can cancel them if needed.
-        self._received_monitor = asyncio.create_task(
-            self.heartbeat_monitor(HeartbeatTimers.RECEIVE, self.send_test_request)
+        self._received_monitor_task = asyncio.create_task(
+            self.heartbeat_monitor(HeartbeatTimers.RECEIVE, self.send_test_request),
+            name=f"Task-{self.name}:receive_monitor",
         )
-        self._sent_monitor = asyncio.create_task(
-            self.heartbeat_monitor(HeartbeatTimers.SEND, self.send_heartbeat)
+        self._sent_monitor_task = asyncio.create_task(
+            self.heartbeat_monitor(HeartbeatTimers.SEND, self.send_heartbeat),
+            name=f"Task-{self.name}:sent_monitor",
         )
 
         logger.info(
@@ -132,11 +132,30 @@ class HeartbeatApp(MessageTypeHandlerApp):
         """
         await super().stop(*args, **kwargs)
         # Stop heartbeat monitors
-        if self._received_monitor is not None:
-            self._received_monitor.cancel()
+        cancel_tasks = [
+            task
+            for task in (self._received_monitor_task, self._sent_monitor_task)
+            if task is not None
+        ]
 
-        if self._sent_monitor is not None:
-            self._sent_monitor.cancel()
+        if cancel_tasks:
+            logger.info(f"{self.name}: Cancelling asyncio tasks...")
+
+            for task in cancel_tasks:
+                task.cancel()
+
+            await asyncio.gather(*cancel_tasks, return_exceptions=True)
+
+            loop = asyncio.get_running_loop()
+            for cancel_task in cancel_tasks:
+                if cancel_task.exception() is not None:
+                    loop.call_exception_handler(
+                        {
+                            "message": f"Unhandled exception while cancelling task '{cancel_task.get_name()}'.",
+                            "exception": cancel_task.exception(),
+                            "future": cancel_task,
+                        }
+                    )
 
     async def heartbeat_monitor(
         self, timer: HeartbeatTimers, interval_exceeded_response: Callable
@@ -147,22 +166,27 @@ class HeartbeatApp(MessageTypeHandlerApp):
         :timer: The timer to use as reference against the heartbeat interval
         :interval_exceeded_response: The response to take if the interval is exceeded. Must be an awaitable.
         """
-        while not self._server_not_responding.is_set():
-            # Keep sending heartbeats until the server stops responding.
-            await asyncio.sleep(
-                self.seconds_to_next_check(timer)
-            )  # Wait until the next scheduled heartbeat check.
+        try:
+            while not self._server_not_responding.is_set():
+                # Keep sending heartbeats until the server stops responding.
+                await asyncio.sleep(
+                    self.seconds_to_next_check(timer)
+                )  # Wait until the next scheduled heartbeat check.
 
-            if self.seconds_to_next_check(timer) == 0:
-                # Heartbeat exceeded, send response
-                await interval_exceeded_response()
+                if self.seconds_to_next_check(timer) == 0:
+                    # Heartbeat exceeded, send response
+                    await interval_exceeded_response()
 
-        # No response received, force logout!
-        logger.error(
-            f"{self.name}: No response received for test request '{self._test_request_id}', "
-            f"initiating shutdown..."
-        )
-        asyncio.create_task(self.pipeline.stop())
+            # No response received, force logout!
+            logger.error(
+                f"{self.name}: No response received for test request '{self._test_request_id}', "
+                f"initiating shutdown..."
+            )
+            asyncio.create_task(self.pipeline.stop())
+
+        except asyncio.exceptions.CancelledError:
+            # Cancellation request received
+            logger.info(f"{self.name}: {asyncio.current_task().get_name()} cancelled!")
 
     async def send_test_request(self):
         """
@@ -356,7 +380,9 @@ class AuthenticationApp(MessageTypeHandlerApp):
     async def on_logout(self, message):
         self.logged_out_event.set()  # FIX server has logged us out.
 
-        await self.pipeline.stop()  # Stop the pipeline, in case this is not already underway.
+        asyncio.create_task(
+            self.pipeline.stop()
+        )  # Stop the pipeline, in case this is not already underway.
 
         return message
 
@@ -417,7 +443,7 @@ class AuthenticationApp(MessageTypeHandlerApp):
         """
         Log out of the FIX server.
         """
-        if self.logged_in_event.is_set():
+        if self.logged_in_event.is_set() and not self.logged_out_event.is_set():
 
             logger.info(f"{self.name}: Logging out...")
             logout_msg = admin.LogoutMessage()
@@ -453,8 +479,8 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
     def __init__(self, pipeline, *args, **kwargs):
 
         self.startup_time = (
-            None
-        )  # Needed to check if we should wait for resend requests from target
+            None  # Needed to check if we should wait for resend requests from target
+        )
         self._send_seq_num = 0
         self._receive_seq_num = 0
 
@@ -541,11 +567,11 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
             if len(self.receive_buffer) > 0:
                 # See if the gap has been filled and we can replay buffered messages.
-                self._replay_buffered_messages()
+                await self._replay_buffered_messages()
 
         return message
 
-    def _replay_buffered_messages(self):
+    async def _replay_buffered_messages(self):
         try:
             if self.receive_buffer[0].seq_num == self.expected_seq_num:
                 # We've just received the missing sequence numbers. Process and clear any messages that
@@ -570,9 +596,11 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
                         f"{self.name}: Resubmitting queued message #{resubmit_message.seq_num} "
                         f"({resubmit_message})."
                     )
-                    asyncio.create_task(
-                        self.pipeline.receive(bytes(resubmit_message))
-                    )  # Separate, non-blocking task
+
+                    await asyncio.wait_for(
+                        self.pipeline.receive(bytes(resubmit_message)),
+                        None,  # Disable timeout so that we rely entirely on the pipeline to handle message processing.
+                    )
 
         except IndexError:
             # Buffer is empty - continue

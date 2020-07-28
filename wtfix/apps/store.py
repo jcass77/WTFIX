@@ -1,6 +1,6 @@
 # This file is a part of WTFIX.
 #
-# Copyright (C) 2018,2019 John Cass <john.cass77@gmail.com>
+# Copyright (C) 2018-2020 John Cass <john.cass77@gmail.com>
 #
 # WTFIX is free software; you can redistribute it and/or modify it
 # under the terms of the GNU Lesser General Public License as published by
@@ -174,7 +174,7 @@ class RedisStore(BaseStore):
     async def initialize(self, *args, **kwargs):
         await super().initialize(*args, **kwargs)
 
-        self.redis_pool = await aioredis.create_redis_pool(settings.REDIS_URI)
+        self.redis_pool = await aioredis.create_redis_pool(settings.REDIS_WTFIX_URI)
 
     async def finalize(self, *args, **kwargs):
         await super().finalize(*args, **kwargs)

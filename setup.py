@@ -9,7 +9,7 @@ with open(path.join(here, "README.md"), encoding="utf-8") as f:
 
 setup(
     name="wtfix",
-    version="0.14.3",
+    version="0.15.0",
     author="John Cass",
     author_email="john.cass77@gmail.com",
     description="The Pythonic Financial Information eXchange (FIX) client for humans.",
@@ -17,8 +17,8 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/jcass77/WTFIX",
     classifiers=[
-        "Development Status :: 3 - Alpha",
-        "Programming Language :: Python :: 3.7",
+        "Development Status :: 4 - Beta",
+        "Framework :: AsyncIO",
         "Programming Language :: Python :: 3.8",
         "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
         "Operating System :: OS Independent",
@@ -33,7 +33,7 @@ setup(
         "gunicorn>=19.9",
         "aioredis>=1.3",
     ],
-    python_requires=">=3.7",
+    python_requires=">=3.8",
     project_urls={
         "Bug Reports": "https://github.com/jcass77/WTFIX/issues",
         "Source": "https://github.com/jcass77/WTFIX/",

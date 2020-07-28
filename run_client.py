@@ -1,6 +1,6 @@
 # This file is a part of WTFIX.
 #
-# Copyright (C) 2018,2019 John Cass <john.cass77@gmail.com>
+# Copyright (C) 2018-2020 John Cass <john.cass77@gmail.com>
 #
 # WTFIX is free software; you can redistribute it and/or modify it
 # under the terms of the GNU Lesser General Public License as published by
@@ -21,7 +21,6 @@ import logging
 import os
 import sys
 import signal
-from asyncio import futures
 
 from wtfix.conf import settings
 from wtfix.core.exceptions import ImproperlyConfigured
@@ -45,13 +44,16 @@ parser.add_argument(
 )
 
 
-async def graceful_shutdown(sig_name_, pipeline):
-    logger.info(f"Received signal {sig_name_}! Initiating shutdown...")
+async def graceful_shutdown(pipeline, sig_name=None):
+    if sig_name is not None:
+        logger.info(f"Received signal {sig_name}! Initiating graceful shutdown...")
+    else:
+        logger.info(f"Initiating graceful shutdown...")
 
     try:
         await pipeline.stop()
 
-    except futures.CancelledError as e:
+    except asyncio.exceptions.CancelledError as e:
         logger.error(f"Cancelled: connection terminated abnormally! ({e})")
         sys.exit(os.EX_UNAVAILABLE)
 
@@ -77,40 +79,36 @@ async def main():
                 loop.add_signal_handler(
                     getattr(signal, sig_name),
                     lambda: asyncio.ensure_future(
-                        graceful_shutdown(sig_name, fix_pipeline)
+                        graceful_shutdown(fix_pipeline, sig_name=sig_name)
                     ),
                 )
 
             await fix_pipeline.start()
 
-        except asyncio.TimeoutError as e:
+        except ImproperlyConfigured as e:
             logger.error(e)
-            sys.exit(os.EX_UNAVAILABLE)
+            # User needs to fix config issue before restart is attempted. Set os.EX_OK so that system process
+            # monitors like Supervisor do not attempt a restart immediately.
+            sys.exit(os.EX_OK)
 
         except KeyboardInterrupt:
             logger.info("Received keyboard interrupt! Initiating shutdown...")
             sys.exit(os.EX_OK)
 
-        except futures.CancelledError as e:
-            logger.error(f"Cancelled: connection terminated abnormally! ({e})")
+        except asyncio.exceptions.TimeoutError as e:
+            logger.error(e)
             sys.exit(os.EX_UNAVAILABLE)
 
-        except ImproperlyConfigured as e:
-            logger.error(e)
-            sys.exit(
-                os.EX_OK
-            )  # User needs to fix config issue before restart is attempted
+        except asyncio.exceptions.CancelledError as e:
+            logger.error(f"Cancelled: connection terminated abnormally! ({e})")
+            sys.exit(os.EX_UNAVAILABLE)
 
         except Exception as e:
             logger.exception(e)
             sys.exit(os.EX_UNAVAILABLE)
 
         finally:
-            try:
-                await fix_pipeline.stop()
-            except futures.CancelledError as e:
-                logger.error(f"Cancelled: connection terminated abnormally! ({e})")
-                sys.exit(os.EX_UNAVAILABLE)
+            await graceful_shutdown(fix_pipeline)
 
 
 if __name__ == "__main__":

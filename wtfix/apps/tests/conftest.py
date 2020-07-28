@@ -1,63 +1,15 @@
-import asyncio
-import os
-from asyncio import Future
 from unittest import mock
-from unittest.mock import MagicMock
 
 import pytest
 from faker import Faker
 
 from wtfix.apps.admin import HeartbeatApp
 from wtfix.apps.parsers import RawMessageParserApp
-from wtfix.apps.sessions import ClientSessionApp
 from wtfix.apps.wire import EncoderApp, DecoderApp
-from wtfix.conf import settings, ConnectionSettings
+from wtfix.conf import settings
 from wtfix.message.admin import HeartbeatMessage
 from wtfix.message.message import generic_message_factory
-from wtfix.pipeline import BasePipeline
-from wtfix.protocol.contextlib import connection, connection_manager
-
-
-@asyncio.coroutine
-def mock_coroutine():
-    return None
-
-
-@pytest.fixture
-def base_pipeline():
-    """
-    Basic mock pipeline that can be used to instantiate new apps in tests.
-
-    :return: A pipeline mock with a client session initialized.
-    """
-    with connection_manager() as conn:
-        pipeline = MagicMock(BasePipeline)
-        pipeline.settings = ConnectionSettings(conn.name)
-
-        client_session = ClientSessionApp(pipeline, new_session=True)
-        client_session.sender = pipeline.settings.SENDER
-        client_session.target = pipeline.settings.TARGET
-
-        pipeline.apps = {ClientSessionApp.name: client_session}
-
-        # Mock a future message that will allow us to await pipeline.send and pipeline.receive.
-        # Only useful in situations where we are not interested in the actual message result :(
-        mock_future_message = MagicMock(return_value=Future())
-        mock_future_message.return_value.set_result({})
-
-        pipeline.send = mock_future_message
-        pipeline.receive = MagicMock(return_value=mock_coroutine())
-
-        # Simulate the pipeline shutting down
-        pipeline.stop = MagicMock(return_value=mock_coroutine())
-
-        yield pipeline
-
-        try:
-            os.remove(client_session._sid_path)
-        except FileNotFoundError:
-            # File does not exist - skip deletion
-            pass
+from wtfix.protocol.contextlib import connection
 
 
 @pytest.fixture

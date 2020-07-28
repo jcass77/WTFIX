@@ -1,6 +1,6 @@
 # This file is a part of WTFIX.
 #
-# Copyright (C) 2018,2019 John Cass <john.cass77@gmail.com>
+# Copyright (C) 2018-2020 John Cass <john.cass77@gmail.com>
 #
 # WTFIX is free software; you can redistribute it and/or modify it
 # under the terms of the GNU Lesser General Public License as published by
@@ -59,9 +59,7 @@ class ConnectionContext(metaclass=Singleton):
                     settings.CONNECTIONS[self._name]["PROTOCOL"]
                 )
             except KeyError:
-                return (
-                    ProtocolStub
-                )  # Return a stub so long, in the hope that the connection will eventually be set.
+                return ProtocolStub  # Return a stub so long, in the hope that the connection will eventually be set.
 
         return self._protocol
 

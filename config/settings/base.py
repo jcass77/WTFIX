@@ -26,7 +26,8 @@ USE_TZ = True
 
 # REDIS
 # ------------------------------------------------------------------------------
-REDIS_URI = os.getenv("REDIS_URI", "redis://localhost:6379/0")
+# WTFIX message store (LRU cache) and Redis Pub/Sub for sending and receiving messages
+REDIS_WTFIX_URI = os.getenv("REDIS_WTFIX_URI", "redis://localhost:6379/0")
 
 # CONNECTIONS
 # ------------------------------------------------------------------------------

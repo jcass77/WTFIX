@@ -11,7 +11,7 @@ from wtfix.core.exceptions import InvalidField, ParsingError
 
 class TestField:
     def test_constructing_with_string_tag_that_cannot_be_converted_to_int_raises_exception(
-        self
+        self,
     ):
         with pytest.raises(InvalidField):
             Field("abc", "k")
@@ -143,11 +143,11 @@ class TestField:
 
     def test_getitem_int_0_returns_tag(self):
         f = Field(1, "abc")
-        assert f[0] is f.tag is 1  # noqa
+        assert f[0] is f.tag == 1  # noqa
 
     def test_getitem_int_1_returns_value(self):
         f = Field(1, "abc")
-        assert f[1] is f.value is "abc"  # noqa
+        assert f[1] is f.value == "abc"  # noqa
 
     def test_getitem_index_out_of_bounds_raises_exception(self):
         with pytest.raises(IndexError):
@@ -162,12 +162,12 @@ class TestField:
     def test_setitem_int_0_sets_tag(self):
         f = Field(1, "abc")
         f[0] = 2
-        assert f[0] is f.tag is 2  # noqa
+        assert f[0] is f.tag == 2  # noqa
 
     def test_setitem_int_1_sets_value(self):
         f = Field(1, "abc")
         f[1] = "def"
-        assert f[1] is f.value is "def"  # noqa
+        assert f[1] is f.value == "def"  # noqa
 
     def test_setitem_index_out_of_bounds_raises_exception(self):
         with pytest.raises(IndexError):
@@ -218,8 +218,8 @@ class TestField:
         f = Field(1, "abc")
         assert f == "abc"
 
-        assert f[0] is 1  # noqa
-        assert f[1] is "abc"  # noqa
+        assert f[0] == 1  # noqa
+        assert f[1] == "abc"  # noqa
 
     def test_compare_field_true(self):
         assert Field(1, "abc") == Field(1, "abc")

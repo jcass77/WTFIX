@@ -2,6 +2,24 @@
 
 This changelog is used to track all major changes to WTFIX.
 
+
+## v0.15.0 (2020-07-28)
+
+**Enhancements**
+
+- Refactor graceful shutdown of pipeline to cancel all tasks in parallel and log all exceptions.
+- Update exception handling routines to reference the standard asyncio exceptions that were moved to the new
+  `asyncio.exceptions` package in Python 3.8.
+- Now requires Python >= 3.8.
+- **BREAKING CONFIG CHANGES** (please update your `.env` and settings files in `wtfix.config.settings`):
+    - Rename `REDIS_URI` config parameter to `REDIS_WTFIX_URI` so that WTFIX can be incorporated into existing
+      applications without affecting their configuration settings.
+
+**Fixes**
+
+- `SeqNumManagerApp`: wait until a buffered Message has been completely processed before submitting the next one.
+- `RedisPubSubApp`: Release Redis connection before attempting to close the Redis pool.
+
 ## v0.14.3 (2020-04-29)
 
 **Enhancements**
@@ -14,15 +32,15 @@ This changelog is used to track all major changes to WTFIX.
 **Fixes**
 
 - Re-raise all exceptions that cause the pipeline to terminate abnormally so that they can be reported and dealt
-  with at the operating system level. Useful if pipeline is being monitored by something like supervisord.
+  with at the operating system level. Useful if pipeline is being monitored by something like [supervisord](http://supervisord.org).
 
 
 ## v0.14.1 (2019-11-27)
 
 **Fixes**
 
-- Set logging level of 'wtfix' logger to 'LOGGING_LEVEL' when it is first requested.
-- Fix bug in '_replay_buffered_messages' that prevented buffered messages from being received.
+- Set logging level of 'wtfix' logger to `LOGGING_LEVEL` when it is first requested.
+- Fix bug in `_replay_buffered_messages` that prevented buffered messages from being received.
 
 
 ## v0.14.0 (2019-11-15)
@@ -37,7 +55,7 @@ This changelog is used to track all major changes to WTFIX.
 
 **Enhancements**
 
-- BREAKING CONFIG CHANGES (please update your settings files in `wtfix.config.settings`):
+- **BREAKING CONFIG CHANGES** (please update your settings files in `wtfix.config.settings`):
     - The MESSAGE_STORE parameters now form part of the CONNECTION section. This allows individual message stores to
       be configured when multiple connections need to be run simultaneously.
     - Add configuration option for specifying which JSON encoder / decoder to use when adding messages to a message
@@ -48,7 +66,7 @@ This changelog is used to track all major changes to WTFIX.
 - Add `PipelineTerminationApp` and use `del` to encourage the Python interpreter to garbage collect a message once it
   has reached either end of the pipeline.
 - Upgrade aioredis dependency to version 1.3
-- Remove dependency on 'unsync' which has become largely redundant with the new async features released as part
+- Remove dependency on [unsync](https://github.com/alex-sherman/unsync) which has become largely redundant with the new async features released as part
   of Python 3.7.
 - Now requires Python >= 3.7.
 
