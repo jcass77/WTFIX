@@ -177,7 +177,6 @@ class ClientSessionApp(SessionApp):
             )
 
             self.writer.close()
-            await self.writer.wait_closed()
             logger.info(f"{self.name}: Session closed!")
 
     async def listen(self):
@@ -247,10 +246,6 @@ class ClientSessionApp(SessionApp):
         except asyncio.exceptions.CancelledError:
             # Cancellation request received - close writer
             logger.info(f"{self.name}: {asyncio.current_task().get_name()} cancelled!")
-
-        except Exception as e:
-            logger.error(f"{self.name}: Unexpected error {e}. Initiating shutdown...")
-            asyncio.create_task(self.pipeline.stop())
 
     async def on_send(self, message):
         """

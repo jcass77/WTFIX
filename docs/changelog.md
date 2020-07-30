@@ -3,6 +3,13 @@
 This changelog is used to track all major changes to WTFIX.
 
 
+## v0.15.2 (UNRELEASED)
+
+**Fixes**
+
+- client_session: Don't wait for `writer` to close when shutting down in order to avoid hangs due to network errors.
+
+
 ## v0.15.1 (2020-07-28)
 
 **Fixes**
