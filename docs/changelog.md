@@ -3,6 +3,13 @@
 This changelog is used to track all major changes to WTFIX.
 
 
+## v0.15.1 (UNRELEASED)
+
+**Fixes**
+
+- Fix cancellation of various asyncio tasks causing the pipeline to hang during shutdown.
+
+
 ## v0.15.0 (2020-07-28)
 
 **Enhancements**
