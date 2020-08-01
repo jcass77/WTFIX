@@ -148,6 +148,9 @@ class HeartbeatApp(MessageTypeHandlerApp):
 
             loop = asyncio.get_running_loop()
             for cancel_task in cancel_tasks:
+                if cancel_task.cancelled():
+                    logger.info(f"{self.name}: {cancel_task.get_name()} cancelled!")
+                    continue
                 if cancel_task.exception() is not None:
                     loop.call_exception_handler(
                         {
@@ -166,27 +169,22 @@ class HeartbeatApp(MessageTypeHandlerApp):
         :timer: The timer to use as reference against the heartbeat interval
         :interval_exceeded_response: The response to take if the interval is exceeded. Must be an awaitable.
         """
-        try:
-            while not self._server_not_responding.is_set():
-                # Keep sending heartbeats until the server stops responding.
-                await asyncio.sleep(
-                    self.seconds_to_next_check(timer)
-                )  # Wait until the next scheduled heartbeat check.
+        while not self._server_not_responding.is_set():
+            # Keep sending heartbeats until the server stops responding.
+            await asyncio.sleep(
+                self.seconds_to_next_check(timer)
+            )  # Wait until the next scheduled heartbeat check.
 
-                if self.seconds_to_next_check(timer) == 0:
-                    # Heartbeat exceeded, send response
-                    await interval_exceeded_response()
+            if self.seconds_to_next_check(timer) == 0:
+                # Heartbeat exceeded, send response
+                await interval_exceeded_response()
 
-            # No response received, force logout!
-            logger.error(
-                f"{self.name}: No response received for test request '{self._test_request_id}', "
-                f"initiating shutdown..."
-            )
-            asyncio.create_task(self.pipeline.stop())
-
-        except asyncio.exceptions.CancelledError:
-            # Cancellation request received
-            logger.info(f"{self.name}: {asyncio.current_task().get_name()} cancelled!")
+        # No response received, force logout!
+        logger.error(
+            f"{self.name}: No response received for test request '{self._test_request_id}', "
+            f"initiating shutdown..."
+        )
+        asyncio.create_task(self.pipeline.stop())
 
     async def send_test_request(self):
         """
