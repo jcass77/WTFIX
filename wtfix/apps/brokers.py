@@ -58,6 +58,12 @@ class RedisPubSubApp(BaseApp):
             # Cancellation request received - close connections....
             logger.info(f"{self.name}: {asyncio.current_task().get_name()} cancelled!")
 
+            with await self.redis_pool as conn:
+                await conn.unsubscribe(self.SEND_CHANNEL)
+
+            self.redis_pool.close()
+            await self.redis_pool.wait_closed()  # Closing all open connections
+
         except aioredis.ChannelClosedError:
             # Shutting down...
             logger.info(f"{self.name}: Unsubscribed from {send_channel.name}.")
@@ -80,9 +86,3 @@ class RedisPubSubApp(BaseApp):
         if self._channel_reader_task is not None:
             self._channel_reader_task.cancel()
             await self._channel_reader_task
-
-        with await self.redis_pool as conn:
-            await conn.unsubscribe(self.SEND_CHANNEL)
-
-        self.redis_pool.close()
-        await self.redis_pool.wait_closed()  # Closing all open connections

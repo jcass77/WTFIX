@@ -170,15 +170,6 @@ class ClientSessionApp(SessionApp):
             self._listener_task.cancel()
             await self._listener_task
 
-        if self.writer is not None:
-            logger.info(
-                f"{self.name}: Initiating disconnect from "
-                f"{self.pipeline.settings.HOST}:{self.pipeline.settings.PORT}..."
-            )
-
-            self.writer.close()
-            logger.info(f"{self.name}: Session closed!")
-
     async def listen(self):
         """
         Listen for new messages that are sent by the server.
@@ -246,6 +237,15 @@ class ClientSessionApp(SessionApp):
         except asyncio.exceptions.CancelledError:
             # Cancellation request received - close writer
             logger.info(f"{self.name}: {asyncio.current_task().get_name()} cancelled!")
+
+            if self.writer is not None:
+                logger.info(
+                    f"{self.name}: Initiating disconnect from "
+                    f"{self.pipeline.settings.HOST}:{self.pipeline.settings.PORT}..."
+                )
+
+                self.writer.close()
+                logger.info(f"{self.name}: Session closed!")
 
     async def on_send(self, message):
         """

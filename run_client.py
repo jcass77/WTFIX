@@ -43,19 +43,22 @@ parser.add_argument(
     help=f"reset sequence numbers and start a new session",
 )
 
+_shutting_down = asyncio.Event()
+
 
 async def graceful_shutdown(pipeline, sig_name=None):
+    if _shutting_down.is_set():
+        # Only try to shut down once
+        return
+
+    _shutting_down.set()
+
     if sig_name is not None:
         logger.info(f"Received signal {sig_name}! Initiating graceful shutdown...")
     else:
         logger.info(f"Initiating graceful shutdown...")
 
-    try:
-        await pipeline.stop()
-
-    except asyncio.exceptions.CancelledError as e:
-        logger.error(f"Cancelled: connection terminated abnormally! ({e})")
-        sys.exit(os.EX_UNAVAILABLE)
+    await pipeline.stop()
 
 
 async def main():
@@ -65,6 +68,7 @@ async def main():
     )
 
     args = parser.parse_args()
+    exit_code = os.EX_UNAVAILABLE
 
     with connection_manager(args.connection) as conn:
         fix_pipeline = BasePipeline(
@@ -89,26 +93,24 @@ async def main():
             logger.error(e)
             # User needs to fix config issue before restart is attempted. Set os.EX_OK so that system process
             # monitors like Supervisor do not attempt a restart immediately.
-            sys.exit(os.EX_OK)
+            exit_code = os.EX_OK
 
         except KeyboardInterrupt:
             logger.info("Received keyboard interrupt! Initiating shutdown...")
-            sys.exit(os.EX_OK)
+            exit_code = os.EX_OK
 
         except asyncio.exceptions.TimeoutError as e:
             logger.error(e)
-            sys.exit(os.EX_UNAVAILABLE)
 
         except asyncio.exceptions.CancelledError as e:
             logger.error(f"Cancelled: connection terminated abnormally! ({e})")
-            sys.exit(os.EX_UNAVAILABLE)
 
         except Exception as e:
             logger.exception(e)
-            sys.exit(os.EX_UNAVAILABLE)
 
         finally:
             await graceful_shutdown(fix_pipeline)
+            sys.exit(exit_code)
 
 
 if __name__ == "__main__":
