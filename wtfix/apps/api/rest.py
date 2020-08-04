@@ -59,8 +59,7 @@ class Send(Resource):
         args = self.parser.parse_args()
         message = decoders.from_json(args["message"])
 
-        loop = asyncio.get_event_loop()
-        asyncio.ensure_future(self.app.send(message), loop=loop)
+        asyncio.create_task(self.app.send(message))
 
         return JsonResultResponse(
             True,
