@@ -49,6 +49,7 @@ _shutting_down = asyncio.Event()
 async def graceful_shutdown(pipeline, sig_name=None):
     if _shutting_down.is_set():
         # Only try to shut down once
+        logger.warning(f"Shutdown already in progress! Ignoring signal '{sig_name}'.")
         return
 
     _shutting_down.set()
@@ -82,7 +83,7 @@ async def main():
             for sig_name in {"SIGINT", "SIGTERM"}:
                 loop.add_signal_handler(
                     getattr(signal, sig_name),
-                    lambda: asyncio.ensure_future(
+                    lambda: asyncio.create_task(
                         graceful_shutdown(fix_pipeline, sig_name=sig_name)
                     ),
                 )
