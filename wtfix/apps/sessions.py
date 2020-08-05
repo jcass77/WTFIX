@@ -228,15 +228,13 @@ class ClientSessionApp(SessionApp):
                         data
                     )  # Process logout message in the pipeline as per normal
 
-                    raise e
-
                 else:
                     logger.error(
                         f"{self.name}: Unexpected EOF waiting for next chunk of partial data "
                         f"'{utils.decode(e.partial)}' ({e})."
                     )
 
-                    raise e
+                    asyncio.create_task(self.pipeline.stop())
 
             except LimitOverrunError as e:
                 # Buffer limit reached before a complete message could be read - abort!
@@ -244,7 +242,7 @@ class ClientSessionApp(SessionApp):
                     f"{self.name}: Stream reader buffer limit exceeded! ({e})."
                 )
 
-                raise e
+                asyncio.create_task(self.pipeline.stop())
 
     async def on_send(self, message):
         """
