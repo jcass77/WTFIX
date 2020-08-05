@@ -234,7 +234,9 @@ class ClientSessionApp(SessionApp):
                         f"'{utils.decode(e.partial)}' ({e})."
                     )
 
+                    # Stop listening for messages
                     asyncio.create_task(self.pipeline.stop())
+                    break
 
             except LimitOverrunError as e:
                 # Buffer limit reached before a complete message could be read - abort!
@@ -242,7 +244,9 @@ class ClientSessionApp(SessionApp):
                     f"{self.name}: Stream reader buffer limit exceeded! ({e})."
                 )
 
+                # Stop listening for messages
                 asyncio.create_task(self.pipeline.stop())
+                break
 
     async def on_send(self, message):
         """
