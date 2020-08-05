@@ -215,6 +215,7 @@ class BasePipeline:
         except Exception as e:
             if (
                 isinstance(e, ConnectionError)
+                and hasattr(message, "type")
                 and message.type == connection.protocol.MsgType.Logout
                 and self.stopping_event.is_set()
             ):

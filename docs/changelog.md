@@ -3,6 +3,13 @@
 This changelog is used to track all major changes to WTFIX.
 
 
+## v0.15.3 (UNRELEASED)
+
+**Fixes**
+
+- Avoid `AttributeError` when a `ConnectionError` occurs in the `client_session` app.
+
+
 ## v0.15.2 (2020-08-05)
 
 **Fixes**
