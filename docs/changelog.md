@@ -3,11 +3,13 @@
 This changelog is used to track all major changes to WTFIX.
 
 
-## v0.15.2 (UNRELEASED)
+## v0.15.2 (2020-08-05)
 
 **Fixes**
 
-- client_session: Don't wait for `writer` to close when shutting down in order to avoid hangs due to network errors.
+- `client_session`: Don't wait for `writer` to close when shutting down in order to avoid hangs due to network errors.
+- Use the recommended `asyncio.create_task` to create new Tasks, which is preferred to `asyncio.ensure_future`.
+- Fix issue that caused the `client_session` listener task to hang during shutdown.
 
 
 ## v0.15.1 (2020-07-28)
