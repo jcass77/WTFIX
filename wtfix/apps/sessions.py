@@ -254,7 +254,16 @@ class ClientSessionApp(SessionApp):
 
         :param message: A valid, encoded, FIX message.
         """
-        self.writer.write(message)
-        await self.writer.drain()
+        try:
+            self.writer.write(message)
+            await self.writer.drain()
+        except AttributeError:
+            # Ignore send failures if pipeline is already shutting down.
+            if not self.writer and self.pipeline.stopping_event.is_set():
+                logger.warning(
+                    f"{self.name}: No connection established, cannot send message {message}."
+                )
+            else:
+                raise
 
         del message  # Encourage garbage collection of message once it has been sent
