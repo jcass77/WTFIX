@@ -211,9 +211,6 @@ class ClientSessionApp(SessionApp):
                     settings.SOH
                 )  # Detect final message delimiter.
 
-                await self.pipeline.receive(data)
-                data = None
-
             except IncompleteReadError as e:
                 # Connection was closed before a complete message could be received.
                 if (
@@ -227,6 +224,7 @@ class ClientSessionApp(SessionApp):
                     await self.pipeline.receive(
                         data
                     )  # Process logout message in the pipeline as per normal
+                    break
 
                 else:
                     logger.error(
@@ -247,6 +245,15 @@ class ClientSessionApp(SessionApp):
                 # Stop listening for messages
                 asyncio.create_task(self.pipeline.stop())
                 break
+
+            except Exception as e:
+                logger.error(f"{self.name}: Unhandled exception reading stream! ({e}).")
+                # Stop listening for messages
+                asyncio.create_task(self.pipeline.stop())
+                break
+
+            await self.pipeline.receive(data)
+            data = None
 
     async def on_send(self, message):
         """
