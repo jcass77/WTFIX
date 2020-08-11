@@ -214,43 +214,6 @@ class TestBasePipeline:
             assert call_order == list(pipeline.apps.keys())
 
     @pytest.mark.asyncio
-    async def test_stop_reports_active_tasks(
-        self, three_level_app_chain, create_mock_coro, caplog
-    ):
-
-        mock_, _ = create_mock_coro(to_patch="wtfix.apps.base.BaseApp.stop")
-
-        with connection_manager() as conn:
-            pipeline = BasePipeline(
-                connection_name=conn.name, installed_apps=three_level_app_chain
-            )
-
-            # Spawn a task that needs to be reported as running in pipeline.stop()
-            running_task = asyncio.create_task(asyncio.sleep(1_000))
-
-            tasks = [
-                task
-                for task in asyncio.all_tasks()
-                if task is not asyncio.current_task()
-            ]
-
-            assert len(tasks) > 0
-
-            await pipeline.stop()
-
-            tasks = [
-                task
-                for task in asyncio.all_tasks()
-                if task is not asyncio.current_task()
-            ]
-
-            assert len(tasks) == 1
-            assert mock_.call_count == len(pipeline._installed_apps)
-            assert f"There are still {len(tasks)} tasks" in caplog.text
-
-            running_task.cancel()
-
-    @pytest.mark.asyncio
     async def test_stop_allows_only_one_stop_process_to_run_concurrently(
         self, three_level_app_chain
     ):
