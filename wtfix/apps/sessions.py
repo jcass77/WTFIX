@@ -215,6 +215,7 @@ class ClientSessionApp(SessionApp):
                         await self.pipeline.receive(
                             data
                         )  # Process logout message in the pipeline as per normal
+                        break
 
                     else:
                         # Something else went wrong, re-raise
