@@ -150,26 +150,13 @@ class BasePipeline:
                 except asyncio.exceptions.TimeoutError:
                     logger.error(f"Timeout waiting for app '{app}' to stop!")
                     continue  # Continue trying to stop next app.
+                except Exception:
+                    # Don't allow misbehaving apps to interrupt pipeline shutdown.
+                    logger.exception(f"Error trying to stop app '{app}'.")
+                    continue
 
             self.stopped_event.set()
             logger.info("Pipeline stopped.")
-
-            # Report tasks that are still running after shutdown.
-            tasks = [
-                task
-                for task in asyncio.all_tasks()
-                if task is not asyncio.current_task() and not task.cancelled()
-            ]
-
-            if tasks:
-                task_output = "\n".join(str(task) for task in tasks)
-                logger.warning(
-                    f"There are still {len(tasks)} tasks running that have not been cancelled! Cancelling them now...\n"
-                    f"{task_output}."
-                )
-
-                for task in tasks:
-                    task.cancel()
 
     def _setup_message_handling(self, direction):
         if direction is self.INBOUND_PROCESSING:
@@ -215,6 +202,7 @@ class BasePipeline:
         except Exception as e:
             if (
                 isinstance(e, ConnectionError)
+                and hasattr(message, "type")
                 and message.type == connection.protocol.MsgType.Logout
                 and self.stopping_event.is_set()
             ):
@@ -231,9 +219,7 @@ class BasePipeline:
                 logger.exception(
                     f"Unhandled exception while doing {method_name}: {e} ({message})."
                 )
-                await asyncio.wait_for(
-                    self.stop(), None
-                )  # Block while we try to stop the pipeline
+                await self.stop()  # Block while we try to stop the pipeline
                 raise e
 
         return message

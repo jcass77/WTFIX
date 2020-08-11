@@ -71,8 +71,6 @@ class RedisPubSubApp(BaseApp):
         )
 
     async def stop(self, *args, **kwargs):
-        await super().stop(*args, **kwargs)
-
         if self._channel_reader_task is not None:
             self._channel_reader_task.cancel()
             try:
@@ -88,3 +86,5 @@ class RedisPubSubApp(BaseApp):
 
         self.redis_pool.close()
         await self.redis_pool.wait_closed()  # Closing all open connections
+
+        await super().stop(*args, **kwargs)

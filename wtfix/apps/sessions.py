@@ -18,7 +18,7 @@
 import asyncio
 import os
 import uuid
-from asyncio import IncompleteReadError, LimitOverrunError
+from asyncio import IncompleteReadError
 from pathlib import Path
 
 from wtfix.apps.base import BaseApp
@@ -162,18 +162,6 @@ class ClientSessionApp(SessionApp):
         """
         Close the writer.
         """
-        await super().stop(*args, **kwargs)
-
-        if self._listener_task is not None:
-            logger.info(f"{self.name}: Cancelling listener task...")
-
-            self._listener_task.cancel()
-            try:
-                await self._listener_task
-            except asyncio.exceptions.CancelledError:
-                # Cancellation request received - close writer
-                logger.info(f"{self.name}: {self._listener_task.get_name()} cancelled!")
-
         if self.writer is not None:
             logger.info(
                 f"{self.name}: Initiating disconnect from "
@@ -182,6 +170,14 @@ class ClientSessionApp(SessionApp):
 
             self.writer.close()
             logger.info(f"{self.name}: Session closed!")
+
+        if self._listener_task is not None:
+            logger.info(f"{self.name}: Cancelling listener task...")
+
+            self._listener_task.cancel()
+            await self._listener_task
+
+        await super().stop(*args, **kwargs)
 
     async def listen(self):
         """
@@ -197,56 +193,53 @@ class ClientSessionApp(SessionApp):
 
         data = []
 
-        while not self.writer.is_closing():  # Listen forever for new messages
-            try:
-                # Try to read a complete message.
-                data = await self.reader.readuntil(
-                    begin_string
-                )  # Detect beginning of message.
-                # TODO: should there be a timeout for reading an entire message?
-                data += await self.reader.readuntil(
-                    checksum_start
-                )  # Detect start of checksum field.
-                data += await self.reader.readuntil(
-                    settings.SOH
-                )  # Detect final message delimiter.
+        try:
+            while not self.writer.is_closing():  # Listen forever for new messages
+                try:
+                    # Try to read a complete message.
+                    data = await self.reader.readuntil(
+                        begin_string
+                    )  # Detect beginning of message.
+                    # TODO: should there be a timeout for reading an entire message?
+                    data += await self.reader.readuntil(
+                        checksum_start
+                    )  # Detect start of checksum field.
+                    data += await self.reader.readuntil(
+                        settings.SOH
+                    )  # Detect final message delimiter.
 
-                await self.pipeline.receive(data)
-                data = None
+                    await self.pipeline.receive(data)
+                    data = None
 
-            except IncompleteReadError as e:
-                # Connection was closed before a complete message could be received.
-                if (
-                    data
-                    and utils.encode(
-                        f"{connection.protocol.Tag.MsgType}={connection.protocol.MsgType.Logout}"
-                    )
-                    + settings.SOH
-                    in data
-                ):
-                    await self.pipeline.receive(
+                except IncompleteReadError:
+                    if (
                         data
-                    )  # Process logout message in the pipeline as per normal
+                        and utils.encode(
+                            f"{connection.protocol.Tag.MsgType}={connection.protocol.MsgType.Logout}"
+                        )
+                        + settings.SOH
+                        in data
+                    ):
+                        # Connection was closed before a complete message could be received.
+                        await self.pipeline.receive(
+                            data
+                        )  # Process logout message in the pipeline as per normal
+                        break
 
-                else:
-                    logger.error(
-                        f"{self.name}: Unexpected EOF waiting for next chunk of partial data "
-                        f"'{utils.decode(e.partial)}' ({e})."
-                    )
+                    else:
+                        # Something else went wrong, re-raise
+                        raise
 
-                    # Stop listening for messages
-                    asyncio.create_task(self.pipeline.stop())
-                    break
+        except asyncio.exceptions.CancelledError:
+            logger.info(f"{self.name}: {asyncio.current_task().get_name()} cancelled!")
 
-            except LimitOverrunError as e:
-                # Buffer limit reached before a complete message could be read - abort!
-                logger.error(
-                    f"{self.name}: Stream reader buffer limit exceeded! ({e})."
-                )
-
-                # Stop listening for messages
-                asyncio.create_task(self.pipeline.stop())
-                break
+        except Exception:
+            # Stop monitoring heartbeat
+            logger.exception(
+                f"{self.name}: Unhandled exception while listening for messages! Shutting down pipeline..."
+            )
+            asyncio.create_task(self.pipeline.stop())
+            raise
 
     async def on_send(self, message):
         """
@@ -254,7 +247,16 @@ class ClientSessionApp(SessionApp):
 
         :param message: A valid, encoded, FIX message.
         """
-        self.writer.write(message)
-        await self.writer.drain()
+        try:
+            self.writer.write(message)
+            await self.writer.drain()
+        except AttributeError:
+            # Ignore send failures if pipeline is already shutting down.
+            if not self.writer and self.pipeline.stopping_event.is_set():
+                logger.warning(
+                    f"{self.name}: No connection established, cannot send message {message}."
+                )
+            else:
+                raise
 
         del message  # Encourage garbage collection of message once it has been sent
