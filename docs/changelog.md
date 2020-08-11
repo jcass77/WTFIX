@@ -8,6 +8,8 @@ This changelog is used to track all major changes to WTFIX.
 **Fixes**
 
 - Avoid `AttributeError` when a `ConnectionError` occurs in the `client_session` app.
+- Refactor task cancellation: client should take responsibility for final task cancellation / cleanup instead of the
+  pipeline. This ensures that the client itself is not also cancelled as part of a pipeline shutdown.
 
 
 ## v0.15.2 (2020-08-05)

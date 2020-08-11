@@ -111,6 +111,24 @@ async def main():
 
         finally:
             await graceful_shutdown(fix_pipeline)
+
+            # Report tasks that are still running after shutdown.
+            tasks = [
+                task
+                for task in asyncio.all_tasks()
+                if task is not asyncio.current_task() and not task.cancelled()
+            ]
+
+            if tasks:
+                task_output = "\n".join(str(task) for task in tasks)
+                logger.warning(
+                    f"There are still {len(tasks)} tasks running that have not been cancelled! Cancelling them now...\n"
+                    f"{task_output}."
+                )
+
+                for task in tasks:
+                    task.cancel()
+
             sys.exit(exit_code)
 
 

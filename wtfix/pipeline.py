@@ -154,23 +154,6 @@ class BasePipeline:
             self.stopped_event.set()
             logger.info("Pipeline stopped.")
 
-            # Report tasks that are still running after shutdown.
-            tasks = [
-                task
-                for task in asyncio.all_tasks()
-                if task is not asyncio.current_task() and not task.cancelled()
-            ]
-
-            if tasks:
-                task_output = "\n".join(str(task) for task in tasks)
-                logger.warning(
-                    f"There are still {len(tasks)} tasks running that have not been cancelled! Cancelling them now...\n"
-                    f"{task_output}."
-                )
-
-                for task in tasks:
-                    task.cancel()
-
     def _setup_message_handling(self, direction):
         if direction is self.INBOUND_PROCESSING:
             return "on_receive", reversed(self.apps.values())
