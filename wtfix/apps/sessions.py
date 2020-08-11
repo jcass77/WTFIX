@@ -18,7 +18,7 @@
 import asyncio
 import os
 import uuid
-from asyncio import IncompleteReadError, LimitOverrunError
+from asyncio import IncompleteReadError
 from pathlib import Path
 
 from wtfix.apps.base import BaseApp
@@ -164,24 +164,11 @@ class ClientSessionApp(SessionApp):
         """
         await super().stop(*args, **kwargs)
 
-        if self.writer is not None:
-            logger.info(
-                f"{self.name}: Initiating disconnect from "
-                f"{self.pipeline.settings.HOST}:{self.pipeline.settings.PORT}..."
-            )
-
-            self.writer.close()
-            logger.info(f"{self.name}: Session closed!")
-
         if self._listener_task is not None:
             logger.info(f"{self.name}: Cancelling listener task...")
 
             self._listener_task.cancel()
-            try:
-                await self._listener_task
-            except asyncio.exceptions.CancelledError:
-                # Cancellation request received - close writer
-                logger.info(f"{self.name}: {self._listener_task.get_name()} cancelled!")
+            await self._listener_task
 
     async def listen(self):
         """
@@ -197,63 +184,61 @@ class ClientSessionApp(SessionApp):
 
         data = []
 
-        while not self.writer.is_closing():  # Listen forever for new messages
-            try:
-                # Try to read a complete message.
-                data = await self.reader.readuntil(
-                    begin_string
-                )  # Detect beginning of message.
-                # TODO: should there be a timeout for reading an entire message?
-                data += await self.reader.readuntil(
-                    checksum_start
-                )  # Detect start of checksum field.
-                data += await self.reader.readuntil(
-                    settings.SOH
-                )  # Detect final message delimiter.
+        try:
+            while not self.writer.is_closing():  # Listen forever for new messages
+                try:
+                    # Try to read a complete message.
+                    data = await self.reader.readuntil(
+                        begin_string
+                    )  # Detect beginning of message.
+                    # TODO: should there be a timeout for reading an entire message?
+                    data += await self.reader.readuntil(
+                        checksum_start
+                    )  # Detect start of checksum field.
+                    data += await self.reader.readuntil(
+                        settings.SOH
+                    )  # Detect final message delimiter.
 
-            except IncompleteReadError as e:
-                # Connection was closed before a complete message could be received.
-                if (
-                    data
-                    and utils.encode(
-                        f"{connection.protocol.Tag.MsgType}={connection.protocol.MsgType.Logout}"
-                    )
-                    + settings.SOH
-                    in data
-                ):
-                    await self.pipeline.receive(
+                    await self.pipeline.receive(data)
+                    data = None
+
+                except IncompleteReadError:
+                    if (
                         data
-                    )  # Process logout message in the pipeline as per normal
-                    break
+                        and utils.encode(
+                            f"{connection.protocol.Tag.MsgType}={connection.protocol.MsgType.Logout}"
+                        )
+                        + settings.SOH
+                        in data
+                    ):
+                        # Connection was closed before a complete message could be received.
+                        await self.pipeline.receive(
+                            data
+                        )  # Process logout message in the pipeline as per normal
 
-                else:
-                    logger.error(
-                        f"{self.name}: Unexpected EOF waiting for next chunk of partial data "
-                        f"'{utils.decode(e.partial)}' ({e})."
-                    )
+                    else:
+                        # Something else went wrong, re-raise
+                        raise
 
-                    # Stop listening for messages
-                    asyncio.create_task(self.pipeline.stop())
-                    break
-
-            except LimitOverrunError as e:
-                # Buffer limit reached before a complete message could be read - abort!
-                logger.error(
-                    f"{self.name}: Stream reader buffer limit exceeded! ({e})."
+        except asyncio.exceptions.CancelledError:
+            if self.writer is not None:
+                logger.info(
+                    f"{self.name}: Initiating disconnect from "
+                    f"{self.pipeline.settings.HOST}:{self.pipeline.settings.PORT}..."
                 )
 
-                # Stop listening for messages
-                asyncio.create_task(self.pipeline.stop())
-                break
+                self.writer.close()
+                logger.info(f"{self.name}: Session closed!")
 
-            except Exception as e:
-                logger.error(f"{self.name}: Unhandled exception reading stream! ({e}).")
-                # Stop listening for messages
-                asyncio.create_task(self.pipeline.stop())
-                break
+            logger.info(f"{self.name}: {asyncio.current_task().get_name()} cancelled!")
 
-            await self.pipeline.receive(data)
-            data = None
+        except Exception:
+            # Stop monitoring heartbeat
+            logger.exception(
+                f"{self.name}: Unhandled exception while listening for messages! Shutting down pipeline..."
+            )
+            asyncio.create_task(self.pipeline.stop())
+            raise
 
     async def on_send(self, message):
         """
