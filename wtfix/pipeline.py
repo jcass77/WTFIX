@@ -232,9 +232,7 @@ class BasePipeline:
                 logger.exception(
                     f"Unhandled exception while doing {method_name}: {e} ({message})."
                 )
-                await asyncio.wait_for(
-                    self.stop(), None
-                )  # Block while we try to stop the pipeline
+                await self.stop()  # Block while we try to stop the pipeline
                 raise e
 
         return message
