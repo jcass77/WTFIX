@@ -10,6 +10,9 @@ This changelog is used to track all major changes to WTFIX.
 - Avoid `AttributeError` when a `ConnectionError` occurs in the `client_session` app.
 - Refactor task cancellation: client should take responsibility for final task cancellation / cleanup instead of the
   pipeline. This ensures that the client itself is not also cancelled as part of a pipeline shutdown.
+- Only call `super().stop()` after an app has completed all of its own shutdown routines.
+- Don't allow misbehaving apps from interrupting a pipeline shutdown. This ensures that the pipeline can always be
+  shut down, and all outstanding asyncio tasks cancelled, even if one or more apps raise and exceptions while stopping.
 
 
 ## v0.15.2 (2020-08-05)

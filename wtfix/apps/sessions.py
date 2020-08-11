@@ -162,8 +162,6 @@ class ClientSessionApp(SessionApp):
         """
         Close the writer.
         """
-        await super().stop(*args, **kwargs)
-
         if self.writer is not None:
             logger.info(
                 f"{self.name}: Initiating disconnect from "
@@ -178,6 +176,8 @@ class ClientSessionApp(SessionApp):
 
             self._listener_task.cancel()
             await self._listener_task
+
+        await super().stop(*args, **kwargs)
 
     async def listen(self):
         """

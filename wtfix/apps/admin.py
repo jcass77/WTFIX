@@ -130,7 +130,6 @@ class HeartbeatApp(MessageTypeHandlerApp):
         """
         Cancel the heartbeat monitor on the next iteration of the event loop.
         """
-        await super().stop(*args, **kwargs)
         # Stop heartbeat monitors
         cancel_tasks = [
             task
@@ -158,6 +157,8 @@ class HeartbeatApp(MessageTypeHandlerApp):
                             "future": cancel_task,
                         }
                     )
+
+        await super().stop(*args, **kwargs)
 
     async def heartbeat_monitor(
         self, timer: HeartbeatTimers, interval_exceeded_response: Callable
@@ -341,9 +342,9 @@ class AuthenticationApp(MessageTypeHandlerApp):
         await self.logon()
 
     async def stop(self, *args, **kwargs):
-        await super().stop(*args, **kwargs)
-
         await self.logout()
+
+        await super().stop(*args, **kwargs)
 
     @on(connection.protocol.MsgType.Logon)
     async def on_logon(self, message):

@@ -153,13 +153,13 @@ class RESTfulServiceApp(BaseApp):
         )  # debug=False: disable automatic restarting of the Flask server
 
     async def stop(self, *args, **kwargs):
-        await super().stop(*args, **kwargs)
-
         result = requests.post(
             "http://127.0.0.1:5000/shutdown", data={"token": self.secret_key}
         )
 
         if self._flask_process is not None:
             self._flask_process.kill()
+
+        await super().stop(*args, **kwargs)
 
         return result

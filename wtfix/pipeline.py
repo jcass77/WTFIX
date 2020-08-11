@@ -150,6 +150,10 @@ class BasePipeline:
                 except asyncio.exceptions.TimeoutError:
                     logger.error(f"Timeout waiting for app '{app}' to stop!")
                     continue  # Continue trying to stop next app.
+                except Exception:
+                    # Don't allow misbehaving apps to interrupt pipeline shutdown.
+                    logger.exception(f"Error trying to stop app '{app}'.")
+                    continue
 
             self.stopped_event.set()
             logger.info("Pipeline stopped.")
