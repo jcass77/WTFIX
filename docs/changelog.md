@@ -3,7 +3,7 @@
 This changelog is used to track all major changes to WTFIX.
 
 
-## v0.15.3 (UNRELEASED)
+## v0.15.3 (2020-08-11)
 
 **Fixes**
 
