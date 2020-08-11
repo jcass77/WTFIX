@@ -164,6 +164,15 @@ class ClientSessionApp(SessionApp):
         """
         await super().stop(*args, **kwargs)
 
+        if self.writer is not None:
+            logger.info(
+                f"{self.name}: Initiating disconnect from "
+                f"{self.pipeline.settings.HOST}:{self.pipeline.settings.PORT}..."
+            )
+
+            self.writer.close()
+            logger.info(f"{self.name}: Session closed!")
+
         if self._listener_task is not None:
             logger.info(f"{self.name}: Cancelling listener task...")
 
@@ -222,15 +231,6 @@ class ClientSessionApp(SessionApp):
                         raise
 
         except asyncio.exceptions.CancelledError:
-            if self.writer is not None:
-                logger.info(
-                    f"{self.name}: Initiating disconnect from "
-                    f"{self.pipeline.settings.HOST}:{self.pipeline.settings.PORT}..."
-                )
-
-                self.writer.close()
-                logger.info(f"{self.name}: Session closed!")
-
             logger.info(f"{self.name}: {asyncio.current_task().get_name()} cancelled!")
 
         except Exception:
