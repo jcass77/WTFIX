@@ -3,6 +3,15 @@
 This changelog is used to track all major changes to WTFIX.
 
 
+## v0.15.4 (UNRELEASED)
+
+**Fixes**
+
+- Remove tag numbers >= 956 from the standard FIX 4.4 protocol definition. These all fall within the customer-defined
+  number range and do not form part of the official standard.
+- Remove non-standard message types from the FIX 4.4. protocol definition.
+
+
 ## v0.15.3 (2020-08-11)
 
 **Fixes**
