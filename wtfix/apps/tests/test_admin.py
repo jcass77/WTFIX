@@ -253,33 +253,33 @@ class TestSeqNumManagerApp:
         assert seq_num_app.receive_seq_num == 0
 
     def test_handle_sequence_number_too_low_raises_exception_if_number_too_low(
-        self, user_notification_message
+        self, email_message
     ):
         with pytest.raises(SessionError):
             pipeline_mock = MagicMock(BasePipeline)
             seq_num_app = SeqNumManagerApp(pipeline_mock)
             seq_num_app.receive_seq_num = 10
 
-            user_notification_message.MsgSeqNum = 1
+            email_message.MsgSeqNum = 1
 
-            seq_num_app._handle_sequence_number_too_low(user_notification_message)
+            seq_num_app._handle_sequence_number_too_low(email_message)
 
     def test_handle_sequence_number_too_low_skips_duplicates_with_low_sequence_numbers(
-        self, user_notification_message
+        self, email_message
     ):
         with pytest.raises(StopMessageProcessing):
             pipeline_mock = MagicMock(BasePipeline)
             seq_num_app = SeqNumManagerApp(pipeline_mock)
             seq_num_app.receive_seq_num = 10
 
-            user_notification_message.MsgSeqNum = 1
-            user_notification_message.PossDupFlag = True
+            email_message.MsgSeqNum = 1
+            email_message.PossDupFlag = True
 
-            seq_num_app._handle_sequence_number_too_low(user_notification_message)
+            seq_num_app._handle_sequence_number_too_low(email_message)
 
     @pytest.mark.asyncio
     async def test_handle_seq_num_too_high_starts_buffer_and_sends_resend_request(
-        self, pipeline_with_messages, user_notification_message
+        self, pipeline_with_messages, email_message
     ):
         with pytest.raises(StopMessageProcessing):
             seq_num_app = SeqNumManagerApp(pipeline_with_messages)
@@ -287,22 +287,20 @@ class TestSeqNumManagerApp:
                 seconds=5
             )  # Don't wait
 
-            user_notification_message.MsgSeqNum = 99
-            await seq_num_app._handle_sequence_number_too_high(
-                user_notification_message
-            )
+            email_message.MsgSeqNum = 99
+            await seq_num_app._handle_sequence_number_too_high(email_message)
 
         # Wait for separate 'send' tasks to complete
         tasks = asyncio.all_tasks()
         await asyncio.wait(tasks, timeout=0.1)
 
         assert len(seq_num_app.receive_buffer) == 1
-        assert seq_num_app.receive_buffer[0] == user_notification_message
+        assert seq_num_app.receive_buffer[0] == email_message
         assert pipeline_with_messages.send.call_count == 1
 
     @pytest.mark.asyncio
     async def test_handle_seq_num_too_high_buffers_messages_received_out_of_order(
-        self, pipeline_with_messages, user_notification_message
+        self, pipeline_with_messages, email_message
     ):
         seq_num_app = SeqNumManagerApp(pipeline_with_messages)
         seq_num_app.startup_time = datetime.utcnow() - timedelta(
@@ -310,7 +308,7 @@ class TestSeqNumManagerApp:
         )  # Don't wait
 
         for idx in range(5):
-            out_of_sequence_msg = user_notification_message.copy()
+            out_of_sequence_msg = email_message.copy()
             out_of_sequence_msg.MsgSeqNum = 5 + idx
             try:
                 await seq_num_app._handle_sequence_number_too_high(out_of_sequence_msg)
@@ -437,7 +435,7 @@ class TestSeqNumManagerApp:
 
     @pytest.mark.asyncio
     async def test_on_receive_handles_gapfill(
-        self, pipeline_with_messages, user_notification_message
+        self, pipeline_with_messages, email_message
     ):
         seq_num_app = SeqNumManagerApp(pipeline_with_messages)
         seq_num_app.startup_time = datetime.utcnow() - timedelta(
@@ -445,10 +443,10 @@ class TestSeqNumManagerApp:
         )  # Don't wait for resend requests
 
         seq_num_app.receive_seq_num = 5  # 5 Messages received so far
-        user_notification_message.seq_num = 8  # Simulate missing messages 6 and 7
+        email_message.seq_num = 8  # Simulate missing messages 6 and 7
 
         try:
-            await seq_num_app.on_receive(user_notification_message)
+            await seq_num_app.on_receive(email_message)
             assert pipeline_with_messages.send.call_count == 1  # Resend request sent
         except StopMessageProcessing:
             # Expected
@@ -456,7 +454,7 @@ class TestSeqNumManagerApp:
 
         # Simulate resend of 6 and 7
         for seq_num in [6, 7]:
-            message = user_notification_message.copy()
+            message = email_message.copy()
             message.seq_num = seq_num
             message.PossDupFlag = True
             await seq_num_app.on_receive(message)
