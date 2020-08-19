@@ -5,6 +5,12 @@ This changelog is used to track all major changes to WTFIX.
 
 ## v0.15.4 (UNRELEASED)
 
+**Enhancements**
+
+- FIX protocol specification: look up class attributes in parent classes as well. This allows new FIX protocol
+  specifications, which can include custom tags and message types, to be derived from a standard base protocol
+  definition.
+
 **Fixes**
 
 - Remove tag numbers >= 956 from the standard FIX 4.4 protocol definition. These all fall within the customer-defined

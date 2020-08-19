@@ -81,16 +81,29 @@ class AttributeValueMappingsMixin:
 
     @classmethod
     @lru_cache(maxsize=2)
+    def get_attributes(cls):
+        """
+        Get all attributes of this class, including attributes of parent classes.
+        :return: A dictionary of attribute names and their values.
+        """
+        return {
+            name: value
+            for name, value in inspect.getmembers(
+                cls, lambda a: not (inspect.isroutine(a))
+            )
+        }
+
+    @classmethod
+    @lru_cache(maxsize=2)
     def get_attribute_value_mappings(cls):
         """
         Create a reverse mapping of all of the attributes that have been defined in this class.
         """
-        attributes = inspect.getmembers(cls, lambda a: not (inspect.isroutine(a)))
         # Skip attributes that start with an underscore
         mappings = {
-            attribute[1]: attribute[0]
-            for attribute in attributes
-            if attribute[0][0] != "_"
+            value: name
+            for name, value in cls.get_attributes().items()
+            if name[0] != "_"
         }
 
         # Won't be able to look up names reliably if duplicate attribute values exist
@@ -117,4 +130,4 @@ class AttributeValueMappingsMixin:
         :param name: a type name
         :return: the value associated with the type name.
         """
-        return cls.__dict__[name]
+        return cls.get_attributes()[name]

@@ -180,8 +180,8 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
         :param key: The Field's tag name
         :param value: The value to set the Field to
         """
-        if key in connection.protocol.Tag.__dict__.keys():
-            self[connection.protocol.Tag.__dict__[key]] = value
+        if key in connection.protocol.Tag.get_attributes().keys():
+            self[connection.protocol.Tag.get_attributes()[key]] = value
         else:
             super().__setattr__(key, value)
 
@@ -191,8 +191,8 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
 
         :param item: The Field's tag name
         """
-        if item in connection.protocol.Tag.__dict__.keys():
-            del self[connection.protocol.Tag.__dict__[item]]
+        if item in connection.protocol.Tag.get_attributes().keys():
+            del self[connection.protocol.Tag.get_attributes()[item]]
         else:
             super().__delattr__(item)
 
