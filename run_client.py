@@ -110,7 +110,8 @@ async def main():
             logger.exception(e)
 
         finally:
-            await graceful_shutdown(fix_pipeline)
+            if not fix_pipeline.stopped_event.is_set():
+                await graceful_shutdown(fix_pipeline)
 
             # Report tasks that are still running after shutdown.
             tasks = [

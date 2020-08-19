@@ -239,7 +239,8 @@ class ClientSessionApp(SessionApp):
                 f"{self.name}: Unhandled exception while listening for messages! Shutting down pipeline..."
             )
             asyncio.create_task(self.pipeline.stop())
-            raise
+            # NOTE: We don't re-raise the exception here as this will cause it to interrupt stopping this app
+            # when we `await self._listener_task` in stop().
 
     async def on_send(self, message):
         """

@@ -10,6 +10,8 @@ This changelog is used to track all major changes to WTFIX.
 - Remove tag numbers >= 956 from the standard FIX 4.4 protocol definition. These all fall within the customer-defined
   number range and do not form part of the official standard.
 - Remove non-standard message types from the FIX 4.4. protocol definition.
+- Don't re-raise exceptions in asyncio tasks that trigger a pipeline shutdown. This prevents the application's `stop()`
+  method from being interrupted before it has been fully processed.
 
 
 ## v0.15.3 (2020-08-11)
