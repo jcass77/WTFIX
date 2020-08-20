@@ -1,4 +1,5 @@
 import asyncio
+from collections import OrderedDict
 from unittest.mock import MagicMock
 
 import pytest
@@ -45,13 +46,14 @@ class TestBasePipeline:
                 connection_name=conn.name, installed_apps=three_level_app_chain
             )
 
+            # Simulate all apps started
+            pipeline._started_apps = OrderedDict(reversed(pipeline.apps.items()))
+
             func, app_chain = pipeline._setup_message_handling(
                 pipeline.INBOUND_PROCESSING
             )
             assert func == "on_receive"
-            assert next(app_chain).name == "below"
-            assert next(app_chain).name == "middle"
-            assert next(app_chain).name == "top"
+            assert [app.name for app in app_chain] == ["below", "middle", "top"]
 
     def test_pre_processing_pipeline_outbound_order(self, three_level_app_chain):
         with connection_manager() as conn:
@@ -59,14 +61,15 @@ class TestBasePipeline:
                 connection_name=conn.name, installed_apps=three_level_app_chain
             )
 
+            # Simulate all apps started
+            pipeline._started_apps = OrderedDict(reversed(pipeline.apps.items()))
+
             func, app_chain = pipeline._setup_message_handling(
                 pipeline.OUTBOUND_PROCESSING
             )
 
             assert func == "on_send"
-            assert next(app_chain).name == "top"
-            assert next(app_chain).name == "middle"
-            assert next(app_chain).name == "below"
+            assert [app.name for app in app_chain] == ["top", "middle", "below"]
 
     def test_prep_processing_pipeline_direction_unknown_raises_exception(
         self, three_level_app_chain
@@ -201,6 +204,9 @@ class TestBasePipeline:
 
                 pipeline._installed_apps[key] = app_mock
 
+            # Simulate all apps started
+            pipeline._started_apps = OrderedDict(reversed(pipeline.apps.items()))
+
             await pipeline.stop()
 
             for app in pipeline.apps.values():
@@ -228,6 +234,9 @@ class TestBasePipeline:
 
                 pipeline._installed_apps[key] = app_mock
 
+            # Simulate all apps started
+            pipeline._started_apps = OrderedDict(reversed(pipeline.apps.items()))
+
             asyncio.create_task(pipeline.stop())
             asyncio.create_task(pipeline.stop())
             asyncio.create_task(pipeline.stop())
@@ -253,6 +262,9 @@ class TestBasePipeline:
 
                 pipeline._installed_apps[key] = app_mock
 
+            # Simulate all apps started
+            pipeline._started_apps = OrderedDict(reversed(pipeline.apps.items()))
+
             await pipeline.stop()
             await pipeline.stop()
 
@@ -267,6 +279,9 @@ class TestBasePipeline:
                 connection_name=conn.name, installed_apps=three_level_app_chain
             )
 
+            # Simulate all apps started
+            pipeline._started_apps = OrderedDict(reversed(pipeline.apps.items()))
+
             message = await pipeline.receive(admin.TestRequestMessage("Test"))
             assert message.TestReqID == "Test r1 r2 r3"
 
@@ -276,6 +291,9 @@ class TestBasePipeline:
             pipeline = BasePipeline(
                 connection_name=conn.name, installed_apps=three_level_stop_app_chain
             )
+
+            # Simulate all apps started
+            pipeline._started_apps = OrderedDict(reversed(pipeline.apps.items()))
 
             message = await pipeline.receive(admin.TestRequestMessage("Test"))
             assert message.TestReqID == "Test r1"
@@ -287,6 +305,9 @@ class TestBasePipeline:
                 connection_name=conn.name, installed_apps=three_level_app_chain
             )
 
+            # Simulate all apps started
+            pipeline._started_apps = OrderedDict(reversed(pipeline.apps.items()))
+
             message = await pipeline.send(admin.TestRequestMessage("Test"))
             assert message.TestReqID == "Test s3 s2 s1"
 
@@ -296,6 +317,9 @@ class TestBasePipeline:
             pipeline = BasePipeline(
                 connection_name=conn.name, installed_apps=three_level_stop_app_chain
             )
+
+            # Simulate all apps started
+            pipeline._started_apps = OrderedDict(reversed(pipeline.apps.items()))
 
             message = await pipeline.send(admin.TestRequestMessage("Test"))
             assert message.TestReqID == "Test s3"

@@ -181,23 +181,17 @@ class HeartbeatApp(MessageTypeHandlerApp):
                     await interval_exceeded_response()
 
             # No response received, force logout!
-            logger.error(
-                f"{self.name}: No response received for test request '{self._test_request_id}', "
-                f"initiating shutdown..."
+            asyncio.create_task(
+                self.pipeline.stop(
+                    SessionError(
+                        f"{self.name}: No response received for test request '{self._test_request_id}'."
+                    )
+                )
             )
-            asyncio.create_task(self.pipeline.stop())
 
-        except asyncio.exceptions.CancelledError:
-            logger.info(f"{self.name}: {asyncio.current_task().get_name()} cancelled!")
-
-        except Exception:
-            # Stop monitoring heartbeat
-            logger.exception(
-                f"{self.name}: Unhandled exception while monitoring heartbeat! Shutting down pipeline..."
-            )
-            asyncio.create_task(self.pipeline.stop())
-            # NOTE: We don't re-raise the exception here as this will cause it to interrupt stopping this app
-            # when we `await cancel_task` in stop().
+        except Exception as e:
+            # Unhandled exception - abort!
+            asyncio.create_task(self.pipeline.stop(e))
 
     async def send_test_request(self):
         """

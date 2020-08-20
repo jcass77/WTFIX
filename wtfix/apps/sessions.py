@@ -175,7 +175,10 @@ class ClientSessionApp(SessionApp):
             logger.info(f"{self.name}: Cancelling listener task...")
 
             self._listener_task.cancel()
-            await self._listener_task
+            try:
+                await self._listener_task
+            except asyncio.exceptions.CancelledError:
+                logger.info(f"{self.name}: {self._listener_task.get_name()} cancelled!")
 
         await super().stop(*args, **kwargs)
 
@@ -230,17 +233,9 @@ class ClientSessionApp(SessionApp):
                         # Something else went wrong, re-raise
                         raise
 
-        except asyncio.exceptions.CancelledError:
-            logger.info(f"{self.name}: {asyncio.current_task().get_name()} cancelled!")
-
-        except Exception:
-            # Stop monitoring heartbeat
-            logger.exception(
-                f"{self.name}: Unhandled exception while listening for messages! Shutting down pipeline..."
-            )
-            asyncio.create_task(self.pipeline.stop())
-            # NOTE: We don't re-raise the exception here as this will cause it to interrupt stopping this app
-            # when we `await self._listener_task` in stop().
+        except Exception as e:
+            # Unhandled exception - abort!
+            asyncio.create_task(self.pipeline.stop(e))
 
     async def on_send(self, message):
         """

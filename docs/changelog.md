@@ -3,13 +3,20 @@
 This changelog is used to track all major changes to WTFIX.
 
 
-## v0.15.4 (UNRELEASED)
+## v0.16.0 (UNRELEASED)
 
 **Enhancements**
 
 - FIX protocol specification: look up class attributes in parent classes as well. This allows new FIX protocol
   specifications, which can include custom tags and message types, to be derived from a standard base protocol
   definition.
+- Stop processing messages as soon as an unhandled exception occurs. This ensures that all apps have the same state
+  up until the point at which the exception was raised.
+- The pipeline will now only process messages for apps that have already started. This prevents apps from receiving
+  messages while they are still starting up, or after they have already been shut down.
+- `BasePipeline.stop()` now accepts an optional keyword argument that can be used to pass the exception that caused
+  the pipeline to be stopped. This makes it possible to distinguish between normal and abnormal pipeline shutdowns so
+  that OS exit codes can be set properly by the calling process.
 
 **Fixes**
 

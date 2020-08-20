@@ -26,6 +26,7 @@ from wtfix.core.exceptions import (
     StopMessageProcessing,
     ValidationError,
     ImproperlyConfigured,
+    SessionError,
 )
 from wtfix.protocol.contextlib import connection
 
@@ -45,12 +46,15 @@ class BasePipeline:
 
         self._installed_apps = self._load_apps(installed_apps=installed_apps, **kwargs)
         logger.info(
-            f"Created new WTFIX application pipeline: {list(self.apps.keys())}."
+            f"Created new WTFIX application pipeline: {list(self._installed_apps.keys())}."
         )
+        self._started_apps = OrderedDict()
 
         self.stop_lock = asyncio.Lock()
         self.stopping_event = asyncio.Event()
         self.stopped_event = asyncio.Event()
+
+        self.errors = []
 
     @property
     def apps(self):
@@ -109,7 +113,7 @@ class BasePipeline:
             logger.error(f"Timeout waiting for apps to initialize!")
             raise e
 
-        for app in reversed(self.apps.values()):
+        for name, app in reversed(self.apps.items()):
             if self.stopping_event.is_set():
                 # Abort startup
                 logger.info(f"Pipeline shutting down. Aborting startup of '{app}'...")
@@ -118,7 +122,9 @@ class BasePipeline:
             logger.info(f"Starting app '{app}'...")
 
             try:
+                self._started_apps[name] = app
                 await asyncio.wait_for(app.start(), settings.STARTUP_TIMEOUT)
+
             except asyncio.exceptions.TimeoutError as e:
                 logger.error(f"Timeout waiting for app '{app}' to start!")
                 raise e
@@ -128,13 +134,28 @@ class BasePipeline:
         # Block until the pipeline has been stopped again.
         await self.stopped_event.wait()
 
-    async def stop(self):
+        if self.errors:
+            # Re-raise exceptions so that calling process can set proper exit codes.
+            raise SessionError(f"Pipeline terminated abnormally due to: {self.errors}")
+
+    async def stop(self, error: Exception = None):
         """
         Tries to shut down the pipeline in an orderly fashion.
 
+        :param: error: The exception that triggered the pipeline stop or None if the shutdown occurred normally.
         :raises: TimeoutError if STOP_TIMEOUT is exceeded.
         """
+        if self.stop_lock.locked():
+            # Stop already in progress - skip
+            return
+
         async with self.stop_lock:  # Ensure that more than one app does not attempt to initiate a shutdown at once
+            if error:
+                logger.exception(
+                    f"Pipeline shutting down due to exception: {error}.", exc_info=error
+                )
+                self.errors.append(error)
+
             if self.stopping_event.is_set() or self.stopped_event.is_set():
                 # Pipeline has already been stopped or is in the process of shutting down - nothing more to do.
                 return
@@ -142,14 +163,17 @@ class BasePipeline:
             self.stopping_event.set()  # Mark start of shutdown event.
 
             logger.info("Shutting down pipeline...")
-            for app in self.apps.values():
+            for name, app in list(reversed(self._started_apps.items())):
                 # Stop apps in the reverse order that they were initialized.
                 logger.info(f"Stopping app '{app}'...")
                 try:
                     await asyncio.wait_for(app.stop(), settings.STOP_TIMEOUT)
+                    del self._started_apps[name]
+
                 except asyncio.exceptions.TimeoutError:
                     logger.error(f"Timeout waiting for app '{app}' to stop!")
                     continue  # Continue trying to stop next app.
+
                 except Exception:
                     # Don't allow misbehaving apps to interrupt pipeline shutdown.
                     logger.exception(f"Error trying to stop app '{app}'.")
@@ -160,10 +184,10 @@ class BasePipeline:
 
     def _setup_message_handling(self, direction):
         if direction is self.INBOUND_PROCESSING:
-            return "on_receive", reversed(self.apps.values())
+            return "on_receive", list(self._started_apps.values())
 
         if direction is self.OUTBOUND_PROCESSING:
-            return "on_send", iter(self.apps.values())
+            return "on_send", list(reversed(self._started_apps.values()))
 
         raise ValidationError(
             f"Unknown application chain processing direction '{direction}'."
@@ -214,20 +238,27 @@ class BasePipeline:
                     f"Ignoring connection error during shutdown / logout: {e}"
                 )
             else:
-
-                # Log exception in case it is not handled properly in the Future object.
-                logger.exception(
-                    f"Unhandled exception while doing {method_name}: {e} ({message})."
-                )
-                await self.stop()  # Block while we try to stop the pipeline
-                raise e
+                # Unhandled exception - abort!
+                asyncio.create_task(self.stop(e))
 
         return message
 
     async def receive(self, message):
         """Receives a new message to be processed"""
+        if self.errors:
+            logger.warning(
+                f"Pipeline errors have occurred, ignoring received message: {message}"
+            )
+            return message
+
         return await self._process_message(message, BasePipeline.INBOUND_PROCESSING)
 
     async def send(self, message):
         """Processes a new message to be sent"""
+        if self.errors:
+            logger.warning(
+                f"Pipeline errors have occurred, ignoring send message: {message}"
+            )
+            return message
+
         return await self._process_message(message, BasePipeline.OUTBOUND_PROCESSING)

@@ -46,7 +46,11 @@ parser.add_argument(
 _shutting_down = asyncio.Event()
 
 
-async def graceful_shutdown(pipeline, sig_name=None):
+async def graceful_shutdown(pipeline, sig_name=None, error=None):
+    if pipeline.stopping_event.is_set():
+        # Nothing to do
+        return
+
     if _shutting_down.is_set():
         # Only try to shut down once
         logger.warning(f"Shutdown already in progress! Ignoring signal '{sig_name}'.")
@@ -59,7 +63,7 @@ async def graceful_shutdown(pipeline, sig_name=None):
     else:
         logger.info(f"Initiating graceful shutdown...")
 
-    await pipeline.stop()
+    await pipeline.stop(error=error)
 
 
 async def main():
@@ -69,7 +73,7 @@ async def main():
     )
 
     args = parser.parse_args()
-    exit_code = os.EX_UNAVAILABLE
+    exit_code = os.EX_OK
 
     with connection_manager(args.connection) as conn:
         fix_pipeline = BasePipeline(
@@ -91,28 +95,19 @@ async def main():
             await fix_pipeline.start()
 
         except ImproperlyConfigured as e:
-            logger.error(e)
             # User needs to fix config issue before restart is attempted. Set os.EX_OK so that system process
             # monitors like Supervisor do not attempt a restart immediately.
-            exit_code = os.EX_OK
+            await graceful_shutdown(fix_pipeline, error=e)
 
         except KeyboardInterrupt:
             logger.info("Received keyboard interrupt! Initiating shutdown...")
-            exit_code = os.EX_OK
-
-        except asyncio.exceptions.TimeoutError as e:
-            logger.error(e)
-
-        except asyncio.exceptions.CancelledError as e:
-            logger.error(f"Cancelled: connection terminated abnormally! ({e})")
+            await graceful_shutdown(fix_pipeline)
 
         except Exception as e:
-            logger.exception(e)
+            await graceful_shutdown(fix_pipeline, error=e)
+            exit_code = os.EX_UNAVAILABLE  # Abnormal termination
 
         finally:
-            if not fix_pipeline.stopped_event.is_set():
-                await graceful_shutdown(fix_pipeline)
-
             # Report tasks that are still running after shutdown.
             tasks = [
                 task
