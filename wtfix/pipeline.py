@@ -48,7 +48,8 @@ class BasePipeline:
         logger.info(
             f"Created new WTFIX application pipeline: {list(self._installed_apps.keys())}."
         )
-        self._started_apps = OrderedDict()
+        # An app is 'active' if it has (a) been initialized and (b) not been stopped.
+        self._active_apps = OrderedDict()
 
         self.stop_lock = asyncio.Lock()
         self.stopping_event = asyncio.Event()
@@ -92,8 +93,11 @@ class BasePipeline:
         """
         logger.info(f"Initializing applications...")
 
-        init_calls = (app.initialize for app in reversed(self.apps.values()))
+        init_calls = (app.initialize for app in self.apps.values())
         await asyncio.gather(*(call() for call in init_calls))
+
+        for name, app in self.apps.items():
+            self._active_apps[name] = app
 
         logger.info("All apps initialized!")
 
@@ -113,7 +117,7 @@ class BasePipeline:
             logger.error(f"Timeout waiting for apps to initialize!")
             raise e
 
-        for name, app in reversed(self.apps.items()):
+        for app in reversed(self.apps.values()):
             if self.stopping_event.is_set():
                 # Abort startup
                 logger.info(f"Pipeline shutting down. Aborting startup of '{app}'...")
@@ -122,9 +126,7 @@ class BasePipeline:
             logger.info(f"Starting app '{app}'...")
 
             try:
-                self._started_apps[name] = app
                 await asyncio.wait_for(app.start(), settings.STARTUP_TIMEOUT)
-
             except asyncio.exceptions.TimeoutError as e:
                 logger.error(f"Timeout waiting for app '{app}' to start!")
                 raise e
@@ -163,12 +165,12 @@ class BasePipeline:
             self.stopping_event.set()  # Mark start of shutdown event.
 
             logger.info("Shutting down pipeline...")
-            for name, app in list(reversed(self._started_apps.items())):
+            for name, app in self.apps.items():
                 # Stop apps in the reverse order that they were initialized.
                 logger.info(f"Stopping app '{app}'...")
                 try:
                     await asyncio.wait_for(app.stop(), settings.STOP_TIMEOUT)
-                    del self._started_apps[name]
+                    del self._active_apps[name]
 
                 except asyncio.exceptions.TimeoutError:
                     logger.error(f"Timeout waiting for app '{app}' to stop!")
@@ -184,10 +186,10 @@ class BasePipeline:
 
     def _setup_message_handling(self, direction):
         if direction is self.INBOUND_PROCESSING:
-            return "on_receive", list(self._started_apps.values())
+            return "on_receive", reversed(self._active_apps.values())
 
         if direction is self.OUTBOUND_PROCESSING:
-            return "on_send", list(reversed(self._started_apps.values()))
+            return "on_send", iter(self._active_apps.values())
 
         raise ValidationError(
             f"Unknown application chain processing direction '{direction}'."
