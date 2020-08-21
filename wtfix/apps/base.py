@@ -18,6 +18,7 @@ from functools import wraps
 
 from wtfix.core.exceptions import ValidationError, MessageProcessingError
 from wtfix.message.message import FIXMessage
+from wtfix.pipeline import BasePipeline
 
 
 class BaseApp:
@@ -27,7 +28,7 @@ class BaseApp:
 
     name = None
 
-    def __init__(self, pipeline, *args, **kwargs):
+    def __init__(self, pipeline: BasePipeline, *args, **kwargs):
         """
         :param pipeline: The pipeline that this app will be added to.
         :raises: ValidationError if no name has been specified for this apps.
@@ -49,6 +50,8 @@ class BaseApp:
 
         All apps are initialized concurrently and need to complete their initialization routines within the
         timeout specified by INIT_TIMEOUT.
+
+        Being 'initialized' implies that an app is ready to start receiving messages.
         """
         pass
 
@@ -72,6 +75,8 @@ class BaseApp:
 
         Apps are stopped sequentially in the order that they were added to the pipeline and each app is subject
         to the STOP_TIMEOUT timeout.
+
+        Once an app is 'stopped' it will not receive any more messages.
         """
         pass
 
@@ -147,7 +152,7 @@ class MessageTypeHandlerApp(BaseApp):
 
     name = "type_filter"
 
-    def __init__(self, pipeline, *args, **kwargs):
+    def __init__(self, pipeline: BasePipeline, *args, **kwargs):
         super().__init__(pipeline, *args, **kwargs)
 
         self.type_handlers = {}

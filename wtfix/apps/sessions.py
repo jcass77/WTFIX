@@ -24,6 +24,7 @@ from pathlib import Path
 from wtfix.apps.base import BaseApp
 from wtfix.conf import settings
 from wtfix.core import utils
+from wtfix.pipeline import BasePipeline
 from wtfix.protocol.contextlib import connection
 
 
@@ -38,7 +39,13 @@ class SessionApp(BaseApp):
     name = "session"
 
     def __init__(
-        self, pipeline, new_session=False, sid_path=None, sender=None, *args, **kwargs
+        self,
+        pipeline: BasePipeline,
+        new_session: bool = False,
+        sid_path: Path = None,
+        sender: str = None,
+        *args,
+        **kwargs,
     ):
         super().__init__(pipeline, *args, **kwargs)
 
@@ -59,7 +66,7 @@ class SessionApp(BaseApp):
         self.writer = None
 
     @property
-    def session_id(self):
+    def session_id(self) -> str:
         return self._session_id
 
     @property
@@ -110,7 +117,13 @@ class ClientSessionApp(SessionApp):
     name = "client_session"
 
     def __init__(
-        self, pipeline, new_session=False, sender=None, target=None, *args, **kwargs
+        self,
+        pipeline: BasePipeline,
+        new_session: bool = False,
+        sender: str = None,
+        target: str = None,
+        *args,
+        **kwargs,
     ):
         super().__init__(
             pipeline, new_session=new_session, sender=sender, *args, **kwargs
@@ -237,7 +250,7 @@ class ClientSessionApp(SessionApp):
             # Unhandled exception - abort!
             asyncio.create_task(self.pipeline.stop(e))
 
-    async def on_send(self, message):
+    async def on_send(self, message: bytes):
         """
         Writes an encoded message to the StreamWriter.
 

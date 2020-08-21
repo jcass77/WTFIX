@@ -21,6 +21,7 @@ import aioredis
 from wtfix.apps.base import BaseApp
 from wtfix.conf import settings
 from wtfix.core import decoders, utils
+from wtfix.pipeline import BasePipeline
 
 logger = settings.logger
 
@@ -34,7 +35,7 @@ class RedisPubSubApp(BaseApp):
 
     SEND_CHANNEL = "channel:send"
 
-    def __init__(self, pipeline, *args, **kwargs):
+    def __init__(self, pipeline: BasePipeline, *args, **kwargs):
         super().__init__(pipeline, *args, **kwargs)
 
         self.redis_pool = None

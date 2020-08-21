@@ -17,6 +17,7 @@
 
 import asyncio
 from collections import OrderedDict
+from typing import Union, List, Tuple
 
 from wtfix.core.klass import get_class_from_module_string
 from wtfix.conf import ConnectionSettings
@@ -28,6 +29,7 @@ from wtfix.core.exceptions import (
     ImproperlyConfigured,
     SessionError,
 )
+from wtfix.message.message import FIXMessage
 from wtfix.protocol.contextlib import connection
 
 logger = settings.logger
@@ -41,7 +43,7 @@ class BasePipeline:
     INBOUND_PROCESSING = 0
     OUTBOUND_PROCESSING = 1
 
-    def __init__(self, connection_name, installed_apps=None, **kwargs):
+    def __init__(self, connection_name: str, installed_apps: List = None, **kwargs):
         self.settings = ConnectionSettings(connection_name)
 
         self._installed_apps = self._load_apps(installed_apps=installed_apps, **kwargs)
@@ -58,14 +60,15 @@ class BasePipeline:
         self.errors = []
 
     @property
-    def apps(self):
+    def apps(self) -> OrderedDict:
         return self._installed_apps
 
-    def _load_apps(self, installed_apps=None, **kwargs):
+    def _load_apps(self, installed_apps: List = None, **kwargs) -> OrderedDict:
         """
         Loads the list of apps to be used for processing messages.
 
         :param installed_apps: The list of class paths for the installed apps.
+        :returns: An ordered dictionary containing all of the apps that have been loaded.
         """
         loaded_apps = OrderedDict()
 
@@ -184,7 +187,7 @@ class BasePipeline:
             self.stopped_event.set()
             logger.info("Pipeline stopped.")
 
-    def _setup_message_handling(self, direction):
+    def _setup_message_handling(self, direction: int) -> Tuple[str, iter]:
         if direction is self.INBOUND_PROCESSING:
             return "on_receive", reversed(self._active_apps.values())
 
@@ -195,7 +198,9 @@ class BasePipeline:
             f"Unknown application chain processing direction '{direction}'."
         )
 
-    async def _process_message(self, message, direction):
+    async def _process_message(
+        self, message: Union[FIXMessage, bytes], direction: int
+    ) -> Union[FIXMessage, bytes]:
         """
         Process a message by passing it on to the various apps in the pipeline.
 
@@ -245,7 +250,7 @@ class BasePipeline:
 
         return message
 
-    async def receive(self, message):
+    async def receive(self, message: bytes) -> Union[FIXMessage, bytes]:
         """Receives a new message to be processed"""
         if self.errors:
             logger.warning(
@@ -255,7 +260,7 @@ class BasePipeline:
 
         return await self._process_message(message, BasePipeline.INBOUND_PROCESSING)
 
-    async def send(self, message):
+    async def send(self, message: FIXMessage) -> Union[FIXMessage, bytes]:
         """Processes a new message to be sent"""
         if self.errors:
             logger.warning(
