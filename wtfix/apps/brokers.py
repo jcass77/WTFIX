@@ -21,6 +21,7 @@ import aioredis
 from wtfix.apps.base import BaseApp
 from wtfix.conf import settings
 from wtfix.core import decoders, utils
+from wtfix.pipeline import BasePipeline
 
 logger = settings.logger
 
@@ -34,7 +35,7 @@ class RedisPubSubApp(BaseApp):
 
     SEND_CHANNEL = "channel:send"
 
-    def __init__(self, pipeline, *args, **kwargs):
+    def __init__(self, pipeline: BasePipeline, *args, **kwargs):
         super().__init__(pipeline, *args, **kwargs)
 
         self.redis_pool = None
@@ -53,6 +54,9 @@ class RedisPubSubApp(BaseApp):
                     asyncio.create_task(
                         self.send(message)
                     )  # Pass message on to pipeline
+
+        except asyncio.exceptions.CancelledError:
+            logger.info(f"{self.name}: {asyncio.current_task().get_name()} cancelled!")
 
         except aioredis.ChannelClosedError:
             # Shutting down...
@@ -73,13 +77,7 @@ class RedisPubSubApp(BaseApp):
     async def stop(self, *args, **kwargs):
         if self._channel_reader_task is not None:
             self._channel_reader_task.cancel()
-            try:
-                await self._channel_reader_task
-            except asyncio.exceptions.CancelledError:
-                # Cancellation request received - close connections....
-                logger.info(
-                    f"{self.name}: {self._channel_reader_task.get_name()} cancelled!"
-                )
+            await self._channel_reader_task
 
         with await self.redis_pool as conn:
             await conn.unsubscribe(self.SEND_CHANNEL)

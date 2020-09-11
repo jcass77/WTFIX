@@ -14,6 +14,7 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from typing import Tuple
 
 from wtfix.apps.base import BaseApp
 from wtfix.apps.sessions import ClientSessionApp
@@ -124,7 +125,7 @@ class DecoderApp(BaseApp):
             raise MessageProcessingError() from e
 
     @classmethod
-    def check_begin_string(cls, data, start=0):
+    def check_begin_string(cls, data: bytes, start: int = 0) -> Tuple[bytes, int]:
         """
         Checks the BeginString tag (8) for the encoded message data provided.
 
@@ -153,7 +154,9 @@ class DecoderApp(BaseApp):
         return begin_string, tag_end
 
     @classmethod
-    def check_body_length(cls, data, start=0, body_end=None):
+    def check_body_length(
+        cls, data: bytes, start: int = 0, body_end: int = None
+    ) -> Tuple[int, int]:
         """
         Checks the BodyLength tag (9) for the encoded message data provided.
 
@@ -163,7 +166,7 @@ class DecoderApp(BaseApp):
         is not provided then the data byte string will be parsed to look for the Checksum (10) tag,
         which should denote the end of the message body.
 
-        :return: A tuple consisting of the value of the BodyLength tag in encoded byte format, and the
+        :return: A tuple consisting of the value of the BodyLength tag as an int, and the
         index at which the tag ends.
 
         :raises: ParsingError if the BodyLength tag can either not be found, or if the actual body
@@ -189,7 +192,9 @@ class DecoderApp(BaseApp):
         return body_length, tag_end
 
     @classmethod
-    def check_checksum(cls, data, body_start=0, body_end=None):
+    def check_checksum(
+        cls, data: bytes, body_start: int = 0, body_end: int = None
+    ) -> Tuple[int, int]:
         """
         Checks the Checksum tag (10) for the encoded message data provided.
 
@@ -198,8 +203,7 @@ class DecoderApp(BaseApp):
         :param body_end: The index in the encoded message at which the message body ends.
         If this value is not provided, then it will default to the index at which the Checksum tag starts.
 
-        :return: A tuple consisting of the value of the BeginString tag in encoded byte format, and the
-        index at which the tag ends.
+        :return: A tuple consisting of the value of the checksum and the index at which the tag ends.
 
         :raises: ParsingError if the BeginString tag can either not be found, or if it is not the first tag
         in the message.

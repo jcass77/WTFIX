@@ -69,11 +69,11 @@ def failing_server_heartbeat_app(base_pipeline):
 
 
 @pytest.fixture
-def user_notification_message():
+def email_message():
     faker = Faker()
 
     return generic_message_factory(
-        (connection.protocol.Tag.MsgType, connection.protocol.MsgType.UserNotification),
+        (connection.protocol.Tag.MsgType, connection.protocol.MsgType.Email),
         (connection.protocol.Tag.MsgSeqNum, 1),
         (
             connection.protocol.Tag.SenderCompID,
@@ -93,11 +93,11 @@ def user_notification_message():
 
 
 @pytest.fixture
-def messages(user_notification_message):
+def messages(email_message):
     messages = []
 
     for idx in range(1, 6):
-        next_message = user_notification_message.copy()
+        next_message = email_message.copy()
         next_message.seq_num = idx
         messages.append(next_message)
 

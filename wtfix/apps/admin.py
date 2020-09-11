@@ -20,7 +20,7 @@ import collections
 import uuid
 from datetime import datetime, timedelta
 from enum import Enum, auto
-from typing import Callable
+from typing import Callable, List
 
 from wtfix.apps.base import MessageTypeHandlerApp, on
 from wtfix.apps.sessions import ClientSessionApp
@@ -30,6 +30,7 @@ from wtfix.core.exceptions import TagNotFound, StopMessageProcessing, SessionErr
 from wtfix.message import admin
 from wtfix.core import utils
 from wtfix.message.message import FIXMessage
+from wtfix.pipeline import BasePipeline
 from wtfix.protocol.contextlib import connection
 
 logger = settings.logger
@@ -52,7 +53,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
 
     name = "heartbeat"
 
-    def __init__(self, pipeline, *args, **kwargs):
+    def __init__(self, pipeline: BasePipeline, *args, **kwargs):
         super().__init__(pipeline, *args, **kwargs)
 
         self._test_request_id = None  # A waiting TestRequest message for which no response has been received.
@@ -62,7 +63,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
         self._server_not_responding = asyncio.Event()
 
     @property
-    def heartbeat_interval(self):
+    def heartbeat_interval(self) -> int:
         """
         The heartbeat interval is supposed to be agreed between the sender and target as part of the logon
         process (which is why we do not accept it as a parameter or set it in the constructor).
@@ -88,7 +89,7 @@ class HeartbeatApp(MessageTypeHandlerApp):
         """
         return 2 * self.heartbeat_interval + 4
 
-    def seconds_to_next_check(self, timer: HeartbeatTimers) -> int:
+    def seconds_to_next_check(self, timer: HeartbeatTimers) -> float:
         """
         :timer: The timer being checked (sent / received)
         :return: The number of seconds before the next check is due to occur.
@@ -181,22 +182,17 @@ class HeartbeatApp(MessageTypeHandlerApp):
                     await interval_exceeded_response()
 
             # No response received, force logout!
-            logger.error(
-                f"{self.name}: No response received for test request '{self._test_request_id}', "
-                f"initiating shutdown..."
+            asyncio.create_task(
+                self.pipeline.stop(
+                    SessionError(
+                        f"{self.name}: No response received for test request '{self._test_request_id}'."
+                    )
+                )
             )
-            asyncio.create_task(self.pipeline.stop())
 
-        except asyncio.exceptions.CancelledError:
-            logger.info(f"{self.name}: {asyncio.current_task().get_name()} cancelled!")
-
-        except Exception:
-            # Stop monitoring heartbeat
-            logger.exception(
-                f"{self.name}: Unhandled exception while monitoring heartbeat! Shutting down pipeline..."
-            )
-            asyncio.create_task(self.pipeline.stop())
-            raise
+        except Exception as e:
+            # Unhandled exception - abort!
+            asyncio.create_task(self.pipeline.stop(e))
 
     async def send_test_request(self):
         """
@@ -347,7 +343,7 @@ class AuthenticationApp(MessageTypeHandlerApp):
         await super().stop(*args, **kwargs)
 
     @on(connection.protocol.MsgType.Logon)
-    async def on_logon(self, message):
+    async def on_logon(self, message: FIXMessage) -> FIXMessage:
         """
         Confirms all of the session parameters that we sent when logging on.
 
@@ -387,7 +383,7 @@ class AuthenticationApp(MessageTypeHandlerApp):
         return message
 
     @on(connection.protocol.MsgType.Logout)
-    async def on_logout(self, message):
+    async def on_logout(self, message: FIXMessage) -> FIXMessage:
         self.logged_out_event.set()  # FIX server has logged us out.
 
         asyncio.create_task(
@@ -486,7 +482,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
     # How long to wait (in seconds) for resend requests from target before sending our own resend requests.
     RESEND_WAIT_TIME = 5
 
-    def __init__(self, pipeline, *args, **kwargs):
+    def __init__(self, pipeline: BasePipeline, *args, **kwargs):
 
         self.startup_time = (
             None  # Needed to check if we should wait for resend requests from target
@@ -506,7 +502,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
         super().__init__(pipeline, *args, **kwargs)
 
     @property
-    def send_seq_num(self):
+    def send_seq_num(self) -> int:
         return self._send_seq_num
 
     @send_seq_num.setter
@@ -514,7 +510,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
         self._send_seq_num = int(value)  # Make sure we received an int
 
     @property
-    def receive_seq_num(self):
+    def receive_seq_num(self) -> int:
         return self._receive_seq_num
 
     @receive_seq_num.setter
@@ -522,7 +518,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
         self._receive_seq_num = int(value)  # Make sure we received an int
 
     @property
-    def expected_seq_num(self):
+    def expected_seq_num(self) -> int:
         return self.receive_seq_num + 1
 
     async def start(self, *args, **kwargs):
@@ -558,7 +554,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
         self.startup_time = datetime.utcnow()
 
-    async def _check_sequence_number(self, message):
+    async def _check_sequence_number(self, message: FIXMessage) -> FIXMessage:
 
         if int(message.seq_num) < self.expected_seq_num:
             self._handle_sequence_number_too_low(message)
@@ -616,7 +612,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             # Buffer is empty - continue
             pass
 
-    def _handle_sequence_number_too_low(self, message):
+    def _handle_sequence_number_too_low(self, message: FIXMessage):
         """
         According to the FIX specification, receiving a lower than expected sequence number, that is
         not a duplicate, is a fatal error that requires manual intervention. Throw an exception to
@@ -639,7 +635,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
 
         raise SessionError(error_msg)
 
-    async def _handle_sequence_number_too_high(self, message):
+    async def _handle_sequence_number_too_high(self, message: FIXMessage) -> FIXMessage:
 
         # We've missed some incoming messages
         if len(self.receive_buffer) == 0:
@@ -687,7 +683,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             f"(waiting for #{self.expected_seq_num})..."
         )
 
-    async def _send_resend_request(self, missing_seq_nums):
+    async def _send_resend_request(self, missing_seq_nums: List[int]):
         # Wait for opportunity to send resend request. Must:
         #
         #   1.) Have waited for resend requests from the target; and
@@ -716,7 +712,7 @@ class SeqNumManagerApp(MessageTypeHandlerApp):
             )
         )
 
-    async def _handle_resend_request(self, message):
+    async def _handle_resend_request(self, message: FIXMessage) -> FIXMessage:
 
         # Set event marker to block our own gap fill requests until we've responded to this request.
         self.resend_request_handled_event.clear()

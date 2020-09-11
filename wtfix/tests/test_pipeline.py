@@ -1,4 +1,5 @@
 import asyncio
+from collections import OrderedDict
 from unittest.mock import MagicMock
 
 import pytest
@@ -45,6 +46,9 @@ class TestBasePipeline:
                 connection_name=conn.name, installed_apps=three_level_app_chain
             )
 
+            # Simulate all apps active
+            pipeline._active_apps = OrderedDict(pipeline.apps.items())
+
             func, app_chain = pipeline._setup_message_handling(
                 pipeline.INBOUND_PROCESSING
             )
@@ -58,6 +62,9 @@ class TestBasePipeline:
             pipeline = BasePipeline(
                 connection_name=conn.name, installed_apps=three_level_app_chain
             )
+
+            # Simulate all apps active
+            pipeline._active_apps = OrderedDict(pipeline.apps.items())
 
             func, app_chain = pipeline._setup_message_handling(
                 pipeline.OUTBOUND_PROCESSING
@@ -201,6 +208,9 @@ class TestBasePipeline:
 
                 pipeline._installed_apps[key] = app_mock
 
+            # Simulate all apps active
+            pipeline._active_apps = OrderedDict(pipeline.apps.items())
+
             await pipeline.stop()
 
             for app in pipeline.apps.values():
@@ -228,6 +238,9 @@ class TestBasePipeline:
 
                 pipeline._installed_apps[key] = app_mock
 
+            # Simulate all apps active
+            pipeline._active_apps = OrderedDict(pipeline.apps.items())
+
             asyncio.create_task(pipeline.stop())
             asyncio.create_task(pipeline.stop())
             asyncio.create_task(pipeline.stop())
@@ -253,6 +266,9 @@ class TestBasePipeline:
 
                 pipeline._installed_apps[key] = app_mock
 
+            # Simulate all apps active
+            pipeline._active_apps = OrderedDict(pipeline.apps.items())
+
             await pipeline.stop()
             await pipeline.stop()
 
@@ -267,6 +283,9 @@ class TestBasePipeline:
                 connection_name=conn.name, installed_apps=three_level_app_chain
             )
 
+            # Simulate all apps active
+            pipeline._active_apps = OrderedDict(pipeline.apps.items())
+
             message = await pipeline.receive(admin.TestRequestMessage("Test"))
             assert message.TestReqID == "Test r1 r2 r3"
 
@@ -276,6 +295,9 @@ class TestBasePipeline:
             pipeline = BasePipeline(
                 connection_name=conn.name, installed_apps=three_level_stop_app_chain
             )
+
+            # Simulate all apps active
+            pipeline._active_apps = OrderedDict(pipeline.apps.items())
 
             message = await pipeline.receive(admin.TestRequestMessage("Test"))
             assert message.TestReqID == "Test r1"
@@ -287,6 +309,9 @@ class TestBasePipeline:
                 connection_name=conn.name, installed_apps=three_level_app_chain
             )
 
+            # Simulate all apps active
+            pipeline._active_apps = OrderedDict(pipeline.apps.items())
+
             message = await pipeline.send(admin.TestRequestMessage("Test"))
             assert message.TestReqID == "Test s3 s2 s1"
 
@@ -296,6 +321,9 @@ class TestBasePipeline:
             pipeline = BasePipeline(
                 connection_name=conn.name, installed_apps=three_level_stop_app_chain
             )
+
+            # Simulate all apps active
+            pipeline._active_apps = OrderedDict(pipeline.apps.items())
 
             message = await pipeline.send(admin.TestRequestMessage("Test"))
             assert message.TestReqID == "Test s3"

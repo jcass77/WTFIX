@@ -3,6 +3,29 @@
 This changelog is used to track all major changes to WTFIX.
 
 
+## v0.16.0 (2020-09-11)
+
+**Enhancements**
+
+- FIX protocol specification: look up class attributes in parent classes as well. This allows new FIX protocol
+  specifications, which can include custom tags and message types, to be derived from a standard base protocol
+  definition.
+- Stop processing messages as soon as an unhandled exception occurs. This ensures that all apps have the same state
+  up until the point at which the exception was raised.
+- The pipeline will now not process any messages for apps that have already been shut down.
+- `BasePipeline.stop()` now accepts an optional keyword argument that can be used to pass the exception that caused
+  the pipeline to be stopped. This makes it possible to distinguish between normal and abnormal pipeline shutdowns so
+  that OS exit codes can be set properly by the calling process.
+
+**Fixes**
+
+- Remove tag numbers >= 956 from the standard FIX 4.4 protocol definition. These all fall within the customer-defined
+  number range and do not form part of the official standard.
+- Remove non-standard message types from the FIX 4.4. protocol definition.
+- Don't re-raise exceptions in asyncio tasks that trigger a pipeline shutdown. This prevents the application's `stop()`
+  method from being interrupted before it has been fully processed.
+
+
 ## v0.15.3 (2020-08-11)
 
 **Fixes**

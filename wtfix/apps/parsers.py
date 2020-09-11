@@ -19,6 +19,7 @@ from wtfix.apps.base import BaseApp
 from wtfix.core.utils import GroupTemplateMixin
 from wtfix.message.field import Field
 from wtfix.message.message import RawMessage, generic_message_factory, FIXMessage
+from wtfix.pipeline import BasePipeline
 
 
 class RawMessageParserApp(BaseApp, GroupTemplateMixin):
@@ -28,7 +29,7 @@ class RawMessageParserApp(BaseApp, GroupTemplateMixin):
 
     name = "raw_message_parser"
 
-    def __init__(self, pipeline, *args, **kwargs):
+    def __init__(self, pipeline: BasePipeline, *args, **kwargs):
         super().__init__(pipeline, *args, **kwargs)
 
         self.group_templates = self.pipeline.settings.GROUP_TEMPLATES
