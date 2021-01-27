@@ -26,7 +26,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install flake8 black pytest coveralls
+        python -m pip install flake8 black
         if [ -f requirements/local.txt ]; then pip install -r requirements/local.txt; fi
     - name: Blacken code
       run: black . --safe --quiet
@@ -43,7 +43,9 @@ jobs:
     - name: Test with pytest and update coverage
       run: coverage run -m pytest
     - name: Upload coverage data to coveralls.io
-      run: coveralls --service=github
+      run: |
+        python -m pip install coveralls
+        coveralls --service=github
       env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COVERALLS_FLAG_NAME: ${{ matrix.python-version }}-${{ matrix.redis-version }}
@@ -56,7 +58,7 @@ jobs:
       steps:
       - name: Finished
         run: |
-          python -m pip install --upgrade coveralls
+          python -m pip install coveralls
           coveralls --finish
         env:
          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
