@@ -112,10 +112,9 @@ class Settings:
         return templates
 
     def __repr__(self):
-        return '<%(cls)s "%(settings_module)s">' % {
-            "cls": self.__class__.__name__,
-            "settings_module": self.WTFIX_SETTINGS_MODULE,
-        }
+        return '<{cls} "{settings_module}">'.format(
+            cls=self.__class__.__name__, settings_module=self.WTFIX_SETTINGS_MODULE,
+        )
 
 
 settings = Settings()

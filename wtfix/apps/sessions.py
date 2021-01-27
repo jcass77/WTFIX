@@ -74,7 +74,7 @@ class SessionApp(BaseApp):
         return not self._new_session
 
     def _resume_session(self):
-        with open(self._sid_path, "r") as read_file:
+        with open(self._sid_path) as read_file:
             self._session_id = read_file.read()
             logger.info(f"{self.name}: Resuming session with ID: {self._session_id}.")
 

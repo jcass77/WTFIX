@@ -29,12 +29,12 @@ class TestSessionApp:
         sid_path = tmp_path / ".sid"
 
         with pytest.raises(FileNotFoundError):
-            open(sid_path, "r")
+            open(sid_path)
 
         session_app = SessionApp(base_pipeline, new_session=True, sid_path=sid_path)
         session_app._reset_session()
 
-        open(sid_path, "r")
+        open(sid_path)
 
     def test_reset_session_resets_session_id(self, base_pipeline, tmp_path):
         sid_path = tmp_path / ".sid"
