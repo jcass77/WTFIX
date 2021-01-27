@@ -30,7 +30,7 @@ jobs:
         if [ -f requirements/local.txt ]; then pip install -r requirements/local.txt; fi
     - name: Blacken code
       run: |
-        black . --save --quiet
+        black . --safe --quiet
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
