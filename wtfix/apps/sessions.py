@@ -1,6 +1,6 @@
 # This file is a part of WTFIX.
 #
-# Copyright (C) 2018-2020 John Cass <john.cass77@gmail.com>
+# Copyright (C) 2018-2021 John Cass <john.cass77@gmail.com>
 #
 # WTFIX is free software; you can redistribute it and/or modify it
 # under the terms of the GNU Lesser General Public License as published by
@@ -74,7 +74,7 @@ class SessionApp(BaseApp):
         return not self._new_session
 
     def _resume_session(self):
-        with open(self._sid_path, "r") as read_file:
+        with open(self._sid_path) as read_file:
             self._session_id = read_file.read()
             logger.info(f"{self.name}: Resuming session with ID: {self._session_id}.")
 

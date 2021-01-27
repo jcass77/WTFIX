@@ -1,6 +1,6 @@
 # This file is a part of WTFIX.
 #
-# Copyright (C) 2018-2020 John Cass <john.cass77@gmail.com>
+# Copyright (C) 2018-2021 John Cass <john.cass77@gmail.com>
 #
 # WTFIX is free software; you can redistribute it and/or modify it
 # under the terms of the GNU Lesser General Public License as published by
@@ -443,7 +443,7 @@ class AuthenticationApp(MessageTypeHandlerApp):
 
         await self.logged_in_event.wait()
 
-        logger.info(f"Successfully logged on!")
+        logger.info("Successfully logged on!")
 
     async def logout(self):
         """
@@ -458,7 +458,7 @@ class AuthenticationApp(MessageTypeHandlerApp):
 
             await self.logged_out_event.wait()
 
-            logger.info(f"Logout completed!")
+            logger.info("Logout completed!")
         else:
             self.logged_out_event.set()
 

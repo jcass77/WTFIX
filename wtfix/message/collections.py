@@ -1,6 +1,6 @@
 # This file is a part of WTFIX.
 #
-# Copyright (C) 2018-2020 John Cass <john.cass77@gmail.com>
+# Copyright (C) 2018-2021 John Cass <john.cass77@gmail.com>
 #
 # WTFIX is free software; you can redistribute it and/or modify it
 # under the terms of the GNU Lesser General Public License as published by
@@ -307,8 +307,7 @@ class FieldMap(collections.abc.MutableMapping, abc.ABC):
         """
         for field in self.data:
             try:
-                for nested_field in field.values():
-                    yield nested_field
+                yield from field.values()
             except AttributeError:
                 yield field
 
@@ -650,8 +649,7 @@ class FieldDict(FieldMap, GroupTemplateMixin):
     def values(self) -> Generator[Field, None, None]:
         for field in self.data.values():
             try:
-                for nested_field in field.values():
-                    yield nested_field
+                yield from field.values()
             except AttributeError:
                 yield field
 
@@ -876,8 +874,7 @@ class Group(FieldMap, GroupTemplateMixin):
 
         for field in self.data:
             try:
-                for nested_field in field.values():
-                    yield nested_field
+                yield from field.values()
             except AttributeError:
                 yield field
 

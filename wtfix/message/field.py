@@ -1,6 +1,6 @@
 # This file is a part of WTFIX.
 #
-# Copyright (C) 2018-2020 John Cass <john.cass77@gmail.com>
+# Copyright (C) 2018-2021 John Cass <john.cass77@gmail.com>
 #
 # WTFIX is free software; you can redistribute it and/or modify it
 # under the terms of the GNU Lesser General Public License as published by
@@ -461,8 +461,10 @@ class Field(collections.abc.MutableSequence):
         if "t" in format_spec:
             if self.name == self.UNKNOWN_TAG:
                 return f"{self.tag}: {self.value}"
-            return f"{self.name} ({self.tag}): {{:{format_spec.replace('t', '')}}}".format(
-                self.value
+            return (
+                f"{self.name} ({self.tag}): {{:{format_spec.replace('t', '')}}}".format(
+                    self.value
+                )
             )
         else:
             return self.value.__format__(format_spec)

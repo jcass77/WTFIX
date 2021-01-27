@@ -1,6 +1,6 @@
 # This file is a part of WTFIX.
 #
-# Copyright (C) 2018-2020 John Cass <john.cass77@gmail.com>
+# Copyright (C) 2018-2021 John Cass <john.cass77@gmail.com>
 #
 # WTFIX is free software; you can redistribute it and/or modify it
 # under the terms of the GNU Lesser General Public License as published by
@@ -28,7 +28,7 @@ def from_json(json_):
 
 class JSONMessageDecoder(JSONDecoder):
     def _decode_group(self, group_identifier, group_instances):
-        """ Recursively decode a repeating group.
+        """Recursively decode a repeating group.
 
         :param group_identifier: The Group identifier tag.
         :param group_instances: A list of lists of (tag, value) tuples that make up each group instance.

@@ -1,14 +1,41 @@
-# WTFIX
+# WTF(ix)
 
-The Pythonic Financial Information eXchange (FIX) client for humans.
+The Pythonic Financial Information eXchange (FIX) client that you have been looking for.
 
-[![Build status](https://travis-ci.org/jcass77/WTFIX.svg?branch=develop)](https://travis-ci.org/jcass77/WTFIX)
+[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/jcass77/wtfix/Python%20package)](https://github.com/jcass77/WTFIX/actions?query=workflow%3A%22Python+package%22)
 [![Coverage Status](https://coveralls.io/repos/github/jcass77/WTFIX/badge.svg?branch=develop)](https://coveralls.io/github/jcass77/WTFIX?branch=develop)
 [![PyPI version shields.io](https://img.shields.io/pypi/v/wtfix.svg)](https://pypi.python.org/pypi/wtfix/)
 [![PyPI pyversions](https://img.shields.io/pypi/pyversions/wtfix.svg)](https://pypi.python.org/pypi/wtfix/)
-[![PyPI license](https://img.shields.io/pypi/l/wtfix.svg)](https://pypi.python.org/pypi/wtfix/)
+[![PyPI license](https://img.shields.io/pypi/l/wtfix.svg)](COPYING)
 [![Code style:black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://pypi.org/project/black/)
 
+<hr/>
+
+<h3 align="center">Sponsors</h3>
+<p align="center">
+  <a href="https://www.salicar.co.za" target="_blank">
+      <img width="320px" src="docs/sponsors/salicar.png">
+  </a>
+</p>
+
+<hr/>
+
+## Background
+
+WTF(ix) was born out of frustration. We simply could not find an easy to use and actively maintained FIX client for
+our new Python project. Anywhere.
+
+Most of the available options required you to either change your development stack to include a database that you
+were not planning on using, compile a C++ codebase and figure out weird API bindings, wrangle with arcane XML file
+definitons, or cobble together bits and pieces of code from various old GitHub projects to try and get a connection
+to an exchange going.
+
+That was then. By now WTF(ix) has clocked up more than 100 000 hours in production, running 24/7 connected to multiple
+exchanges, and has been used to implement various algorithmic strategies and complete many millions of dollars worth
+of trades.
+
+WTF(ix) can also easily be adapted to plug into various crypto exchanges that do not adhere to the formal FIX (or
+any other) specification.
 
 ## Project Highlights and Goals
 
@@ -216,6 +243,21 @@ messages mean that you never need to deal with byte sequences directly.
 - [Deploying](docs/deploying.md)
 - [Changelog](docs/changelog.md)
 - [Release procedures](docs/releasing.md)
+
+## Need More?
+
+WTF(ix) is open source, free, and fully functional. However if you are a corporate intending to make use of WTF(ix)
+commercially, then you may need more support and assurance than can be offered by the community here.
+
+Commercial support is provided on a paid basis by this project's primary sponsor: [Salicar](https://www.salicar.co.za/#contact).
+Get in touch if you need help with:
+
+- Getting started and development best practices
+- Integrating WTF(ix) with the exchange of your choice (FIX, websocket stream, or REST API)
+- Sample code (including persisting messages and off-loading tasks to background processing libraries)
+- Code reviews
+- Running unmonitored instances in production
+- Problem investigation and identification
 
 ## Inspired By
 

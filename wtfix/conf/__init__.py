@@ -1,6 +1,6 @@
 # This file is a part of WTFIX.
 #
-# Copyright (C) 2018-2020 John Cass <john.cass77@gmail.com>
+# Copyright (C) 2018-2021 John Cass <john.cass77@gmail.com>
 #
 # WTFIX is free software; you can redistribute it and/or modify it
 # under the terms of the GNU Lesser General Public License as published by
@@ -112,10 +112,10 @@ class Settings:
         return templates
 
     def __repr__(self):
-        return '<%(cls)s "%(settings_module)s">' % {
-            "cls": self.__class__.__name__,
-            "settings_module": self.WTFIX_SETTINGS_MODULE,
-        }
+        return '<{cls} "{settings_module}">'.format(
+            cls=self.__class__.__name__,
+            settings_module=self.WTFIX_SETTINGS_MODULE,
+        )
 
 
 settings = Settings()
