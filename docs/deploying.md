@@ -5,7 +5,7 @@ Deploying WTFIX to staging or production environments generally involves the fol
 - Set the ``WTFIX_SETTINGS_MODULE`` environment variable to ``config.settings.staging`` or ``config.settings.production``
 as the case may be.
 
-- Ensure that the ``DEBUG`` configuration parameter is set to ``False``. 
+- Ensure that the ``DEBUG`` configuration parameter is set to ``False``.
 
 - If the pipeline has been configured to include the ``RESTfulServiceApp``, then you will also need to configure a
 WSGI HTTP server for hosting the APIs (Flask's built-in server is [not suitable for production](http://flask.pocoo.org/docs/deploying/)).

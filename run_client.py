@@ -40,7 +40,7 @@ parser.add_argument(
 parser.add_argument(
     "-new_session",
     action="store_true",
-    help=f"reset sequence numbers and start a new session",
+    help="reset sequence numbers and start a new session",
 )
 
 _shutting_down = asyncio.Event()
@@ -61,7 +61,7 @@ async def graceful_shutdown(pipeline, sig_name=None, error=None):
     if sig_name is not None:
         logger.info(f"Received signal {sig_name}! Initiating graceful shutdown...")
     else:
-        logger.info(f"Initiating graceful shutdown...")
+        logger.info("Initiating graceful shutdown...")
 
     await pipeline.stop(error=error)
 

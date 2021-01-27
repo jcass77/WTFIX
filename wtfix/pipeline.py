@@ -77,7 +77,7 @@ class BasePipeline:
 
         if len(installed_apps) == 0:
             raise ImproperlyConfigured(
-                f"At least one application needs to be added to the pipeline by using the PIPELINE_APPS setting."
+                "At least one application needs to be added to the pipeline by using the PIPELINE_APPS setting."
             )
 
         for app in installed_apps:
@@ -94,7 +94,7 @@ class BasePipeline:
 
         All apps are initialized concurrently.
         """
-        logger.info(f"Initializing applications...")
+        logger.info("Initializing applications...")
 
         init_calls = (app.initialize for app in self.apps.values())
         await asyncio.gather(*(call() for call in init_calls))
@@ -117,7 +117,7 @@ class BasePipeline:
             await asyncio.wait_for(self.initialize(), settings.INIT_TIMEOUT)
 
         except asyncio.exceptions.TimeoutError as e:
-            logger.error(f"Timeout waiting for apps to initialize!")
+            logger.error("Timeout waiting for apps to initialize!")
             raise e
 
         for app in reversed(self.apps.values()):

@@ -30,7 +30,7 @@
     ```
 
 7. Push to GitHub:
-    
+
     ```
     git push --follow-tags
     ```
