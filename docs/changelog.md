@@ -3,6 +3,13 @@
 This changelog is used to track all major changes to WTFIX.
 
 
+## v0.16.2 (2021-01-27)
+
+**Fixes**
+
+- Fix link to sponsor logo on PyPI.
+
+
 ## v0.16.1 (2021-01-27)
 
 **Enhancements**
