@@ -20,6 +20,7 @@ setup(
         "Development Status :: 4 - Beta",
         "Framework :: AsyncIO",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
         "Operating System :: OS Independent",
         "Intended Audience :: Financial and Insurance Industry",
