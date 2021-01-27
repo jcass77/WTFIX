@@ -46,7 +46,7 @@ jobs:
       run: coveralls --service=github
       env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COVERALLS_FLAG_NAME: ${{ matrix.test-name }}
+          COVERALLS_FLAG_NAME: ${{ matrix.python-version }}-${{ matrix.redis-version }}
           COVERALLS_PARALLEL: true
   coveralls:
       name: Indicate completion to coveralls.io
@@ -56,7 +56,7 @@ jobs:
       steps:
       - name: Finished
         run: |
-          pip3 install --upgrade coveralls
+          python -m pip install --upgrade coveralls
           coveralls --finish
         env:
          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
