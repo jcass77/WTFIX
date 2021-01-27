@@ -40,7 +40,7 @@ jobs:
       uses: supercharge/redis-github-action@1.2.0
       with:
         redis-version: ${{ matrix.redis-version }}
-    - name: Test with pytest and update coverage
+    - name: Test
       run: coverage run -m pytest
     - name: Upload coverage data to coveralls.io
       run: coveralls
