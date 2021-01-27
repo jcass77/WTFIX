@@ -461,8 +461,10 @@ class Field(collections.abc.MutableSequence):
         if "t" in format_spec:
             if self.name == self.UNKNOWN_TAG:
                 return f"{self.tag}: {self.value}"
-            return f"{self.name} ({self.tag}): {{:{format_spec.replace('t', '')}}}".format(
-                self.value
+            return (
+                f"{self.name} ({self.tag}): {{:{format_spec.replace('t', '')}}}".format(
+                    self.value
+                )
             )
         else:
             return self.value.__format__(format_spec)

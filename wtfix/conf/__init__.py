@@ -113,7 +113,8 @@ class Settings:
 
     def __repr__(self):
         return '<{cls} "{settings_module}">'.format(
-            cls=self.__class__.__name__, settings_module=self.WTFIX_SETTINGS_MODULE,
+            cls=self.__class__.__name__,
+            settings_module=self.WTFIX_SETTINGS_MODULE,
         )
 
 
