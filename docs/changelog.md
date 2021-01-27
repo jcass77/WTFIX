@@ -3,7 +3,7 @@
 This changelog is used to track all major changes to WTFIX.
 
 
-## v0.16.1 (UNRELEASED)
+## v0.16.1 (2021-01-27)
 
 **Enhancements**
 
