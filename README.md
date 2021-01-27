@@ -12,9 +12,11 @@ The Pythonic Financial Information eXchange (FIX) client that you have been look
 <hr/>
 
 <h3 align="center">Sponsors</h3>
-<a href="https://www.salicar.co.za" target="_blank">
-    <img src="docs/sponsors/salicar.png">
-</a>
+<p align="center">
+  <a href="https://www.salicar.co.za" target="_blank">
+      <img width="320px" src="docs/sponsors/salicar.png">
+  </a>
+</p>
 
 <hr/>
 
@@ -247,7 +249,7 @@ messages mean that you never need to deal with byte sequences directly.
 WTF(ix) is open source, free, and fully functional. However if you are a corporate intending to make use of WTF(ix)
 commercially, then you may need more support and assurance than can be offered by the community here.
 
-Commercial support is provided on a paid basis by this project's primary sponsor: [Salicar](http://www.salicar.co.za).
+Commercial support is provided on a paid basis by this project's primary sponsor: [Salicar](https://www.salicar.co.za/#contact).
 Get in touch if you need help with:
 
 - Getting started and development best practices
