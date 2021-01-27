@@ -3,6 +3,16 @@
 This changelog is used to track all major changes to WTFIX.
 
 
+## v0.16.1 (UNRELEASED)
+
+**Enhancements**
+
+- Update license notice.
+- Include Python 3.9 in continuous integration runs.
+- Update pre-commit hooks and run on all files.
+- Update README with sponsor / support information.
+
+
 ## v0.16.0 (2020-09-11)
 
 **Enhancements**
