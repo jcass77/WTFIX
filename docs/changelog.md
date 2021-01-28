@@ -3,6 +3,13 @@
 This changelog is used to track all major changes to WTFIX.
 
 
+## v0.16.3 (UNRELEASED)
+
+**Enhancements**
+
+- Switch from using coveralls.io to codecov.io
+
+
 ## v0.16.2 (2021-01-27)
 
 **Fixes**
