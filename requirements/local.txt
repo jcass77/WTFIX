@@ -11,5 +11,4 @@ faker~=5.0  # https://github.com/joke2k/faker
 
 # Code quality
 # ------------------------------------------------------------------------------
-coverage~=5.0  # https://github.com/nedbat/coveragepy
 pre-commit~=2.1  # https://pre-commit.com
