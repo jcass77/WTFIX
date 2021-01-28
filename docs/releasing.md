@@ -4,10 +4,10 @@
 
 2. Bump the version number in ``setup.py`` and commit it.
 
-3. Merge the release branch (``develop`` in the example) into ``master``:
+3. Merge the release branch (``develop`` in the example) into ``main``:
 
     ```
-    git checkout master
+    git checkout main
     git merge --no-ff -m "Release v0.0.1" develop
     ```
 
@@ -23,7 +23,8 @@
     git push --follow-tags
     ```
 
-6. Merge ``master`` back into ``develop`` and push the branch to GitHub.
+6. Merge ``main`` back into ``develop`` and push the branch to GitHub.
 
-7. Document the release on GitHub. The 'Upload Python package' GitHub action should automatically publish the release
-to PyPI.
+7. Create a new release on GitHub: https://github.com/jcass77/wtfix/releases/new
+
+8. Clicking "Publish" will automatically trigger a new release to get pushed to PyPi.
