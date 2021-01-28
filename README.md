@@ -2,12 +2,12 @@
 
 The Pythonic Financial Information eXchange (FIX) client that you have been looking for.
 
-[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/jcass77/wtfix/Python%20package)](https://github.com/jcass77/WTFIX/actions?query=workflow%3A%22Python+package%22)
-[![Coverage Status](https://coveralls.io/repos/github/jcass77/WTFIX/badge.svg?branch=develop)](https://coveralls.io/github/jcass77/WTFIX?branch=develop)
 [![PyPI version shields.io](https://img.shields.io/pypi/v/wtfix.svg)](https://pypi.python.org/pypi/wtfix/)
 [![PyPI pyversions](https://img.shields.io/pypi/pyversions/wtfix.svg)](https://pypi.python.org/pypi/wtfix/)
+[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/jcass77/wtfix/Python%20package)](https://github.com/jcass77/WTFIX/actions?query=workflow%3A%22Python+package%22)
+[![Codecov](https://img.shields.io/codecov/c/github/jcass77/wtfix?token=YNpau2mYT3)](https://codecov.io/gh/jcass77/wtfix)
 [![PyPI license](https://img.shields.io/pypi/l/wtfix.svg)](COPYING)
-[![Code style:black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://pypi.org/project/black/)
+[![Code style:black](https://img.shields.io/badge/code%20style-black-black)](https://pypi.org/project/black)
 
 <hr/>
 
