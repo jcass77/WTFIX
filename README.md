@@ -14,7 +14,7 @@ The Pythonic Financial Information eXchange (FIX) client that you have been look
 <h3 align="center">Sponsors</h3>
 <p align="center">
   <a href="https://www.salicar.co.za" target="_blank">
-      <img width="320px" src="https://raw.githubusercontent.com/jcass77/wtfix/master/docs/sponsors/salicar.png">
+      <img width="320px" src="https://raw.githubusercontent.com/jcass77/wtfix/main/docs/sponsors/salicar.png">
   </a>
 </p>
 
