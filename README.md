@@ -30,9 +30,9 @@ were not planning on using, compile a C++ codebase and figure out weird API bind
 definitons, or cobble together bits and pieces of code from various old GitHub projects to try and get a connection
 to an exchange going.
 
-That was then. By now WTF(ix) has clocked up more than 100 000 hours in production, running 24/7 connected to multiple
-exchanges, and has been used to implement various algorithmic strategies and complete many millions of dollars worth
-of trades.
+Since then WTF(ix) has been running 24/7, connected to multiple exchanges across multiple projects, and has
+been used to implement various algorithmic strategies and complete many millions of dollars worth
+of succesful trades.
 
 WTF(ix) can also easily be adapted to plug into various crypto exchanges that do not adhere to the formal FIX (or
 any other) specification.
