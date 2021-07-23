@@ -11,24 +11,14 @@ The Pythonic Financial Information eXchange (FIX) client that you have been look
 
 ## Background
 
-WTF(ix) was born out of frustration. We simply could not find an easy to use and actively maintained FIX client for
-our new Python project. Anywhere.
+WTF(ix) is a simple and easy to use FIX client for Python. It can also be adapted to plug into various crypto
+exchanges that do not adhere to the formal FIX (or any other) specification.
 
-Most of the available options required you to either change your development stack to include a database that you
-were not planning on using, compile a C++ codebase and figure out weird API bindings, wrangle with arcane XML file
-definitons, or cobble together bits and pieces of code from various old GitHub projects to try and get a connection
-to an exchange going.
-
-Since then WTF(ix) has been running 24/7, connected to multiple exchanges across multiple projects, and has
-been used to implement various algorithmic strategies and complete many millions of dollars worth
-of succesful trades.
-
-WTF(ix) can also easily be adapted to plug into various crypto exchanges that do not adhere to the formal FIX (or
-any other) specification.
+WTF(ix) does not require you to alter your development stack, deploy a database, compile a C++ codebase and figure out
+weird API bindings, or wrangle with arcane XML file definitions.
 
 ## Project Highlights and Goals
 
-- Built from the ground up for Python 3.
 - Batteries included - comes with everything that you need to connect to a FIX server and start sending and receiving
 messages in minutes. Provides default implementations for:
     - Authentication
