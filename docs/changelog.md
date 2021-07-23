@@ -8,6 +8,7 @@ This changelog is used to track all major changes to WTFIX.
 **Enhancements**
 
 - Switch from using coveralls.io to codecov.io
+- Add support for SSL connections and toggling of SSL validation (thanks @nielsdraaisma).
 
 
 ## v0.16.2 (2021-01-27)
