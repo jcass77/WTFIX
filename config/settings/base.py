@@ -36,6 +36,8 @@ CONNECTIONS = {
         "HEARTBEAT_INT": 30,
         "HOST": os.getenv("HOST"),
         "PORT": os.getenv("PORT"),
+        "SSL_ENABLED": bool(os.getenv("SSL_ENABLED", False)),
+        "SSL_SKIP_VERIFY": bool(os.getenv("SSL_SKIP_VERIFY", False)),
         "SENDER": os.getenv("SENDER"),
         "TARGET": os.getenv("TARGET"),
         "USERNAME": os.getenv("USERNAME", os.getenv("SENDER")),
