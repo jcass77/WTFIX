@@ -9,17 +9,6 @@ The Pythonic Financial Information eXchange (FIX) client that you have been look
 [![PyPI license](https://img.shields.io/pypi/l/wtfix.svg)](COPYING)
 [![Code style:black](https://img.shields.io/badge/code%20style-black-black)](https://pypi.org/project/black)
 
-<hr/>
-
-<h3 align="center">Sponsors</h3>
-<p align="center">
-  <a href="https://www.salicar.co.za" target="_blank">
-      <img width="320px" src="https://raw.githubusercontent.com/jcass77/wtfix/main/docs/sponsors/salicar.png">
-  </a>
-</p>
-
-<hr/>
-
 ## Background
 
 WTF(ix) was born out of frustration. We simply could not find an easy to use and actively maintained FIX client for
@@ -249,8 +238,7 @@ messages mean that you never need to deal with byte sequences directly.
 WTF(ix) is open source, free, and fully functional. However if you are a corporate intending to make use of WTF(ix)
 commercially, then you may need more support and assurance than can be offered by the community here.
 
-Commercial support is provided on a paid basis by this project's primary sponsor: [Salicar](https://www.salicar.co.za/#contact).
-Get in touch if you need help with:
+Commercial support is available - get in touch if you need help with:
 
 - Getting started and development best practices
 - Integrating WTF(ix) with the exchange of your choice (FIX, websocket stream, or REST API)
