@@ -17,6 +17,7 @@
 
 import asyncio
 import os
+import ssl
 import uuid
 from asyncio import IncompleteReadError
 from pathlib import Path
@@ -150,9 +151,20 @@ class ClientSessionApp(SessionApp):
         logger.info(
             f"{self.name}: Establishing connection to {self.pipeline.settings.HOST}:{self.pipeline.settings.PORT}..."
         )
+        ssl_context = None
+        if self.pipeline.settings.SSL_ENABLED:
+            ssl_context = ssl.create_default_context()
+            if self.pipeline.settings.SSL_SKIP_VERIFY:
+                ssl_context.check_hostname = False
+                ssl_context.verify_mode = ssl.CERT_NONE
+            logger.info(
+                f"{self.name}: Enabling SSL with host/certification validation enabled : {ssl_context.check_hostname}"
+            )
+
         self.reader, self.writer = await asyncio.open_connection(
             self.pipeline.settings.HOST,
             self.pipeline.settings.PORT,
+            ssl=ssl_context,
             limit=2 ** 26,  # 64Mb
         )
         logger.info(f"{self.name}: Connected!")
