@@ -1,3 +1,11 @@
+## WARNING: This project is no longer actively maintained.
+
+It has been a few years since I have supported FIX connections in production, and I am no longer making use of this
+codebase myself anymore.
+
+We have an [issue open](https://github.com/jcass77/WTFIX/issues/10) to look for a new maintainer. Please
+comment there if you are interested in becoming involved.
+
 # WTF(ix)
 
 The Pythonic Financial Information eXchange (FIX) client that you have been looking for.
